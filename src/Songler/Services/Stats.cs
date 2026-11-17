@@ -14,7 +14,7 @@ public record ItemStats(
     double? First,
     double? Progress);
 
-public record TempoPoint(DateTime Date, double Value, double? Min, string? Note);
+public record TempoPoint(DateTime Date, double Value, double? Min, string? Note, int? Effort = null);
 
 public static class Stats
 {
@@ -52,8 +52,13 @@ public static class Stats
             .Select(g =>
             {
                 var top = g.MaxBy(l => l.Value)!;
-                return new TempoPoint(g.Key, top.Value!.Value, top.ValueMin, string.Join(" · ", g.Where(x => !string.IsNullOrWhiteSpace(x.Notes)).Select(x => x.Notes)));
+                return new TempoPoint(g.Key, top.Value!.Value, top.ValueMin, string.Join(" · ", g.Where(x => !string.IsNullOrWhiteSpace(x.Notes)).Select(x => x.Notes)),
+                    top.Effort ?? g.LastOrDefault(x => x.Effort.HasValue)?.Effort);
             }).ToList();
+
+    /// <summary>Most recent rated session for an item, if any.</summary>
+    public static PracticeLog? LastRated(PracticeItem item, IEnumerable<PracticeLog> allLogs) =>
+        allLogs.Where(l => l.ItemId == item.Id && l.Effort.HasValue).OrderBy(l => l.Date).LastOrDefault();
 
     public static Dictionary<DateTime, int> SecondsByDay(IEnumerable<PracticeLog> logs) =>
         logs.GroupBy(l => l.Date.Date).ToDictionary(g => g.Key, g => g.Sum(l => l.DurationSec ?? 0));

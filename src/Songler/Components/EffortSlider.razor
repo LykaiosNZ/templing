@@ -1,0 +1,44 @@
+@* Green-to-red "how did it feel" scale. Nullable: unrated until the user drags, clicks a label, or uses the arrow keys. *@
+
+<div class="effort @(Value is null ? "unrated" : "")" style="--effort-color:@(Current?.Color ?? "var(--mud-palette-text-disabled)")">
+    <div class="effort-head">
+        <label for="@_id" class="effort-title">How did it feel?</label>
+        @if (Current is { } c)
+        {
+            <span class="effort-readout" aria-hidden="true"><span class="effort-dot"></span><strong>@c.Label</strong> · @c.Advice</span>
+            <button type="button" class="effort-clear" @onclick="() => Set(null)" aria-label="Clear rating">Clear</button>
+        }
+        else
+        {
+            <span class="effort-readout muted">Not rated</span>
+        }
+    </div>
+    <input id="@_id" type="range" min="1" max="5" step="1" class="effort-range"
+           value="@(Value ?? 3)"
+           aria-valuetext="@(Current is { } cc ? $"{cc.Label}: {cc.Advice}" : "Not rated")"
+           @oninput="e => Set(int.Parse((string)e.Value!))" />
+    <div class="effort-scale">
+        @foreach (var l in Effort.Levels)
+        {
+            var lvl = l;
+            <button type="button" class="effort-tick @(Value == lvl.Value ? "on" : "")" style="--tick-color:@lvl.Color"
+                    aria-pressed="@(Value == lvl.Value ? "true" : "false")" title="@lvl.Advice" @onclick="() => Set(lvl.Value)">
+                @lvl.Label
+            </button>
+        }
+    </div>
+    <div class="effort-hints" aria-hidden="true"><span>← push faster</span><span>slow down →</span></div>
+</div>
+
+@code {
+    [Parameter] public int? Value { get; set; }
+    [Parameter] public EventCallback<int?> ValueChanged { get; set; }
+    readonly string _id = "effort-" + Guid.NewGuid().ToString("N")[..6];
+    Effort.Level? Current => Effort.Get(Value);
+
+    async Task Set(int? v)
+    {
+        Value = v;
+        await ValueChanged.InvokeAsync(v);
+    }
+}

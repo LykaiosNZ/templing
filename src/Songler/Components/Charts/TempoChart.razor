@@ -13,7 +13,8 @@
             {
                 var y = Y(t);
                 <line x1="@L" x2="@(W - R)" y1="@F(y)" y2="@F(y)" class="viz-grid" />
-                <SvgText x="@(L - 8)" y="@F(y + 4)" text-anchor="end" class="viz-axis">@t.ToString("0")@(Unit == TempoUnit.Percent ? "%" : "")</SvgText>
+                var tickText = t.ToString("0") + (Unit == TempoUnit.Percent ? "%" : "");
+                <SvgText x="@(L - 8)" y="@F(y + 4)" text-anchor="end" class="viz-axis">@tickText</SvgText>
             }
             @* x labels *@
             @foreach (var (d, x) in _xTicks)
@@ -22,8 +23,9 @@
             }
             @if (Goal is { } g && g >= _min && g <= _max)
             {
+                var goalText = $"Goal {g:0}{(Unit == TempoUnit.Percent ? "%" : " bpm")}";
                 <line x1="@L" x2="@(W - R)" y1="@F(Y(g))" y2="@F(Y(g))" class="viz-goal" />
-                <SvgText x="@(W - R)" y="@F(Y(g) - 6)" text-anchor="end" class="viz-goal-label">Goal @g.ToString("0")@(Unit == TempoUnit.Percent ? "%" : " bpm")</SvgText>
+                <SvgText x="@(W - R)" y="@F(Y(g) - 6)" text-anchor="end" class="viz-goal-label">@goalText</SvgText>
             }
             @* range whiskers *@
             @for (int i = 0; i < Points.Count; i++)
@@ -40,23 +42,25 @@
                 var idx = i;
                 var p = Points[i];
                 var cx = X(p.Date); var cy = Y(p.Value);
-                <circle cx="@F(cx)" cy="@F(cy)" r="@(idx == _hover ? 6 : (Points.Count > 40 ? 2.5 : 4))" class="viz-dot @(idx == _hover ? "on" : "")" />
+                <circle cx="@F(cx)" cy="@F(cy)" r="@(idx == _hover ? 6 : (p.Effort.HasValue ? 4.5 : Points.Count > 40 ? 2.5 : 4))" class="viz-dot @(idx == _hover ? "on" : "")"
+                        style="@(Effort.Get(p.Effort) is { } fe ? $"fill:{fe.Color}" : null)" />
                 <circle cx="@F(cx)" cy="@F(cy)" r="12" class="viz-hit" tabindex="0"
-                        aria-label="@($"{p.Date:d MMM yyyy}: {Fmt(p)}")"
+                        aria-label="@($"{p.Date:d MMM yyyy}: {Fmt(p)}{(Effort.Get(p.Effort) is { } fa ? $", felt {fa.Label}" : "")}")"
                         @onmouseenter="() => _hover = idx" @onfocus="() => _hover = idx" @onblur="() => _hover = -1" />
             }
             @if (_hover >= 0 && _hover < Points.Count)
             {
                 var p = Points[_hover];
                 var x = X(p.Date); var y = Y(p.Value);
-                var tw = 168.0; var th = string.IsNullOrEmpty(p.Note) ? 44 : 62;
+                var tipText = Fmt(p) + (Effort.Get(p.Effort) is { } ft ? $" · {ft.Label}" : "");
+                var tw = 210.0; var th = string.IsNullOrEmpty(p.Note) ? 44 : 62;
                 var tx = Math.Clamp(x - tw / 2, L, W - R - tw);
                 var ty = y - th - 14 < 4 ? y + 14 : y - th - 14;
                 <line x1="@F(x)" x2="@F(x)" y1="@T" y2="@(H - B)" class="viz-crosshair" />
                 <g class="viz-tip" pointer-events="none">
                     <rect x="@F(tx)" y="@F(ty)" width="@tw" height="@th" rx="8" />
                     <SvgText x="@F(tx + 10)" y="@F(ty + 18)" class="viz-tip-muted">@p.Date.ToString("ddd d MMM yyyy")</SvgText>
-                    <SvgText x="@F(tx + 10)" y="@F(ty + 36)" class="viz-tip-strong">@Fmt(p)</SvgText>
+                    <SvgText x="@F(tx + 10)" y="@F(ty + 36)" class="viz-tip-strong">@tipText</SvgText>
                     @if (!string.IsNullOrEmpty(p.Note))
                     {
                         <SvgText x="@F(tx + 10)" y="@F(ty + 54)" class="viz-tip-muted">@Trunc(p.Note!, 26)</SvgText>

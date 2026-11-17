@@ -15,6 +15,7 @@ else
                     @if (ShowItem) { <th scope="col">Item</th> }
                     <th scope="col" class="num">Tempo</th>
                     <th scope="col" class="num">Time</th>
+                    <th scope="col">Feel</th>
                     <th scope="col">Notes</th>
                     <th scope="col"><span class="sr-only">Edit</span></th>
                 </tr>
@@ -38,6 +39,12 @@ else
                         }
                         <td class="num mono">@l.ValueText@if (!ShowItem && section != null) { <span class="muted small"> @section</span> }</td>
                         <td class="num mono">@(l.DurationSec is { } d ? Stats.Duration(d) : "—")</td>
+                        <td>
+                            @if (Effort.Get(l.Effort) is { } feel)
+                            {
+                                <span class="feel-pill" style="--feel:@feel.Color" title="@feel.Advice">@feel.Label</span>
+                            }
+                        </td>
                         <td class="notes">@l.Notes</td>
                         <td class="act"><MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit entry {l.ItemName} {l.Date:d MMM}")" OnClick="() => Edit(l)" /></td>
                     </tr>

@@ -70,6 +70,12 @@ public static partial class CsvImport
 
     private static string At(string[] row, int i) => i >= 0 && i < row.Length ? row[i].Trim() : "";
 
+    private static int? ParseEffort(string s)
+    {
+        if (int.TryParse(s, out var n) && n is >= 1 and <= 5) return n;
+        return Effort.Levels.FirstOrDefault(l => l.Label.Equals(s, StringComparison.OrdinalIgnoreCase))?.Value;
+    }
+
     public static bool LooksLikePieces(string[] header) => Col(header, "Speed Goal") >= 0 || (Col(header, "Name") >= 0 && Col(header, "Type") >= 0);
     public static bool LooksLikeLog(string[] header) => Col(header, "Date") >= 0 && Col(header, "Exercise", "Item", "Name") >= 0;
 
@@ -115,7 +121,7 @@ public static partial class CsvImport
         {
             int cDate = Col(header, "Date"), cName = Col(header, "Exercise", "Item", "Name"),
                 cSpeed = Col(header, "BPM/Speed", "Speed", "BPM"), cTime = Col(header, "Time (min)", "Time", "Minutes"),
-                cNotes = Col(header, "Notes");
+                cNotes = Col(header, "Notes"), cFeel = Col(header, "Feel", "Effort");
             foreach (var r in rows.Skip(1))
             {
                 var name = At(r, cName);
@@ -139,7 +145,8 @@ public static partial class CsvImport
                 {
                     Date = date, ItemId = item.Id, ItemName = item.Name, Unit = unit,
                     Value = max, ValueMin = min, DurationSec = dur,
-                    Notes = notes.Length > 0 ? notes : null, Source = "import"
+                    Notes = notes.Length > 0 ? notes : null, Source = "import",
+                    Effort = ParseEffort(At(r, cFeel))
                 };
                 bool dupe = store.Logs.Concat(logs).Any(l => l.Date == log.Date && l.ItemId == log.ItemId && l.Value == log.Value
                                                            && l.ValueMin == log.ValueMin && l.DurationSec == log.DurationSec && l.Notes == log.Notes);
@@ -155,7 +162,7 @@ public static partial class CsvImport
     public static string ExportLogCsv(DataStore store)
     {
         static string Q(string? s) => s is null ? "" : s.Contains(',') || s.Contains('"') || s.Contains('\n') ? $"\"{s.Replace("\"", "\"\"")}\"" : s;
-        var sb = new StringBuilder("Date,Exercise,Section,BPM/Speed,Time (min),Notes\n");
+        var sb = new StringBuilder("Date,Exercise,Section,BPM/Speed,Time (min),Feel,Notes\n");
         foreach (var l in store.Logs.OrderBy(l => l.Date))
         {
             var item = store.GetItem(l.ItemId);
@@ -163,7 +170,7 @@ public static partial class CsvImport
             var suf = l.Unit == TempoUnit.Percent ? "%" : "";
             var speed = l.Value is null ? "" : l.ValueMin is { } mn && mn != l.Value ? $"{mn:0} - {l.Value:0}{suf}" : $"{l.Value:0}{suf}";
             var mins = l.DurationSec is { } d ? (d / 60.0).ToString("0.#", CultureInfo.InvariantCulture) : "";
-            sb.Append($"{l.Date:dd/MM/yyyy},{Q(l.ItemName)},{Q(section)},{Q(speed)},{mins},{Q(l.Notes)}\n");
+            sb.Append($"{l.Date:dd/MM/yyyy},{Q(l.ItemName)},{Q(section)},{Q(speed)},{mins},{Q(Effort.Get(l.Effort)?.Label)},{Q(l.Notes)}\n");
         }
         return sb.ToString();
     }

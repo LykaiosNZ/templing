@@ -32,6 +32,7 @@
                               HelperText="e.g. 120, 65 - 145 or 85%" Class="flex-1" Immediate="true" AutoFocus="true" />
                 <MudNumericField T="double?" @bind-Value="_minutes" Label="Active minutes" HelperText="Excluding rests" Min="0" Step="1" Class="flex-1" />
             </div>
+            <EffortSlider @bind-Value="_effort" />
             <MudTextField @bind-Value="_notes" Label="Notes" Lines="2" Sizing="InputSizing.Auto" MaxLines="6" />
         </MudForm>
     </DialogContent>
@@ -55,6 +56,7 @@
     DateTime? _date;
     string? _itemId, _sectionId, _name, _tempo, _notes;
     double? _minutes;
+    int? _effort;
     PracticeItem? _item;
 
     public static async Task<bool> ShowAsync(IDialogService dialogs, PracticeLog log, bool isNew)
@@ -74,6 +76,7 @@
         _sectionId = Log.SectionId;
         _name = Log.ItemName;
         _notes = Log.Notes;
+        _effort = Log.Effort;
         _minutes = Log.DurationSec is { } s ? Math.Round(s / 60.0, 1) : null;
         if (Log.Value is { } v)
         {
@@ -103,6 +106,7 @@
         Log.ValueMin = min;
         Log.DurationSec = _minutes is { } m ? (int)Math.Round(m * 60) : null;
         Log.Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim();
+        Log.Effort = _effort;
         await Store.SaveLogAsync(Log);
         Dialog.Close(DialogResult.Ok(Log));
     }

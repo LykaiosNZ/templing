@@ -24,6 +24,7 @@
                 @if (item.Goal is { } g) { <span> · Goal @g.ToString("0")@item.Unit.Suffix()</span> }
                 · <a href="library/@item.Id">View progress</a>
             </MudText>
+            <FeelHint Item="item" />
         }
     </div>
     <div class="d-flex gap-2 flex-wrap">

@@ -77,6 +77,8 @@ public class PracticeLog
     /// <summary>Active practice time in seconds (rests excluded). Null if not recorded.</summary>
     public int? DurationSec { get; set; }
     public string? Notes { get; set; }
+    /// <summary>How the session felt, 1 (too easy, push the tempo) … 5 (too hard, slow down). Null = not rated.</summary>
+    public int? Effort { get; set; }
     /// <summary>"manual", "metronome", "import".</summary>
     public string Source { get; set; } = "manual";
 
@@ -89,6 +91,23 @@ public class PracticeLog
             return ValueMin is { } min && min != Value ? $"{min:0}–{Value:0}{suf}" : $"{Value:0}{suf}";
         }
     }
+}
+
+public static class Effort
+{
+    public record Level(int Value, string Label, string Advice, string Color);
+
+    /// <summary>Green (too easy) → red (too hard). Mid-scale is the sweet spot.</summary>
+    public static readonly Level[] Levels =
+    [
+        new(1, "Too easy", "Push the tempo up", "#0ca30c"),
+        new(2, "Comfortable", "Ready to nudge faster", "#7cb518"),
+        new(3, "Just right", "Challenging but clean, stay here", "#eda100"),
+        new(4, "Struggling", "Getting sloppy, consider easing off", "#ec835a"),
+        new(5, "Too hard", "Slow down and clean it up", "#d03b3b"),
+    ];
+
+    public static Level? Get(int? v) => v is >= 1 and <= 5 ? Levels[v.Value - 1] : null;
 }
 
 /// <summary>A saved custom metronome (tempo map) that isn't tied to a library item.</summary>

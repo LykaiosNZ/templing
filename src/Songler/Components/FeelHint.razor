@@ -1,0 +1,18 @@
+@inject DataStore Store
+
+@if (_last is { } l && Effort.Get(l.Effort) is { } f)
+{
+    <div class="feel-hint" style="--feel:@f.Color" role="note">
+        <span class="feel-dot" aria-hidden="true"></span>
+        <span>
+            Last rated @Stats.Ago(l.Date, DateTime.Today)@(l.Value is not null ? $" at {l.ValueText}{(l.Unit == TempoUnit.Bpm ? " bpm" : "")}" : ""):
+            <strong style="color:@f.Color">@f.Label</strong>. @f.Advice.
+        </span>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public PracticeItem Item { get; set; } = default!;
+    PracticeLog? _last;
+    protected override void OnParametersSet() => _last = Stats.LastRated(Item, Store.Logs);
+}

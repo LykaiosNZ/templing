@@ -12,17 +12,20 @@
             {
                 var y = Y(t);
                 <line x1="@L" x2="@(W - R)" y1="@F(y)" y2="@F(y)" class="viz-grid" />
-                <SvgText x="@(L - 8)" y="@F(y + 4)" text-anchor="end" class="viz-axis">@AxisFormat(t)</SvgText>
+                var axisText = AxisFormat(t);
+                <SvgText x="@(L - 8)" y="@F(y + 4)" text-anchor="end" class="viz-axis">@axisText</SvgText>
             }
             @if (Target is { } tg && tg <= _max)
             {
+                var targetText = TargetLabel;
                 <line x1="@L" x2="@(W - R)" y1="@F(Y(tg))" y2="@F(Y(tg))" class="viz-goal" />
-                <SvgText x="@(W - R)" y="@F(Y(tg) - 6)" text-anchor="end" class="viz-goal-label">@TargetLabel</SvgText>
+                <SvgText x="@(W - R)" y="@F(Y(tg) - 6)" text-anchor="end" class="viz-goal-label">@targetText</SvgText>
             }
             @for (int i = 0; i < Values.Count; i++)
             {
                 var idx = i;
                 var v = Values[i];
+                var label = i < Labels.Count ? Labels[i] : "";
                 var x = L + i * _slot + _slot * 0.15;
                 var bw = _slot * 0.7;
                 var y = Y(v);
@@ -34,24 +37,26 @@
                 }
                 @if (ShowLabel(i))
                 {
-                    <SvgText x="@F(x + bw / 2)" y="@(Height - 10)" text-anchor="middle" class="viz-axis">@Labels[idx]</SvgText>
+                    <SvgText x="@F(x + bw / 2)" y="@(Height - 10)" text-anchor="middle" class="viz-axis">@label</SvgText>
                 }
                 <rect x="@F(L + i * _slot)" y="@T" width="@F(_slot)" height="@(Height - T - B)" class="viz-hit" tabindex="0"
-                      aria-label="@($"{Labels[idx]}: {ValueFormat(v)}")"
+                      aria-label="@($"{label}: {ValueFormat(v)}")"
                       @onmouseenter="() => _hover = idx" @onfocus="() => _hover = idx" @onblur="() => _hover = -1" />
             }
             <line x1="@L" x2="@(W - R)" y1="@(Height - B)" y2="@(Height - B)" class="viz-baseline" />
             @if (_hover >= 0 && _hover < Values.Count)
             {
                 var v = Values[_hover];
+                var tipLabel = TipLabels is { } tl && _hover < tl.Count ? tl[_hover] : _hover < Labels.Count ? Labels[_hover] : "";
+                var tipValue = ValueFormat(v);
                 var cx = L + _hover * _slot + _slot / 2;
                 var tw = 140.0; var th = 44.0;
                 var tx = Math.Clamp(cx - tw / 2, L, W - R - tw);
                 var ty = Math.Max(4, Y(v) - th - 10);
                 <g class="viz-tip" pointer-events="none">
                     <rect x="@F(tx)" y="@F(ty)" width="@tw" height="@th" rx="8" />
-                    <SvgText x="@F(tx + 10)" y="@F(ty + 18)" class="viz-tip-muted">@(TipLabels?[_hover] ?? Labels[_hover])</SvgText>
-                    <SvgText x="@F(tx + 10)" y="@F(ty + 36)" class="viz-tip-strong">@ValueFormat(v)</SvgText>
+                    <SvgText x="@F(tx + 10)" y="@F(ty + 18)" class="viz-tip-muted">@tipLabel</SvgText>
+                    <SvgText x="@F(tx + 10)" y="@F(ty + 36)" class="viz-tip-strong">@tipValue</SvgText>
                 </g>
             }
         </svg>
