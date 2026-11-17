@@ -38,7 +38,7 @@ else
 
     <div class="tiles">
         <StatTile Label="Progress" Value="@(_st.Progress is { } p ? p.ToString("P0") : "—")" Icon="@Icons.Material.Rounded.Flag"
-                  Sub="@(_item.Goal is { } g ? $"Goal {g:0}{_item.Unit.Suffix()}" : "No goal set")">
+                  Sub="@ProgressSub">
             <div class="progress-track mt-2"><div class="progress-fill @(_st.Progress >= 1 ? "done" : "")" style="width:@Pct(_st.Progress)%"></div></div>
         </StatTile>
         <StatTile Label="Latest" Value="@(_st.Last?.ToString("0") ?? "—")" Unit="@(_st.Last.HasValue ? _item.Unit.Suffix() : null)" Icon="@Icons.Material.Rounded.Speed"
@@ -55,7 +55,7 @@ else
                     <h2 class="card-title">Tempo over time</h2>
                     @if (_item.Sections.Count > 1)
                     {
-                        <MudSelect T="string" @bind-Value="_section" @bind-Value:after="Refresh" Label="Section" Clearable="true" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Style="max-width:220px">
+                        <MudSelect T="string" @bind-Value="_section" @bind-Value:after="Refresh" Label="@(_item.Type == ItemType.Song ? "Part" : "Section")" Clearable="true" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Style="max-width:220px">
                             @foreach (var s in _item.Sections) { <MudSelectItem T="string" Value="@s.Id">@s.Name</MudSelectItem> }
                         </MudSelect>
                     }
@@ -71,30 +71,88 @@ else
                           HighlightLast="true" LabelEvery="3" Height="260" Width="400" AriaLabel="Minutes practised per week" />
             </section>
         </MudItem>
-        <MudItem xs="12" lg="5">
+        <MudItem xs="12" lg="@(_item.HasParts() ? 12 : 5)">
             <section class="card">
                 <div class="card-head">
-                    <h2 class="card-title">Sections</h2>
-                    <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="Edit">Edit</MudButton>
+                    <h2 class="card-title">@(_item.Type == ItemType.Song ? "Song parts" : "Sections")</h2>
+                    <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Rounded.Edit" OnClick="Edit">@(_item.Type == ItemType.Song ? "Edit parts" : "Edit")</MudButton>
                 </div>
-                <MudSimpleTable Dense="true" Hover="true" Elevation="0">
-                    <thead><tr><th>Section</th><th>Tempo</th><th>Meter</th><th>Bars</th><th><span class="sr-only">Practise</span></th></tr></thead>
-                    <tbody>
-                        @foreach (var s in _item.Sections)
-                        {
-                            <tr>
-                                <td>@s.Name</td>
-                                <td>@s.Bpm.ToString("0") bpm</td>
-                                <td>@s.Meter</td>
-                                <td>@(s.Bars > 0 ? s.Bars.ToString() : "—")</td>
-                                <td><MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.PlayArrow" Href="@($"metronome/item/{_item.Id}/{s.Id}")" aria-label="@($"Practise {s.Name}")" /></td>
-                            </tr>
-                        }
-                    </tbody>
-                </MudSimpleTable>
+                @if (_item.HasParts())
+                {
+                    <div class="log-table-wrap">
+                        <table class="log-table parts-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Part</th>
+                                    <th scope="col">Tempo · meter</th>
+                                    <th scope="col" class="num">Latest</th>
+                                    <th scope="col" class="num">Best</th>
+                                    <th scope="col" style="min-width:140px">Progress</th>
+                                    <th scope="col">Feel</th>
+                                    <th scope="col">Last worked on</th>
+                                    <th scope="col"><span class="sr-only">Actions</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var ps in _parts)
+                                {
+                                    var s = ps.Section;
+                                    var weakest = ps == _weakest;
+                                    var pctSuffix = _item.Unit == TempoUnit.Percent ? "%" : "";
+                                    <tr class="@(weakest ? "weakest" : "")">
+                                        <th scope="row" class="part-name">
+                                            @s.Name
+                                            @if (weakest) { <span class="weak-tag">needs work</span> }
+                                        </th>
+                                        <td class="mono small">@s.Bpm.ToString("0") bpm · @s.Meter@(s.Bars > 0 ? $" · {s.Bars} bars" : "")</td>
+                                        <td class="num mono">@(ps.Last is { } pl ? pl.ToString("0") + pctSuffix : "—")</td>
+                                        <td class="num mono muted">@(ps.Best is { } pb ? pb.ToString("0") + pctSuffix : "—")</td>
+                                        <td>
+                                            <div class="d-flex align-center gap-2">
+                                                <div class="progress-track flex-grow-1" role="progressbar" aria-label="@($"{s.Name} progress")" aria-valuenow="@((int)((ps.Progress ?? 0) * 100))" aria-valuemin="0" aria-valuemax="100">
+                                                    <div class="progress-fill @(ps.Progress >= 1 ? "done" : "")" style="width:@Pct(ps.Progress)%"></div>
+                                                </div>
+                                                <span class="mono small" style="min-width:38px;text-align:right">@(ps.Progress is { } pp ? pp.ToString("P0") : "—")</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            @if (Effort.Get(ps.Effort) is { } f)
+                                            {
+                                                <span class="feel-pill" style="--feel:@f.Color" title="@f.Advice">@f.Label</span>
+                                            }
+                                        </td>
+                                        <td class="small muted">@(ps.LastDate is null ? "not yet" : Stats.Ago(ps.LastDate, DateTime.Today))@(ps.TotalSec > 0 ? $" · {Stats.Duration(ps.TotalSec, true)}" : "")</td>
+                                        <td class="act" style="white-space:nowrap">
+                                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.AddTask" aria-label="@($"Log {s.Name}")" OnClick="() => AddLogFor(s.Id)" />
+                                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.PlayArrow" Color="Color.Primary" Href="@($"metronome/item/{_item.Id}/{s.Id}")" aria-label="@($"Practise {s.Name}")" />
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <MudText Typo="Typo.caption" Class="muted d-block mt-2">
+                        A full run-through (logged without a part) updates every part. Overall progress is the average across parts.
+                    </MudText>
+                }
+                else
+                {
+                    var s0 = _item.Sections[0];
+                    <MudSimpleTable Dense="true" Elevation="0">
+                        <tbody>
+                            <tr><th scope="row">Tempo</th><td>@s0.Bpm.ToString("0") bpm</td></tr>
+                            <tr><th scope="row">Meter</th><td>@s0.Meter</td></tr>
+                            <tr><th scope="row">Clicks</th><td>@SubName(s0.Subdivision)</td></tr>
+                        </tbody>
+                    </MudSimpleTable>
+                    @if (_item.Type == ItemType.Song)
+                    {
+                        <MudText Typo="Typo.caption" Class="muted d-block mt-2">Tip: split this song into parts (intro, verse, solo…) to track each one separately.</MudText>
+                    }
+                }
             </section>
         </MudItem>
-        <MudItem xs="12" lg="7">
+        <MudItem xs="12" lg="@(_item.HasParts() ? 12 : 7)">
             <section class="card">
                 <h2 class="card-title">Log</h2>
                 <LogTable Logs="_logs" ShowItem="false" />
@@ -112,6 +170,20 @@ else
     List<PracticeLog> _logs = new();
     List<string> _weekLabels = new();
     List<double> _weekValues = new();
+    List<SectionStats> _parts = new();
+    SectionStats? _weakest;
+
+    static string SubName(int s) => s switch { 1 => "Beats", 2 => "8ths", 3 => "Triplets", 4 => "16ths", 6 => "Sextuplets", _ => s.ToString() };
+
+    string ProgressSub
+    {
+        get
+        {
+            var goal = _item!.Goal is { } g ? $"Goal {g:0}{_item.Unit.Suffix()}" : "No goal set";
+            if (_section != null || !_item.HasParts()) return goal;
+            return _weakest is { } w ? $"Avg of {_parts.Count} parts · weakest {w.Section.Name}" : $"Avg of {_parts.Count} parts";
+        }
+    }
 
     static string Pct(double? p) => Math.Min(100, (p ?? 0) * 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
 
@@ -139,6 +211,15 @@ else
         var weeks = Stats.WeeklySeconds(Store.LogsFor(_item.Id), DateTime.Today, 12);
         _weekLabels = weeks.Select(w => w.week.ToString("d MMM")).ToList();
         _weekValues = weeks.Select(w => w.sec / 60.0).ToList();
+        _parts = Stats.ForSections(_item, Store.Logs);
+        _weakest = _parts.Count > 1 && _parts.Any(p => p.Progress < 1)
+            ? _parts.OrderBy(p => p.Progress ?? 0).First() : null;
+    }
+
+    async Task AddLogFor(string sectionId)
+    {
+        if (_item == null) return;
+        await LogDialog.ShowAsync(Dialogs, new PracticeLog { ItemId = _item.Id, ItemName = _item.Name, Unit = _item.Unit, SectionId = sectionId }, true);
     }
 
     async Task Edit() { if (_item != null) await ItemDialog.ShowAsync(Dialogs, _item); }

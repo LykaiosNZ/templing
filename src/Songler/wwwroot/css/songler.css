@@ -306,3 +306,18 @@ code { font-family: var(--mono); font-size: .85em; background: var(--card-2); pa
     border: 1px solid color-mix(in srgb, var(--feel) 45%, transparent); background: color-mix(in srgb, var(--feel) 10%, transparent);
 }
 .feel-hint .feel-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--feel); flex: none; }
+
+/* library card: feel + song parts */
+.card-top-right { display: inline-flex; align-items: center; gap: 8px; }
+.feel-pill.stale { opacity: .6; }
+.item-card .feel-pill { font-size: .7rem; padding: 1px 7px 1px 5px; border-radius: 999px; background: color-mix(in srgb, var(--feel) 12%, transparent); color: var(--ink); }
+.part-bars { display: flex; gap: 3px; margin-top: 6px; }
+.part-bar { flex: 1; height: 4px; border-radius: 2px; background: var(--card-2); overflow: hidden; }
+.part-fill { display: block; height: 100%; background: var(--series); }
+.part-fill.done { background: var(--good); }
+
+/* item page: song parts table */
+.parts-table th.part-name { text-align: left; font-weight: 600; font-size: .9rem; text-transform: none; letter-spacing: 0; color: var(--ink); padding: 8px 10px; border-bottom: none; }
+.parts-table tbody tr td, .parts-table tbody tr th { border-top: 1px solid var(--grid); }
+.parts-table tr.weakest { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.weak-tag { margin-left: 8px; font-size: .68rem; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 1px 7px; border-radius: 999px; text-transform: uppercase; letter-spacing: .04em; }

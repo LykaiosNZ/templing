@@ -6,11 +6,18 @@
     </TitleContent>
     <DialogContent>
         <div class="d-flex flex-column gap-4">
-            <div class="d-flex flex-wrap gap-3">
-                <MudTextField @bind-Value="_m.Name" Label="Name" Required="true" AutoFocus="true" Class="flex-grow-1" Style="min-width:240px" Immediate="true" />
-                <MudSelect T="ItemType" @bind-Value="_m.Type" Label="Type" Style="max-width:180px">
-                    @foreach (var t in Enum.GetValues<ItemType>()) { <MudSelectItem T="ItemType" Value="t">@t.Label()</MudSelectItem> }
-                </MudSelect>
+            <MudTextField @bind-Value="_m.Name" Label="Name" Required="true" AutoFocus="true" Immediate="true" />
+            <div>
+                <MudText Typo="Typo.subtitle2" Class="mb-1">Type</MudText>
+                <MudToggleGroup T="ItemType" Value="_m.Type" ValueChanged="TypeChanged" Color="Color.Primary" Size="Size.Small" Outlined="true" CheckMark="false" aria-label="Item type">
+                    @foreach (var t in ItemTypeExt.Ordered)
+                    {
+                        <MudToggleItem Value="t">
+                            <span class="d-inline-flex align-center gap-1"><MudIcon Icon="@t.Icon()" Size="Size.Small" />@t.Label()</span>
+                        </MudToggleItem>
+                    }
+                </MudToggleGroup>
+                <MudText Typo="Typo.caption" Class="muted d-block mt-1">@_m.Type.Description()</MudText>
             </div>
             <div>
                 <MudText Typo="Typo.subtitle2" Class="mb-1">Measure progress in</MudText>
@@ -26,10 +33,28 @@
             </div>
             <MudNumericField T="double?" @bind-Value="_m.Goal" Label="@($"Goal ({(_m.Unit == TempoUnit.Percent ? "%" : "bpm")})")" Min="1" Max="400" Style="max-width:220px" />
             <div>
-                <MudText Typo="Typo.subtitle2">Sections &amp; tempo map</MudText>
+                <MudText Typo="Typo.subtitle2">@(_m.Type == ItemType.Song ? "Song parts" : "Sections & tempo map")</MudText>
                 <MudText Typo="Typo.caption" Class="muted d-block mb-2">
-                    Each section has its own tempo and time signature. Set <em>Bars</em> to play the sections through in order (e.g. intro 8 bars, verse 16 bars).
+                    @if (_m.Type == ItemType.Song)
+                    {
+                        <span>Add each part you want to work on. Each part gets its own tempo, time signature and progress; logging without a part counts as a full run-through. Set <em>Bars</em> to play the song through in order.</span>
+                    }
+                    else
+                    {
+                        <span>Each section has its own tempo and time signature. Most riffs and exercises only need one. Set <em>Bars</em> to play several sections through in order.</span>
+                    }
                 </MudText>
+                @if (_m.Type == ItemType.Song)
+                {
+                    <div class="d-flex flex-wrap gap-1 mb-2 align-center" role="group" aria-label="Quick-add song part">
+                        <MudText Typo="Typo.caption" Class="muted mr-1">Quick add:</MudText>
+                        @foreach (var part in ItemTypeExt.SongParts)
+                        {
+                            var name = part;
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Icon="@Icons.Material.Rounded.Add" OnClick="() => AddPart(name)">@name</MudChip>
+                        }
+                    </div>
+                }
                 <SectionsEditor Sections="_m.Sections" BpmLabel="@(_m.Unit == TempoUnit.Percent ? "Song BPM" : "BPM")" OnChanged="StateHasChanged" />
             </div>
             <MudTextField @bind-Value="_m.Link" Label="Link (tab, video, backing track)" />
@@ -65,6 +90,36 @@
     {
         // edit a copy so Cancel discards changes
         _m = System.Text.Json.JsonSerializer.Deserialize<PracticeItem>(System.Text.Json.JsonSerializer.Serialize(Item, DataStore.Json), DataStore.Json)!;
+    }
+
+    void TypeChanged(ItemType t)
+    {
+        var was = _m.Type;
+        _m.Type = t;
+        // sensible defaults when creating: songs are measured as % of the real tempo
+        if (IsNew && t == ItemType.Song && was != ItemType.Song)
+        {
+            _m.Unit = TempoUnit.Percent;
+            _m.Goal ??= 100;
+        }
+    }
+
+    void AddPart(string name)
+    {
+        var last = _m.Sections.LastOrDefault();
+        // replace the untouched default section rather than leaving "Main" lying around
+        if (_m.Sections.Count == 1 && last is { Name: "Main" } && IsNew) { last.Name = Unique(name); return; }
+        _m.Sections.Add(new Section
+        {
+            Name = Unique(name), Bpm = last?.Bpm ?? 120, BeatsPerBar = last?.BeatsPerBar ?? 4,
+            BeatUnit = last?.BeatUnit ?? 4, Subdivision = last?.Subdivision ?? 1, Bars = last?.Bars ?? 0
+        });
+    }
+
+    string Unique(string name)
+    {
+        if (!_m.Sections.Any(s => s.Name == name)) return name;
+        for (int i = 2; ; i++) if (!_m.Sections.Any(s => s.Name == $"{name} {i}")) return $"{name} {i}";
     }
 
     async Task Save()

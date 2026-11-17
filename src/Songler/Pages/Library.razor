@@ -20,7 +20,7 @@
                   Immediate="true" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="search-box" InputId="library-search" aria-label="Search library" />
     <MudChipSet T="string" @bind-SelectedValue="_type" @bind-SelectedValue:after="Refresh" SelectionMode="SelectionMode.SingleSelection" CheckMark="false" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" aria-label="Filter by type">
         <MudChip T="string" Value="@("all")" Default="true">All</MudChip>
-        @foreach (var t in Enum.GetValues<ItemType>().Where(t => Store.Items.Any(i => i.Type == t)))
+        @foreach (var t in ItemTypeExt.Ordered)
         {
             <MudChip T="string" Value="@t.ToString()" Icon="@t.Icon()">@t.Label()</MudChip>
         }
@@ -47,13 +47,22 @@
 else
 {
     <div class="item-grid" role="list">
-        @foreach (var (item, st) in _rows)
+        @foreach (var row in _rows)
         {
+            var item = row.Item; var st = row.Stats;
             <article class="item-card @(item.Archived ? "archived" : "")" role="listitem">
                 <a class="item-card-link" href="library/@item.Id" aria-label="@($"{item.Name} details")">
                     <div class="item-card-top">
                         <span class="type-pill type-@item.Type"><MudIcon Icon="@item.Type.Icon()" Size="Size.Small" />@item.Type.Label()</span>
-                        <span class="muted small">@Stats.Ago(st.LastDate, DateTime.Today)</span>
+                        <span class="card-top-right">
+                            @if (Effort.Get(row.Feel?.Effort) is { } feel)
+                            {
+                                var stale = row.Feel!.Date.Date < st.LastDate?.Date;
+                                <span class="feel-pill @(stale ? "stale" : "")" style="--feel:@feel.Color"
+                                      title="@($"{(stale ? "Last rated" : "Last session")} ({row.Feel.Date:d MMM}): {feel.Label}. {feel.Advice}")">@feel.Label</span>
+                            }
+                            <span class="muted small">@Stats.Ago(st.LastDate, DateTime.Today)</span>
+                        </span>
                     </div>
                     <h2 class="item-name">@item.Name</h2>
                     <div class="item-tempo">
@@ -66,8 +75,20 @@ else
                     <div class="progress-track" role="progressbar" aria-valuenow="@((int)((st.Progress ?? 0) * 100))" aria-valuemin="0" aria-valuemax="100" aria-label="Progress to goal">
                         <div class="progress-fill @(st.Progress >= 1 ? "done" : "")" style="width:@(Math.Min(100, (st.Progress ?? 0) * 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></div>
                     </div>
+                    @if (row.Parts is { Count: > 1 } parts)
+                    {
+                        <div class="part-bars" aria-label="Progress by part">
+                            @foreach (var ps in parts)
+                            {
+                                var pct = Math.Min(100, (ps.Progress ?? 0) * 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+                                <span class="part-bar" title="@($"{ps.Section.Name}: {(ps.Progress is { } pp ? pp.ToString("P0") : "not practised")}")">
+                                    <span class="part-fill @(ps.Progress >= 1 ? "done" : "")" style="width:@pct%"></span>
+                                </span>
+                            }
+                        </div>
+                    }
                     <div class="item-meta">
-                        <span>@(st.Progress is { } p ? $"{p:P0}" : "No goal")</span>
+                        <span>@(st.Progress is { } p ? $"{p:P0}" : "No goal")@(row.Parts is { Count: > 1 } pc ? $" · {pc.Count} parts" : "")</span>
                         <span>@st.DaysPracticed days · @Stats.Duration(st.TotalSec, true)</span>
                     </div>
                 </a>
@@ -86,7 +107,8 @@ else
     string? _type = "all";
     string _sort = "recent";
     bool _showArchived;
-    List<(PracticeItem item, ItemStats st)> _rows = new();
+    record Row(PracticeItem Item, ItemStats Stats, PracticeLog? Feel, List<SectionStats>? Parts);
+    List<Row> _rows = new();
     IDisposable? _keys;
 
     protected override void OnInitialized()
@@ -103,13 +125,14 @@ else
         var q = Store.Items.Where(i => _showArchived || !i.Archived);
         if (!string.IsNullOrWhiteSpace(_search)) q = q.Where(i => i.Name.Contains(_search, StringComparison.OrdinalIgnoreCase));
         if (_type is { } t && t != "all") q = q.Where(i => i.Type.ToString() == t);
-        var rows = q.Select(i => (i, Stats.ForItem(i, Store.Logs)));
+        var rows = q.Select(i => new Row(i, Stats.ForItem(i, Store.Logs), Stats.LastRated(i, Store.Logs),
+            i.HasParts() ? Stats.ForSections(i, Store.Logs) : null));
         _rows = (_sort switch
         {
-            "name" => rows.OrderBy(r => r.Item1.Name),
-            "progress" => rows.OrderByDescending(r => r.Item2.Progress ?? -1),
-            "time" => rows.OrderByDescending(r => r.Item2.TotalSec),
-            _ => rows.OrderByDescending(r => r.Item2.LastDate ?? DateTime.MinValue).ThenBy(r => r.Item1.Name)
+            "name" => rows.OrderBy(r => r.Item.Name),
+            "progress" => rows.OrderByDescending(r => r.Stats.Progress ?? -1),
+            "time" => rows.OrderByDescending(r => r.Stats.TotalSec),
+            _ => rows.OrderByDescending(r => r.Stats.LastDate ?? DateTime.MinValue).ThenBy(r => r.Item.Name)
         }).ToList();
     }
 

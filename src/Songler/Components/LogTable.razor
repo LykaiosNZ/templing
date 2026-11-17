@@ -13,6 +13,7 @@ else
                 <tr>
                     <th scope="col">Date</th>
                     @if (ShowItem) { <th scope="col">Item</th> }
+                    else if (_hasParts) { <th scope="col">Part</th> }
                     <th scope="col" class="num">Tempo</th>
                     <th scope="col" class="num">Time</th>
                     <th scope="col">Feel</th>
@@ -37,7 +38,11 @@ else
                                 @if (section != null) { <span class="muted small"> · @section</span> }
                             </td>
                         }
-                        <td class="num mono">@l.ValueText@if (!ShowItem && section != null) { <span class="muted small"> @section</span> }</td>
+                        else if (_hasParts)
+                        {
+                            <td class="@(section == null ? "muted small" : "")">@(section ?? "Full run-through")</td>
+                        }
+                        <td class="num mono">@l.ValueText</td>
                         <td class="num mono">@(l.DurationSec is { } d ? Stats.Duration(d) : "—")</td>
                         <td>
                             @if (Effort.Get(l.Effort) is { } feel)
@@ -64,7 +69,13 @@ else
     [Parameter] public int PageSize { get; set; } = 40;
     int _shown;
 
+    bool _hasParts;
+
     protected override void OnInitialized() => _shown = PageSize;
+
+    // single-item view: show a Part column when the item is split into sections
+    protected override void OnParametersSet() =>
+        _hasParts = !ShowItem && Logs.Select(l => l.ItemId).Distinct().Any(id => Store.GetItem(id)?.Sections.Count > 1);
 
     async Task Edit(PracticeLog l)
     {

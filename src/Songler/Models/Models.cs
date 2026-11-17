@@ -25,7 +25,24 @@ public static class ItemTypeExt
         _ => MudBlazor.Icons.Material.Rounded.MusicNote
     };
 
+    public static string Description(this ItemType t) => t switch
+    {
+        ItemType.Song => "A whole song, broken into sections (intro, verse, solo…). Track each part and the full run-through.",
+        ItemType.RiffLick => "A one-off riff or lick, usually a single passage.",
+        ItemType.Exercise => "Technique work tracked by metronome BPM.",
+        _ => "Anything else: scales, theory, ear training…"
+    };
+
+    /// <summary>Display order: songs first.</summary>
+    public static readonly ItemType[] Ordered = [ItemType.Song, ItemType.RiffLick, ItemType.Exercise, ItemType.Other];
+
+    /// <summary>True when an item is practised as separate parts (songs, or anything with several sections).</summary>
+    public static bool HasParts(this PracticeItem i) => i.Sections.Count > 1;
+
     public static string Suffix(this TempoUnit u) => u == TempoUnit.Percent ? "%" : " bpm";
+
+    /// <summary>Common song-part names offered as quick-add chips.</summary>
+    public static readonly string[] SongParts = ["Intro", "Verse", "Pre-chorus", "Chorus", "Bridge", "Solo", "Breakdown", "Outro"];
 }
 
 /// <summary>A section of a piece (or a step in a custom metronome) with its own tempo and meter.</summary>

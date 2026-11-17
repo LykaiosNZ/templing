@@ -14,6 +14,8 @@ public record ItemStats(
     double? First,
     double? Progress);
 
+public record SectionStats(Section Section, double? Last, double? Best, DateTime? LastDate, int Sessions, int TotalSec, double? Progress, int? Effort);
+
 public record TempoPoint(DateTime Date, double Value, double? Min, string? Note, int? Effort = null);
 
 public static class Stats
@@ -32,6 +34,12 @@ public static class Stats
         var last = valued.LastOrDefault();
         var first = valued.FirstOrDefault();
         double? progress = item.Goal is > 0 && last?.Value is { } v ? v / item.Goal.Value : null;
+        // multi-part items: overall progress is the average across parts (an unpractised part counts as 0)
+        if (sectionId == null && item.HasParts())
+        {
+            var parts = ForSections(item, allLogs);
+            if (parts.Any(p => p.Progress.HasValue)) progress = parts.Average(p => Math.Min(1, p.Progress ?? 0));
+        }
         return new ItemStats(
             logs.Select(l => l.Date.Date).Distinct().Count(),
             logs.Sum(l => l.DurationSec ?? 0),
@@ -42,6 +50,27 @@ public static class Stats
             logs.FirstOrDefault()?.Date,
             first?.Value,
             progress);
+    }
+
+    /// <summary>
+    /// Per-section status. A section's latest tempo comes from its own logs or from a whole-piece
+    /// run-through (no section), whichever is more recent: playing the full song at 90% means each part was at 90%.
+    /// </summary>
+    public static List<SectionStats> ForSections(PracticeItem item, IEnumerable<PracticeLog> allLogs)
+    {
+        var logs = allLogs.Where(l => l.ItemId == item.Id).OrderBy(l => l.Date).ToList();
+        var known = item.Sections.Select(s => s.Id).ToHashSet();
+        return item.Sections.Select(s =>
+        {
+            var own = logs.Where(l => l.SectionId == s.Id).ToList();
+            var relevant = logs.Where(l => l.SectionId == s.Id || l.SectionId == null || !known.Contains(l.SectionId)).ToList();
+            var valued = relevant.Where(l => l.Value.HasValue && l.Unit == item.Unit).ToList();
+            var last = valued.LastOrDefault();
+            double? progress = item.Goal is > 0 && last?.Value is { } v ? v / item.Goal.Value : null;
+            return new SectionStats(s, last?.Value, valued.Count > 0 ? valued.Max(l => l.Value!.Value) : null,
+                own.LastOrDefault()?.Date, own.Count, own.Sum(l => l.DurationSec ?? 0), progress,
+                relevant.LastOrDefault(l => l.Effort.HasValue)?.Effort);
+        }).ToList();
     }
 
     /// <summary>Daily tempo points (max of the day) for an item, in the item's unit.</summary>
