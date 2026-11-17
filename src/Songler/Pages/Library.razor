@@ -12,7 +12,10 @@
         <h1 class="page-title" tabindex="-1">Library</h1>
         <MudText Typo="Typo.body2" Class="muted">@_rows.Count of @Store.Items.Count(i => _showArchived || !i.Archived) songs, exercises &amp; riffs</MudText>
     </div>
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.Add" OnClick="Add">Add item</MudButton>
+    <div class="d-flex gap-2 flex-wrap">
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.QueueMusic" OnClick="ImportScore">Import Guitar Pro</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.Add" OnClick="Add">Add item</MudButton>
+    </div>
 </div>
 
 <div class="toolbar">
@@ -143,6 +146,20 @@ else
     }
 
     async Task Edit(PracticeItem item) => await ItemDialog.ShowAsync(Dialogs, item);
+
+    async Task ImportScore()
+    {
+        var r = await ScoreImportDialog.ShowAsync(Dialogs, forExisting: false);
+        if (r == null) return;
+        var item = new PracticeItem
+        {
+            Name = r.Name, Type = ItemType.Song, Unit = TempoUnit.Percent, Goal = 100,
+            Sections = r.Sections, ScoreFileId = r.FileId, ScoreFileName = r.FileName, ScoreTrack = r.Track,
+            Notes = string.IsNullOrWhiteSpace(r.Artist) ? null : r.Artist.Trim()
+        };
+        await Store.SaveItemAsync(item);
+        Nav.NavigateTo($"library/{item.Id}");
+    }
 
     async Task Log(PracticeItem item) =>
         await LogDialog.ShowAsync(Dialogs, new PracticeLog { ItemId = item.Id, ItemName = item.Name, Unit = item.Unit }, true);

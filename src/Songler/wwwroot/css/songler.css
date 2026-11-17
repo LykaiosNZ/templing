@@ -321,3 +321,28 @@ code { font-family: var(--mono); font-size: .85em; background: var(--card-2); pa
 .parts-table tbody tr td, .parts-table tbody tr th { border-top: 1px solid var(--grid); }
 .parts-table tr.weakest { background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .weak-tag { margin-left: 8px; font-size: .68rem; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 1px 7px; border-radius: 999px; text-transform: uppercase; letter-spacing: .04em; }
+
+/* score import preview */
+.import-parts { display: flex; flex-direction: column; gap: 6px; max-height: 46vh; overflow-y: auto; padding-right: 4px; }
+.import-part { display: grid; grid-template-columns: minmax(160px, 1fr) 70px 110px 130px auto; gap: 10px; align-items: center; }
+.import-part .ip-meta { font-size: .8rem; color: var(--mud-palette-text-secondary); white-space: nowrap; }
+.import-part .ip-actions { display: flex; }
+.import-part .mud-input-control { margin-top: 0; }
+@media (max-width: 700px) { .import-part { grid-template-columns: 1fr auto; } .import-part .ip-meta { display: none; } }
+
+/* tab view */
+.tab-card { padding-bottom: 12px; }
+.tab-host { min-height: 120px; }
+.tab-scroll { max-height: 62vh; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; border-radius: 10px; background: var(--card-2); }
+.tab-wrap { position: relative; }
+.tab-surface { padding: 8px 4px; }
+.tab-surface .at-surface svg, .tab-surface svg { overflow: visible; }
+.tab-bar-hi {
+    position: absolute; opacity: 0; pointer-events: none; border-radius: 6px;
+    background: color-mix(in srgb, var(--accent) 12%, transparent); outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    transition: left .08s ease, top .2s ease, width .08s ease, opacity .2s;
+}
+.tab-bar-hi.counting { background: color-mix(in srgb, var(--series) 12%, transparent); outline-color: color-mix(in srgb, var(--series) 55%, transparent); }
+.tab-cursor { position: absolute; width: 3px; border-radius: 2px; background: var(--accent); opacity: 0; pointer-events: none; transition: left .06s linear, opacity .2s; box-shadow: 0 0 8px var(--accent); }
+.tab-missing { padding: 24px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .tab-bar-hi, .tab-cursor { transition: none; } }

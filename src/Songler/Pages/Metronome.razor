@@ -113,7 +113,7 @@
             </div>
 
             <div id="metro-beats" class="beats" aria-hidden="true">
-                @for (int b = 0; b < Metro.PlayingSection.BeatsPerBar; b++)
+                @for (int b = 0; b < (Metro.IsRunning ? Metro.State.beats : Metro.PlayingSection.BeatsPerBar); b++)
                 {
                     <span class="beat-dot @(b == 0 && Metro.Settings.AccentFirst ? "accent" : "")"></span>
                 }
@@ -132,7 +132,7 @@
                             break;
                         default:
                             <span class="phase work">Playing</span>
-                            <span class="muted">Bar @(Metro.State.bar + 1)</span>
+                            <span class="muted">Bar @(Metro.State.barInPart + 1)@(Metro.PlayingSection.Length > 0 ? $"/{Metro.PlayingSection.Length}" : "") · @Metro.State.beats/@Metro.State.unit</span>
                             @if (Metro.State.remaining is { } rem)
                             {
                                 <span class="muted">· @Stats.Clock(rem) left</span>
@@ -298,6 +298,13 @@
         </section>
     </MudItem>
 </MudGrid>
+
+@if (Metro.Source == MetronomeSource.Item && Metro.Item is { ScoreFileId: not null } scoreItem)
+{
+    <div class="mt-4">
+        <TabView Item="scoreItem" Part="Metro.PlayingSection" FollowWholeSong="Metro.PlayThrough" Dark="Store.Settings.DarkMode" />
+    </div>
+}
 
 @code {
     [Parameter] public string? ItemId { get; set; }

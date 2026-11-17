@@ -32,7 +32,7 @@
 
         <section class="card mt-4">
             <h2 class="card-title">Backup</h2>
-            <MudText Typo="Typo.body2" Class="muted mb-3">Everything is stored locally in this browser (IndexedDB). Export a backup regularly, or to move to another device.</MudText>
+            <MudText Typo="Typo.body2" Class="muted mb-3">Everything is stored locally in this browser (IndexedDB). Export a backup regularly, or to move to another device. Imported score files are not included in the backup; re-import them on the new device.</MudText>
             <div class="d-flex gap-2 flex-wrap">
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Download" OnClick="ExportJson">Export backup (JSON)</MudButton>
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.TableView" OnClick="ExportCsv">Export log (CSV)</MudButton>

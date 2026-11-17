@@ -17,6 +17,9 @@ public class EngineState
     public double? remaining { get; set; }
     public int round { get; set; } = 1;
     public int? count { get; set; }
+    public int beats { get; set; } = 4;
+    public int unit { get; set; } = 4;
+    public int barInPart { get; set; }
     public double? trainingProgress { get; set; }
     public string? finished { get; set; }
     public string? @event { get; set; }
@@ -237,7 +240,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         double quantum = Unit == TempoUnit.Percent ? 0.01 : 1.0 / Math.Max(1, RefSection.Bpm);
         var cfg = new
         {
-            steps = Sections.Select(x => new { bpm = x.Bpm, beatsPerBar = x.BeatsPerBar, beatUnit = x.BeatUnit, subdivision = x.Subdivision, bars = x.Bars }),
+            steps = Sections.Select(x => new { bpm = x.Bpm, beatsPerBar = x.BeatsPerBar, beatUnit = x.BeatUnit, subdivision = x.Subdivision, bars = x.Length, scoreBars = x.ScoreBars }),
             playThrough = PlayThrough && Sections.Count > 1,
             loop = Loop,
             step = CurrentStep,

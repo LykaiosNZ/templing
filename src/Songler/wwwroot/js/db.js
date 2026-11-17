@@ -1,7 +1,8 @@
 // Minimal IndexedDB wrapper. Values are passed as JSON strings so .NET controls serialization.
 const DB_NAME = 'songler';
-const DB_VERSION = 1;
-const STORES = ['items', 'logs', 'presets', 'settings'];
+const DB_VERSION = 2;
+// 'files' holds raw score files (Guitar Pro etc.) as {Id, Name, Data: Uint8Array}
+const STORES = ['items', 'logs', 'presets', 'settings', 'files'];
 let dbPromise = null;
 
 function open() {
@@ -14,7 +15,7 @@ function open() {
                 if (!db.objectStoreNames.contains(s)) db.createObjectStore(s, { keyPath: 'Id' });
             }
         };
-        req.onsuccess = () => resolve(req.result);
+        req.onsuccess = () => { const db = req.result; db.onversionchange = () => db.close(); resolve(db); };
         req.onerror = () => reject(req.error);
     });
     return dbPromise;
@@ -67,4 +68,18 @@ export function downloadText(filename, text, mime) {
     a.href = url; a.download = filename;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ---- binary score files (kept in JS; never serialised through .NET)
+export function putFile(id, name, bytes) {
+    return tx('files', 'readwrite', os => os.put({ Id: id, Name: name, Data: bytes }));
+}
+
+export async function getFile(id) {
+    const row = await tx('files', 'readonly', os => os.get(id));
+    return row ? row.Data : null;
+}
+
+export function removeFile(id) {
+    return tx('files', 'readwrite', os => os.delete(id));
 }

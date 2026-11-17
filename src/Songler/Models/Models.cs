@@ -59,8 +59,19 @@ public class Section
     /// <summary>Length in bars when playing through a sequence. 0 = loop until moved on.</summary>
     public int Bars { get; set; } = 0;
 
+    /// <summary>
+    /// Set when the section came from a score file: the score bars it covers, in play order
+    /// (repeats expanded), each as [masterBarIndex, numerator, denominator]. The metronome follows
+    /// these meters bar by bar and the tab view uses the indices to stay in sync.
+    /// </summary>
+    public List<int[]>? ScoreBars { get; set; }
+
     public Section Clone() => (Section)MemberwiseClone();
-    public string Meter => $"{BeatsPerBar}/{BeatUnit}";
+    public bool FromScore => ScoreBars is { Count: > 0 };
+    /// <summary>Length in bars (score-linked sections use their score bar count).</summary>
+    public int Length => FromScore ? ScoreBars!.Count : Bars;
+    public bool MixedMeter => FromScore && ScoreBars!.Any(b => b[1] != ScoreBars![0][1] || b[2] != ScoreBars[0][2]);
+    public string Meter => $"{BeatsPerBar}/{BeatUnit}{(MixedMeter ? " (mixed)" : "")}";
 }
 
 public class PracticeItem
@@ -74,6 +85,12 @@ public class PracticeItem
     public List<Section> Sections { get; set; } = new() { new Section() };
     public string? Notes { get; set; }
     public string? Link { get; set; }
+    /// <summary>Attached score file (Guitar Pro / MusicXML) stored in IndexedDB, used for the tab view.</summary>
+    public string? ScoreFileId { get; set; }
+    public string? ScoreFileName { get; set; }
+    public int ScoreTrack { get; set; }
+    /// <summary>"tab" or "score" (standard notation + tab).</summary>
+    public string ScoreStave { get; set; } = "tab";
     public bool Archived { get; set; }
     public DateTime Created { get; set; } = DateTime.Now;
 }

@@ -67,6 +67,8 @@ public class DataStore(IJSRuntime js)
 
     public async Task DeleteItemAsync(PracticeItem item, bool deleteLogs)
     {
+        if (item.ScoreFileId != null && !Items.Any(i => i.Id != item.Id && i.ScoreFileId == item.ScoreFileId))
+            await _db!.InvokeVoidAsync("removeFile", item.ScoreFileId);
         Items.RemoveAll(i => i.Id == item.Id);
         await Remove("items", item.Id);
         var logs = Logs.Where(l => l.ItemId == item.Id).ToList();
@@ -136,7 +138,7 @@ public class DataStore(IJSRuntime js)
 
     public async Task ClearAllAsync()
     {
-        foreach (var s in new[] { "items", "logs", "presets" }) await _db!.InvokeVoidAsync("clear", s);
+        foreach (var s in new[] { "items", "logs", "presets", "files" }) await _db!.InvokeVoidAsync("clear", s);
         Items.Clear(); Logs.Clear(); Presets.Clear();
         Changed?.Invoke();
     }

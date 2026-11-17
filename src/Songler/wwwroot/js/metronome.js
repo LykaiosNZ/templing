@@ -52,11 +52,21 @@ export function configure(json) {
     if (st.step >= cfg.steps.length) jumpToStep(0);
 }
 
+// Per-bar meter. Sections imported from a score carry scoreBars: [[masterBarIndex, numerator, denominator], ...].
+function meterAt(s, bar) {
+    const sb = s.scoreBars;
+    if (sb && sb.length) { const b = sb[bar % sb.length]; return { n: b[1], d: b[2], i: b[0] }; }
+    return { n: s.beatsPerBar, d: s.beatUnit || 4, i: -1 };
+}
+
+// Tempo is quarter-note based (as in Guitar Pro): an x/8 bar clicks eighths, x/2 clicks halves.
+function beatSeconds(bpm, d) { return 60 / Math.max(10, bpm) * 4 / Math.max(1, d); }
+
 function stepCfg() { return cfg.steps[Math.min(st.step, cfg.steps.length - 1)]; }
 
 function jumpToStep(i) {
     st.step = Math.max(0, Math.min(i, cfg.steps.length - 1));
-    st.bar = 0; st.beat = 0; st.sub = 0;
+    st.bar = 0; st.beat = 0; st.sub = 0; st.meter = null;
 }
 
 // ------------------------------------------------------------------ sound
@@ -138,7 +148,7 @@ export function start() {
 
 function beginWork(t, first) {
     st.phase = cfg.countIn.enabled && cfg.countIn.bars > 0 ? 'countin' : 'work';
-    st.bar = 0; st.beat = 0; st.sub = 0;
+    st.bar = 0; st.beat = 0; st.sub = 0; st.meter = null;
     if (!first && !cfg.playThrough) { /* keep current step */ }
     st.countInLeft = st.phase === 'countin' ? cfg.countIn.bars * stepCfg().beatsPerBar : 0;
     st.nextTime = t;
@@ -160,6 +170,7 @@ function stopInternal(notify) {
     queue.length = 0;
     if (st) { accumulateActive(); st.running = false; }
     clearVisual();
+    window.dispatchEvent(new CustomEvent('songler-stop'));
     if (notify) emit('stopped');
 }
 
@@ -169,7 +180,7 @@ export function restartSection() {
     if (!st || !st.running) { start(); return; }
     const t = ctx.currentTime + 0.05;
     queue.length = 0;
-    st.bar = 0; st.beat = 0; st.sub = 0;
+    st.bar = 0; st.beat = 0; st.sub = 0; st.meter = null;
     if (st.phase === 'rest') return;
     st.nextTime = t;
     if (cfg.countIn.enabled && cfg.countIn.bars > 0) {
@@ -262,12 +273,13 @@ function scheduler() {
         const t = st.nextTime;
 
         if (st.phase === 'countin') {
-            // count-in is always quarter-notes of the current step's meter
-            const beatIdx = (cfg.countIn.bars * s.beatsPerBar - st.countInLeft) % s.beatsPerBar;
+            // count-in uses the meter of the bar we're about to play
+            const m0 = meterAt(s, st.bar);
+            const beatIdx = (cfg.countIn.bars * m0.n - st.countInLeft) % m0.n;
             click(t, beatIdx === 0 ? 'accent' : 'count');
-            queue.push({ time: t, kind: 'count', beat: beatIdx, left: Math.ceil(st.countInLeft / s.beatsPerBar), num: st.countInLeft });
+            queue.push({ time: t, kind: 'count', beat: beatIdx, beats: m0.n, unit: m0.d, scoreBar: m0.i, left: Math.ceil(st.countInLeft / m0.n), num: st.countInLeft });
             st.countInLeft--;
-            st.nextTime += 60 / bpm;
+            st.nextTime += beatSeconds(bpm, m0.d);
             if (st.countInLeft <= 0) {
                 st.phase = 'work';
                 if (st.pausedPhaseRemain !== undefined) {
@@ -275,7 +287,7 @@ function scheduler() {
                     st.phaseEnd = st.pausedPhaseRemain === Infinity ? Infinity : st.nextTime + st.pausedPhaseRemain;
                     st.pausedPhaseRemain = undefined;
                 } else startWorkClock(st.nextTime);
-                st.bar = 0; st.beat = 0; st.sub = 0;
+                st.bar = 0; st.beat = 0; st.sub = 0; st.meter = null;
                 queue.push({ time: st.nextTime, kind: 'workstart' });
             }
             continue;
@@ -288,13 +300,15 @@ function scheduler() {
         // bar boundary: training tempo updates are quantized to the bar
         if (st.beat === 0 && st.sub === 0) {
             st.factor = cfg.training.enabled ? trainingFactorAtBar() : cfg.factor;
+            st.meter = meterAt(s, st.bar);
             queue.push({ time: t, kind: 'bar', step: st.step, bar: st.bar, factor: st.factor });
         }
+        const meter = st.meter || meterAt(s, st.bar);
 
         const accent = st.beat === 0 && st.sub === 0 && cfg.accentFirst;
         const kind = st.sub > 0 ? 'sub' : accent ? 'accent' : 'beat';
         click(t, kind);
-        if (st.sub === 0) queue.push({ time: t, kind: 'beat', beat: st.beat, step: st.step, bar: st.bar });
+        if (st.sub === 0) queue.push({ time: t, kind: 'beat', beat: st.beat, beats: meter.n, unit: meter.d, scoreBar: meter.i, step: st.step, bar: st.bar });
 
         // interval warning pips 3-2-1 before work ends
         if (cfg.interval.enabled && cfg.interval.cues && st.phaseEnd !== Infinity) {
@@ -305,17 +319,18 @@ function scheduler() {
         }
 
         // advance
-        st.nextTime += 60 / Math.max(10, s.bpm * st.factor) / subs;
+        st.nextTime += beatSeconds(s.bpm * st.factor, meter.d) / subs;
         st.sub++;
         if (st.sub >= subs) {
             st.sub = 0; st.beat++;
-            if (st.beat >= s.beatsPerBar) {
+            if (st.beat >= meter.n) {
                 st.beat = 0; st.bar++;
                 if (cfg.training.enabled) {
                     st.trainingBars++;
                     if (cfg.training.stopAtEnd && trainingDone()) { finish(st.nextTime, 'training'); return; }
                 }
-                if (cfg.playThrough && s.bars > 0 && st.bar >= s.bars) {
+                const len = s.scoreBars && s.scoreBars.length ? s.scoreBars.length : s.bars;
+                if (cfg.playThrough && len > 0 && st.bar >= len) {
                     st.bar = 0;
                     if (st.step + 1 < cfg.steps.length) st.step++;
                     else if (cfg.loop) st.step = 0;
@@ -361,6 +376,8 @@ function drawLoop() {
         const e = queue.shift();
         if (e.kind === 'beat' || e.kind === 'count') {
             flashBeat(e.beat, e.kind === 'count');
+            window.dispatchEvent(new CustomEvent('songler-beat', { detail: {
+                scoreBar: e.scoreBar, beat: e.beat, beats: e.beats, unit: e.unit, counting: e.kind === 'count', step: e.step, bar: e.bar } }));
             changed = true;
         }
         if (e.kind === 'phase' && st.phase === 'rest') clearVisual();
@@ -415,6 +432,9 @@ function snapshot() {
         remaining,
         round: st.round,
         count: st.phase === 'countin' ? st.countDisplay : null,
+        beats: (st.meter || meterAt(stepCfg(), st.bar)).n,
+        unit: (st.meter || meterAt(stepCfg(), st.bar)).d,
+        barInPart: (() => { const sb = stepCfg().scoreBars; return sb && sb.length ? st.bar % sb.length : st.bar; })(),
         trainingProgress,
         finished: st.finished || null,
     };

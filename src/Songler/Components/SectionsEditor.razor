@@ -14,8 +14,8 @@
             }
             <MudTextField @bind-Value="s.Name" @bind-Value:after="Changed" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-name" />
             <MudNumericField T="double" @bind-Value="s.Bpm" @bind-Value:after="Changed" Label="@BpmLabel" Min="20" Max="400" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num" />
-            <MudNumericField T="int" @bind-Value="s.BeatsPerBar" @bind-Value:after="Changed" Label="Beats" Min="1" Max="32" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num-s" />
-            <MudSelect T="int" @bind-Value="s.BeatUnit" @bind-Value:after="Changed" Label="Unit" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num-s">
+            <MudNumericField T="int" @bind-Value="s.BeatsPerBar" @bind-Value:after="Changed" Label="Beats" Disabled="s.FromScore" Min="1" Max="32" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num-s" />
+            <MudSelect T="int" @bind-Value="s.BeatUnit" @bind-Value:after="Changed" Label="Unit" Disabled="s.FromScore" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num-s">
                 @foreach (var u in new[] { 2, 4, 8, 16 }) { <MudSelectItem T="int" Value="u">/@u</MudSelectItem> }
             </MudSelect>
             <MudSelect T="int" @bind-Value="s.Subdivision" @bind-Value:after="Changed" Label="Clicks" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-sub">
@@ -25,7 +25,7 @@
                 <MudSelectItem T="int" Value="4">16ths</MudSelectItem>
                 <MudSelectItem T="int" Value="6">Sextuplets</MudSelectItem>
             </MudSelect>
-            <MudNumericField T="int" @bind-Value="s.Bars" @bind-Value:after="Changed" Label="Bars" HelperText="@(s.Bars == 0 ? "loop" : null)" Min="0" Max="999" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num-s" />
+            <MudNumericField T="int" @bind-Value="s.Bars" @bind-Value:after="Changed" Label="Bars" Disabled="s.FromScore" HelperText="@(s.FromScore ? (s.MixedMeter ? "from score · mixed meter" : "from score") : s.Bars == 0 ? "loop" : null)" Min="0" Max="999" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num-s" />
             <div class="sec-actions">
                 <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowUpward" Disabled="idx == 0" aria-label="@($"Move {s.Name} up")" OnClick="() => Move(idx, -1)" />
                 <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowDownward" Disabled="idx == Sections.Count - 1" aria-label="@($"Move {s.Name} down")" OnClick="() => Move(idx, 1)" />

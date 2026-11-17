@@ -1,4 +1,5 @@
 @inject DataStore Store
+@inject IDialogService Dialogs
 
 <MudDialog>
     <TitleContent>
@@ -55,6 +56,15 @@
                         }
                     </div>
                 }
+                <div class="d-flex align-center gap-2 mb-2 flex-wrap">
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.QueueMusic" OnClick="ImportScore">
+                        @(_m.ScoreFileId == null ? "Import parts from Guitar Pro…" : "Re-import from score file…")
+                    </MudButton>
+                    @if (_m.ScoreFileName != null)
+                    {
+                        <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Rounded.MusicNote" OnClose="DetachScore">@_m.ScoreFileName</MudChip>
+                    }
+                </div>
                 <SectionsEditor Sections="_m.Sections" BpmLabel="@(_m.Unit == TempoUnit.Percent ? "Song BPM" : "BPM")" OnChanged="StateHasChanged" />
             </div>
             <MudTextField @bind-Value="_m.Link" Label="Link (tab, video, backing track)" />
@@ -120,6 +130,27 @@
     {
         if (!_m.Sections.Any(s => s.Name == name)) return name;
         for (int i = 2; ; i++) if (!_m.Sections.Any(s => s.Name == $"{name} {i}")) return $"{name} {i}";
+    }
+
+    async Task ImportScore()
+    {
+        var r = await ScoreImportDialog.ShowAsync(Dialogs, forExisting: true);
+        if (r == null) return;
+        _m.Sections = r.Sections;
+        _m.ScoreFileId = r.FileId;
+        _m.ScoreFileName = r.FileName;
+        _m.ScoreTrack = r.Track;
+        if (IsNew)
+        {
+            if (string.IsNullOrWhiteSpace(_m.Name)) _m.Name = r.Name;
+            _m.Type = ItemType.Song; _m.Unit = TempoUnit.Percent; _m.Goal ??= 100;
+        }
+    }
+
+    void DetachScore()
+    {
+        _m.ScoreFileId = null; _m.ScoreFileName = null;
+        foreach (var s in _m.Sections) { s.Bars = s.Length; s.ScoreBars = null; }
     }
 
     async Task Save()

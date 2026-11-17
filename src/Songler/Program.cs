@@ -18,5 +18,6 @@ builder.Services.AddMudServices(c =>
 builder.Services.AddSingleton<DataStore>();
 builder.Services.AddSingleton<MetronomeService>();
 builder.Services.AddSingleton<Shortcuts>();
+builder.Services.AddSingleton<ScoreImport>();
 
 await builder.Build().RunAsync();

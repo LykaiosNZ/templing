@@ -1,0 +1,121 @@
+@* Renders an item's attached score with alphaTab. The metronome engine broadcasts each click
+   (score bar + beat), and js/score.js moves the bar highlight and beat cursor. *@
+@implements IAsyncDisposable
+@inject ScoreImport Importer
+@inject DataStore Store
+
+<section class="card tab-card" aria-label="Tab">
+    <div class="card-head">
+        <h2 class="card-title">@Title</h2>
+        <div class="d-flex gap-2 align-center flex-wrap">
+            @if (_tracks.Count > 1)
+            {
+                <MudSelect T="int" Value="Item.ScoreTrack" ValueChanged="TrackChanged" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Label="Track" Style="min-width:220px">
+                    @foreach (var t in _tracks) { <MudSelectItem T="int" Value="t.Index">@t.Name</MudSelectItem> }
+                </MudSelect>
+            }
+            <MudToggleGroup T="string" Value="Item.ScoreStave" ValueChanged="StaveChanged" Size="Size.Small" Outlined="true" Color="Color.Primary" aria-label="Notation">
+                <MudToggleItem Value="@("tab")" Text="Tab" />
+                <MudToggleItem Value="@("score")" Text="Notation + tab" />
+            </MudToggleGroup>
+            @if (Part != null)
+            {
+                <MudToggleGroup T="bool" Value="_whole" ValueChanged="WholeChanged" Size="Size.Small" Outlined="true" Color="Color.Primary" aria-label="Range">
+                    <MudToggleItem Value="false" Text="This part" />
+                    <MudToggleItem Value="true" Text="Whole song" />
+                </MudToggleGroup>
+            }
+        </div>
+    </div>
+    @if (_error != null)
+    {
+        <MudAlert Severity="Severity.Warning" Dense="true">@_error</MudAlert>
+    }
+    <div id="@_hostId" class="tab-host" aria-label="Rendered tab"></div>
+    @if (!_ready && _error == null)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public PracticeItem Item { get; set; } = default!;
+    /// <summary>The part currently selected/playing. Null = always whole song.</summary>
+    [Parameter] public Section? Part { get; set; }
+    /// <summary>Force whole-song view (e.g. when playing through all parts).</summary>
+    [Parameter] public bool FollowWholeSong { get; set; }
+    [Parameter] public bool Dark { get; set; } = true;
+
+    readonly string _hostId = "tab-" + Guid.NewGuid().ToString("N")[..8];
+    List<ScoreTrackInfo> _tracks = new();
+    IJSObjectReference? _mod;
+    string? _mountedFile, _error;
+    bool _ready, _whole;
+    string _lastOpts = "";
+
+    string Title => Part != null && !(_whole || FollowWholeSong) ? $"Tab · {Part.Name}" : "Tab";
+
+    protected override async Task OnAfterRenderAsync(bool first)
+    {
+        if (Item.ScoreFileId == null) return;
+        try
+        {
+            _mod ??= await Importer.ModuleAsync();
+            if (_mountedFile != Item.ScoreFileId)
+            {
+                _mountedFile = Item.ScoreFileId;
+                _lastOpts = "";
+                var ok = await _mod.InvokeAsync<bool>("mount", _hostId, Item.ScoreFileId, Opts());
+                _tracks = ok ? await TrackList() : new();
+                _ready = ok;
+                _error = ok ? null : "The score file for this item wasn't found in this browser. Re-import it from the item editor.";
+                StateHasChanged();
+                return;
+            }
+            await Push();
+        }
+        catch (JSException ex) { _error = ex.Message; _ready = false; StateHasChanged(); }
+    }
+
+    async Task<List<ScoreTrackInfo>> TrackList()
+    {
+        var json = await _mod!.InvokeAsync<string>("tracks", _hostId);
+        return System.Text.Json.JsonSerializer.Deserialize<List<ScoreTrackInfo>>(json, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+    }
+
+    object Opts()
+    {
+        int start = 0, count = -1;
+        if (Part is { FromScore: true } p && !_whole && !FollowWholeSong)
+        {
+            start = p.ScoreBars!.Min(b => b[0]);
+            count = p.ScoreBars!.Max(b => b[0]) - start + 1;
+        }
+        return new { track = Item.ScoreTrack, stave = Item.ScoreStave, start, count, dark = Dark };
+    }
+
+    async Task Push()
+    {
+        var o = System.Text.Json.JsonSerializer.Serialize(Opts());
+        if (o == _lastOpts || _mod == null) return;
+        _lastOpts = o;
+        await _mod.InvokeVoidAsync("update", _hostId, Opts());
+    }
+
+    async Task TrackChanged(int t) { Item.ScoreTrack = t; await Save(); }
+    async Task StaveChanged(string s) { Item.ScoreStave = s; await Save(); }
+    Task WholeChanged(bool w) { _whole = w; return Task.CompletedTask; }
+
+    async Task Save()
+    {
+        // persist the viewing preference on the stored item too (the metronome may hold a copy)
+        var stored = Store.GetItem(Item.Id);
+        if (stored != null && !ReferenceEquals(stored, Item)) { stored.ScoreTrack = Item.ScoreTrack; stored.ScoreStave = Item.ScoreStave; }
+        await Store.SaveItemAsync(stored ?? Item);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_mod != null) { try { await _mod.InvokeVoidAsync("dispose", _hostId); } catch { } }
+    }
+}
