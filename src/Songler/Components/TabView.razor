@@ -6,7 +6,7 @@
 
 <section class="card tab-card" aria-label="Tab">
     <div class="card-head">
-        <h2 class="card-title">@Title</h2>
+        <h2 class="card-title">Tab</h2>
         <div class="d-flex gap-2 align-center flex-wrap">
             @if (_tracks.Count > 1)
             {
@@ -18,13 +18,6 @@
                 <MudToggleItem Value="@("tab")" Text="Tab" />
                 <MudToggleItem Value="@("score")" Text="Notation + tab" />
             </MudToggleGroup>
-            @if (Part != null)
-            {
-                <MudToggleGroup T="bool" Value="_whole" ValueChanged="WholeChanged" Size="Size.Small" Outlined="true" Color="Color.Primary" aria-label="Range">
-                    <MudToggleItem Value="false" Text="This part" />
-                    <MudToggleItem Value="true" Text="Whole song" />
-                </MudToggleGroup>
-            }
         </div>
     </div>
     @if (_error != null)
@@ -40,20 +33,17 @@
 
 @code {
     [Parameter, EditorRequired] public PracticeItem Item { get; set; } = default!;
-    /// <summary>The part currently selected/playing. Null = always whole song.</summary>
+    /// <summary>The selected part; when it changes the tab scrolls to where that part starts.</summary>
     [Parameter] public Section? Part { get; set; }
-    /// <summary>Force whole-song view (e.g. when playing through all parts).</summary>
-    [Parameter] public bool FollowWholeSong { get; set; }
     [Parameter] public bool Dark { get; set; } = true;
 
     readonly string _hostId = "tab-" + Guid.NewGuid().ToString("N")[..8];
     List<ScoreTrackInfo> _tracks = new();
     IJSObjectReference? _mod;
     string? _mountedFile, _error;
-    bool _ready, _whole;
+    bool _ready;
     string _lastOpts = "";
-
-    string Title => Part != null && !(_whole || FollowWholeSong) ? $"Tab · {Part.Name}" : "Tab";
+    string? _scrolledPart;
 
     protected override async Task OnAfterRenderAsync(bool first)
     {
@@ -73,6 +63,11 @@
                 return;
             }
             await Push();
+            if (_ready && Part is { FromScore: true } p && p.Id != _scrolledPart)
+            {
+                _scrolledPart = p.Id;
+                await _mod.InvokeVoidAsync("scrollToBar", _hostId, p.ScoreBars![0][0]);
+            }
         }
         catch (JSException ex) { _error = ex.Message; _ready = false; StateHasChanged(); }
     }
@@ -83,16 +78,7 @@
         return System.Text.Json.JsonSerializer.Deserialize<List<ScoreTrackInfo>>(json, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
     }
 
-    object Opts()
-    {
-        int start = 0, count = -1;
-        if (Part is { FromScore: true } p && !_whole && !FollowWholeSong)
-        {
-            start = p.ScoreBars!.Min(b => b[0]);
-            count = p.ScoreBars!.Max(b => b[0]) - start + 1;
-        }
-        return new { track = Item.ScoreTrack, stave = Item.ScoreStave, start, count, dark = Dark };
-    }
+    object Opts() => new { track = Item.ScoreTrack, stave = Item.ScoreStave, start = 0, count = -1, dark = Dark };
 
     async Task Push()
     {
@@ -104,7 +90,6 @@
 
     async Task TrackChanged(int t) { Item.ScoreTrack = t; await Save(); }
     async Task StaveChanged(string s) { Item.ScoreStave = s; await Save(); }
-    Task WholeChanged(bool w) { _whole = w; return Task.CompletedTask; }
 
     async Task Save()
     {

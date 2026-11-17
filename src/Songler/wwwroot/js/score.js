@@ -106,7 +106,11 @@ export async function mount(hostId, fileId, opts) {
     views.set(hostId, view);
     view.api = new at.AlphaTabApi(surface, settings(at, { display: { layoutMode: 'page', scale: 0.9 } }));
     view.score = at.importer.ScoreLoader.loadScoreFromBytes(bytes, view.api.settings);
-    view.api.renderFinished.on(() => { view.ready = true; if (view.last) place(view, view.last, false); });
+    view.api.renderFinished.on(() => {
+        view.ready = true;
+        if (view.pendingScroll) { const f = view.pendingScroll; view.pendingScroll = null; f(); }
+        if (view.last) place(view, view.last, false);
+    });
     view.onBeat = e => onBeat(view, e.detail);
     window.addEventListener('songler-beat', view.onBeat);
     view.onStop = () => { view.barHi.style.opacity = '0'; view.cursor.style.opacity = '0'; };
@@ -131,7 +135,6 @@ export function update(hostId, opts) {
     v.api.updateSettings();
     v.ready = false;
     v.api.renderScore(v.score, [track]);
-    v.scroller.scrollTop = 0;
 }
 
 function applyColors(v, s, dark) {
@@ -201,4 +204,16 @@ export function tracks(hostId) {
     const v = views.get(hostId);
     if (!v) return '[]';
     return JSON.stringify(v.score.tracks.map(t => ({ index: t.index, name: t.name || `Track ${t.index + 1}` })));
+}
+
+/** Scroll the tab so a master bar is near the top (used when a part is selected). Waits for layout if needed. */
+export function scrollToBar(hostId, barIndex) {
+    const v = views.get(hostId);
+    if (!v) return;
+    const go = () => {
+        const lookup = v.api.boundsLookup;
+        const mbb = lookup && lookup.findMasterBarByIndex(barIndex);
+        if (mbb) v.scroller.scrollTo({ top: Math.max(0, mbb.realBounds.y - 24), behavior: 'smooth' });
+    };
+    if (v.ready) go(); else v.pendingScroll = go;
 }
