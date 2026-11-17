@@ -52,6 +52,15 @@
         </section>
 
         <section class="card mt-4">
+            <h2 class="card-title">Plans</h2>
+            <MudSwitch T="bool" @bind-Value="Store.Settings.AutoLogPlanSteps" @bind-Value:after="Save" Color="Color.Primary"
+                       Label="Log each plan step automatically when it finishes" />
+            <MudText Typo="Typo.caption" Class="muted d-block">
+                Off: you're asked to confirm each log (and can add the tempo you reached and how it felt). On: the time is saved straight away and you can edit it later in History.
+            </MudText>
+        </section>
+
+        <section class="card mt-4">
             <h2 class="card-title">About time tracking</h2>
             <MudText Typo="Typo.body2" Class="muted">
                 The metronome counts <em>active</em> time only: while the click is playing in a work phase. Count-ins, rests between intervals and paused time are not counted,

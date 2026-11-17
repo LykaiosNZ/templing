@@ -15,6 +15,7 @@ public class DataStore(IJSRuntime js)
     public List<PracticeItem> Items { get; private set; } = new();
     public List<PracticeLog> Logs { get; private set; } = new();
     public List<MetronomePreset> Presets { get; private set; } = new();
+    public List<PracticePlan> Plans { get; private set; } = new();
     public AppSettings Settings { get; private set; } = new();
     public bool Loaded { get; private set; }
 
@@ -29,6 +30,7 @@ public class DataStore(IJSRuntime js)
         Items = await GetAll<PracticeItem>("items");
         Logs = await GetAll<PracticeLog>("logs");
         Presets = await GetAll<MetronomePreset>("presets");
+        Plans = await GetAll<PracticePlan>("plans");
         var settings = await GetAll<AppSettings>("settings");
         Settings = settings.FirstOrDefault() ?? new AppSettings();
         Items.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
@@ -115,6 +117,24 @@ public class DataStore(IJSRuntime js)
         Changed?.Invoke();
     }
 
+    // ---------- Plans ----------
+    public PracticePlan? GetPlan(string? id) => Plans.FirstOrDefault(p => p.Id == id);
+
+    public async Task SavePlanAsync(PracticePlan p)
+    {
+        var idx = Plans.FindIndex(x => x.Id == p.Id);
+        if (idx >= 0) Plans[idx] = p; else Plans.Add(p);
+        await Put("plans", p);
+        Changed?.Invoke();
+    }
+
+    public async Task DeletePlanAsync(PracticePlan p)
+    {
+        Plans.RemoveAll(x => x.Id == p.Id);
+        await Remove("plans", p.Id);
+        Changed?.Invoke();
+    }
+
     // ---------- Settings ----------
     public async Task SaveSettingsAsync()
     {
@@ -138,8 +158,8 @@ public class DataStore(IJSRuntime js)
 
     public async Task ClearAllAsync()
     {
-        foreach (var s in new[] { "items", "logs", "presets", "files" }) await _db!.InvokeVoidAsync("clear", s);
-        Items.Clear(); Logs.Clear(); Presets.Clear();
+        foreach (var s in new[] { "items", "logs", "presets", "files", "plans" }) await _db!.InvokeVoidAsync("clear", s);
+        Items.Clear(); Logs.Clear(); Presets.Clear(); Plans.Clear();
         Changed?.Invoke();
     }
 

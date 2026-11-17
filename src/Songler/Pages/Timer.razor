@@ -7,6 +7,7 @@
 @inject NavigationManager Nav
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
+@inject PlanRunner Runner
 
 <PageTitle>@(Metro.IsRunning ? $"{Clock} · " : "")Timer · Songler</PageTitle>
 
@@ -93,6 +94,10 @@
     <MudItem xs="12" lg="5">
         <section class="card">
             <h2 class="card-title">Intervals</h2>
+            @if (Metro.StepPinned)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">Set by your plan for this step. Changes here apply after the plan.</MudAlert>
+            }
             @{ var iv = Metro.Settings.Interval; }
             <MudSwitch T="bool" @bind-Value="iv.Enabled" @bind-Value:after="Apply" Color="Color.Primary" Disabled="Metro.IsRunning"
                        Label="@(iv.Enabled ? "Work / rest intervals" : "Off: open-ended stopwatch")" />
@@ -143,7 +148,7 @@
 
     bool Rest => Metro.IsRunning && Metro.State.phase == "rest";
     bool Work => Metro.IsRunning && Metro.State.phase == "work";
-    bool ShowEndPanel => !Metro.IsRunning && !_dismissed && (Metro.SessionActiveSec >= 1 || Metro.LastFinishReason == "rest");
+    bool ShowEndPanel => !Runner.Active && !Metro.IsRunning && !_dismissed && (Metro.SessionActiveSec >= 1 || Metro.LastFinishReason == "rest");
 
     string PhaseClass => !Metro.IsRunning ? (ShowEndPanel ? "phase-done" : "phase-idle") : Rest ? "phase-rest" : "phase-work";
 
@@ -159,8 +164,8 @@
             if (!Metro.IsRunning)
             {
                 if (ShowEndPanel && Metro.SessionActiveSec >= 1) return Stats.Clock(Metro.SessionActiveSec);
-                var iv = Metro.Settings.Interval;
-                return iv.Enabled ? Stats.Clock(iv.WorkMin * 60) : "0:00";
+                var ei = Metro.EffectiveIntervals;
+                return ei.Enabled ? Stats.Clock(ei.WorkSec) : "0:00";
             }
             if (Metro.State.remaining is { } rem) return Stats.Clock(Math.Ceiling(rem));
             return Stats.Clock(Metro.State.workElapsed ?? 0); // stopwatch
@@ -171,11 +176,11 @@
     {
         get
         {
-            var iv = Metro.Settings.Interval;
+            var iv = Metro.EffectiveIntervals;
             if (!Metro.IsRunning)
             {
                 if (ShowEndPanel && Metro.SessionActiveSec >= 1) return "practised this session";
-                return iv.Enabled ? $"{iv.Rounds switch { 0 => "endless", 1 => "1 round", var n => $"{n} rounds" }}{(iv.RestMin > 0 && iv.Rounds != 1 ? $" · {Stats.Clock(iv.RestMin * 60)} rests" : "")}" : "stopwatch";
+                return iv.Enabled ? $"{iv.Rounds switch { 0 => "endless", 1 => "1 round", var n => $"{n} rounds" }}{(iv.RestSec > 0 && iv.Rounds != 1 ? $" · {Stats.Clock(iv.RestSec)} rests" : "")}" : "stopwatch";
             }
             if (Metro.RestOnlyRunning) return "not counted as practice";
             if (Metro.State.remaining is null) return "elapsed";

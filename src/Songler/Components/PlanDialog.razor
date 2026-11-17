@@ -1,0 +1,116 @@
+@inject DataStore Store
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(IsNew ? "New plan" : $"Edit {Plan.Name}")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <div class="d-flex flex-column gap-3">
+            <MudTextField @bind-Value="_m.Name" Label="Plan name" AutoFocus="true" Immediate="true" />
+            <div class="d-flex justify-space-between align-center flex-wrap gap-2">
+                <MudText Typo="Typo.subtitle2">Steps (@_m.Steps.Count) · @Stats.Duration((int)(_m.TotalMinutes * 60)) total</MudText>
+                <div class="d-flex gap-2">
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Add" OnClick="AddItem">Add practice step</MudButton>
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.SelfImprovement" OnClick="AddRest">Add rest</MudButton>
+                </div>
+            </div>
+            <div class="plan-steps" role="list">
+                @for (int i = 0; i < _m.Steps.Count; i++)
+                {
+                    var idx = i;
+                    var s = _m.Steps[i];
+                    var item = Store.GetItem(s.ItemId);
+                    <div class="plan-step-row @(s.Kind == PlanStepKind.Rest ? "rest" : "")" role="listitem" @key="s.Id">
+                        <span class="ps-num">@(idx + 1)</span>
+                        @if (s.Kind == PlanStepKind.Rest)
+                        {
+                            <span class="ps-rest"><MudIcon Icon="@Icons.Material.Rounded.SelfImprovement" Size="Size.Small" /> Rest</span>
+                            <MudNumericField T="double" @bind-Value="s.Minutes" Label="Minutes" Min="0.5" Max="60" Step="0.5" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
+                        }
+                        else
+                        {
+                            <MudSelect T="string" @bind-Value="s.ItemId" @bind-Value:after="() => s.SectionId = null" Label="Item" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-item">
+                                @foreach (var it in Store.Items.Where(x => !x.Archived || x.Id == s.ItemId)) { <MudSelectItem T="string" Value="@it.Id">@it.Name</MudSelectItem> }
+                            </MudSelect>
+                            @if (item is { } it2 && it2.Sections.Count > 1)
+                            {
+                                <MudSelect T="string" @bind-Value="s.SectionId" Label="@(it2.Type == ItemType.Song ? "Part" : "Section")" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-part">
+                                    @foreach (var sec in it2.Sections) { <MudSelectItem T="string" Value="@sec.Id">@sec.Name</MudSelectItem> }
+                                </MudSelect>
+                            }
+                            <MudSelect T="StepMode" @bind-Value="s.Mode" Label="With" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-mode">
+                                <MudSelectItem T="StepMode" Value="StepMode.Metronome">Metronome</MudSelectItem>
+                                <MudSelectItem T="StepMode" Value="StepMode.Timer">Timer (no click)</MudSelectItem>
+                            </MudSelect>
+                            <MudNumericField T="double" @bind-Value="s.Minutes" Label="Work min" Min="0.5" Max="120" Step="1" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
+                            <MudNumericField T="int" @bind-Value="s.Rounds" Label="Rounds" Min="1" Max="20" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
+                            <MudNumericField T="double" @bind-Value="s.RestMin" Label="Rest min" Min="0" Max="30" Step="0.5" Disabled="s.Rounds < 2" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
+                        }
+                        <span class="ps-actions">
+                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowUpward" Disabled="idx == 0" aria-label="@($"Move step {idx + 1} up")" OnClick="() => Move(idx, -1)" />
+                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowDownward" Disabled="idx == _m.Steps.Count - 1" aria-label="@($"Move step {idx + 1} down")" OnClick="() => Move(idx, 1)" />
+                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ContentCopy" aria-label="@($"Duplicate step {idx + 1}")" OnClick="() => Duplicate(idx)" />
+                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Close" aria-label="@($"Remove step {idx + 1}")" OnClick="() => _m.Steps.RemoveAt(idx)" />
+                        </span>
+                    </div>
+                }
+                @if (_m.Steps.Count == 0)
+                {
+                    <MudText Class="muted pa-4">Add steps in the order you practise them: warm-up, exercises, then songs.</MudText>
+                }
+            </div>
+            <MudText Typo="Typo.caption" Class="muted">
+                Tip: a step with 2 rounds of 5 min and 1 min rest is a 5 · 1 · 5 interval. Use <em>Timer</em> for anything you play along to in Guitar Pro.
+            </MudText>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save" Disabled="@(string.IsNullOrWhiteSpace(_m.Name) || _m.Steps.Count == 0 || _m.Steps.Any(s => s.Kind == PlanStepKind.Item && s.ItemId == null))">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public PracticePlan Plan { get; set; } = new();
+    [Parameter] public bool IsNew { get; set; }
+    PracticePlan _m = new();
+
+    public static async Task<PracticePlan?> ShowAsync(IDialogService dialogs, PracticePlan? plan = null)
+    {
+        var p = new DialogParameters<PlanDialog> { { x => x.Plan, plan ?? new PracticePlan() }, { x => x.IsNew, plan == null } };
+        var r = await dialogs.ShowAsync<PlanDialog>("Plan", p, new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true });
+        var res = await r.Result;
+        return res is { Canceled: false } ? res.Data as PracticePlan : null;
+    }
+
+    protected override void OnInitialized() =>
+        _m = System.Text.Json.JsonSerializer.Deserialize<PracticePlan>(System.Text.Json.JsonSerializer.Serialize(Plan, DataStore.Json), DataStore.Json)!;
+
+    void AddItem()
+    {
+        var last = _m.Steps.LastOrDefault(s => s.Kind == PlanStepKind.Item);
+        _m.Steps.Add(new PlanStep { Kind = PlanStepKind.Item, Mode = last?.Mode ?? StepMode.Metronome, Minutes = last?.Minutes ?? 10, Rounds = last?.Rounds ?? 1, RestMin = last?.RestMin ?? 0 });
+    }
+
+    void AddRest() => _m.Steps.Add(new PlanStep { Kind = PlanStepKind.Rest, Minutes = 2 });
+
+    void Move(int i, int d)
+    {
+        var j = i + d;
+        (_m.Steps[i], _m.Steps[j]) = (_m.Steps[j], _m.Steps[i]);
+    }
+
+    void Duplicate(int i)
+    {
+        var s = _m.Steps[i];
+        _m.Steps.Insert(i + 1, new PlanStep { Kind = s.Kind, ItemId = s.ItemId, SectionId = s.SectionId, Mode = s.Mode, Minutes = s.Minutes, Rounds = s.Rounds, RestMin = s.RestMin });
+    }
+
+    async Task Save()
+    {
+        _m.Name = _m.Name.Trim();
+        await Store.SavePlanAsync(_m);
+        Dialog.Close(DialogResult.Ok(_m));
+    }
+}

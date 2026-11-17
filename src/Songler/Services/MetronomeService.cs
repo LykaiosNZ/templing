@@ -65,6 +65,29 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     /// <summary>One-off interval override for timer extras (extend / rest countdown); cleared when the run ends.</summary>
     private record IntervalOverride(bool Enabled, double WorkSec, double RestSec, int Rounds, double RestFirstSec, bool RestOnly);
     private IntervalOverride? _override;
+    /// <summary>Intervals pinned by a running plan step; stays until the plan moves on (unlike <see cref="_override"/>).</summary>
+    private IntervalOverride? _step;
+    public bool StepPinned => _step != null;
+
+    public async Task SetStepIntervalsAsync(double workMin, double restMin, int rounds)
+    {
+        _step = new(true, workMin * 60, restMin * 60, Math.Max(1, rounds), 0, false);
+        await PushConfig();
+        Changed?.Invoke();
+    }
+
+    public async Task ClearStepIntervalsAsync()
+    {
+        if (_step == null) return;
+        _step = null;
+        await PushConfig();
+        Changed?.Invoke();
+    }
+
+    /// <summary>The interval plan the next run will use (step override or the user's settings).</summary>
+    public (bool Enabled, double WorkSec, double RestSec, int Rounds) EffectiveIntervals =>
+        _step is { } st ? (true, st.WorkSec, st.RestSec, st.Rounds)
+        : (Settings.Interval.Enabled, Settings.Interval.WorkMin * 60, Settings.Interval.RestMin * 60, Settings.Interval.Rounds);
 
     /// <summary>Starts a silent practice timer using the interval settings (or a stopwatch when intervals are off).</summary>
     public async Task StartTimerAsync()
@@ -305,14 +328,14 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
                 stopAtEnd = tr.StopAtEnd,
             },
             silent = Silent,
-            restFirstSec = _override?.RestFirstSec ?? 0,
-            restOnly = _override?.RestOnly ?? false,
+            restFirstSec = (_override ?? _step)?.RestFirstSec ?? 0,
+            restOnly = (_override ?? _step)?.RestOnly ?? false,
             interval = new
             {
-                enabled = _override?.Enabled ?? iv.Enabled,
-                workSec = _override?.WorkSec ?? iv.WorkMin * 60,
-                restSec = _override?.RestSec ?? iv.RestMin * 60,
-                rounds = _override?.Rounds ?? iv.Rounds,
+                enabled = (_override ?? _step)?.Enabled ?? iv.Enabled,
+                workSec = (_override ?? _step)?.WorkSec ?? iv.WorkMin * 60,
+                restSec = (_override ?? _step)?.RestSec ?? iv.RestMin * 60,
+                rounds = (_override ?? _step)?.Rounds ?? iv.Rounds,
                 cues = iv.VoiceCues || Silent,
             }
         };

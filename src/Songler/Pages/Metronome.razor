@@ -139,9 +139,9 @@
                             }
                             break;
                     }
-                    @if (Metro.Settings.Interval.Enabled)
+                    @if (Metro.EffectiveIntervals.Enabled)
                     {
-                        <span class="muted">· Round @Metro.State.round@(Metro.Settings.Interval.Rounds > 0 ? $"/{Metro.Settings.Interval.Rounds}" : "")</span>
+                        <span class="muted">· Round @Metro.State.round@(Metro.EffectiveIntervals.Rounds > 0 ? $"/{Metro.EffectiveIntervals.Rounds}" : "")</span>
                     }
                 }
                 else
@@ -241,6 +241,10 @@
                 </MudTabPanel>
 
                 <MudTabPanel Text="Intervals">
+                    @if (Metro.StepPinned)
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">Your plan sets the intervals for this step. Changes here apply after the plan.</MudAlert>
+                    }
                     @{ var iv = Metro.Settings.Interval; }
                     <MudSwitch T="bool" @bind-Value="iv.Enabled" @bind-Value:after="Apply" Color="Color.Primary" Label="Interval trainer (work / rest)" />
                     <div class="d-flex gap-2 flex-wrap my-2">

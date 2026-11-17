@@ -1,8 +1,8 @@
 // Minimal IndexedDB wrapper. Values are passed as JSON strings so .NET controls serialization.
 const DB_NAME = 'songler';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 // 'files' holds raw score files (Guitar Pro etc.) as {Id, Name, Data: Uint8Array}
-const STORES = ['items', 'logs', 'presets', 'settings', 'files'];
+const STORES = ['items', 'logs', 'presets', 'settings', 'files', 'plans'];
 let dbPromise = null;
 
 function open() {

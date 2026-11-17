@@ -144,6 +144,45 @@ public static class Effort
     public static Level? Get(int? v) => v is >= 1 and <= 5 ? Levels[v.Value - 1] : null;
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum PlanStepKind { Item, Rest }
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum StepMode { Metronome, Timer }
+
+/// <summary>One step of a practice plan: practise an item for a while, or rest.</summary>
+public class PlanStep
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
+    public PlanStepKind Kind { get; set; } = PlanStepKind.Item;
+    public string? ItemId { get; set; }
+    /// <summary>Optional part/section of the item to practise.</summary>
+    public string? SectionId { get; set; }
+    public StepMode Mode { get; set; } = StepMode.Metronome;
+    /// <summary>Work minutes per round (or rest length for rest steps).</summary>
+    public double Minutes { get; set; } = 10;
+    public int Rounds { get; set; } = 1;
+    /// <summary>Rest between rounds, in minutes.</summary>
+    public double RestMin { get; set; }
+
+    public double TotalMinutes => Kind == PlanStepKind.Rest ? Minutes : Minutes * Math.Max(1, Rounds) + RestMin * Math.Max(0, Rounds - 1);
+    public string IntervalText => Kind == PlanStepKind.Rest ? $"{Dur(Minutes)} rest"
+        : Rounds > 1 ? $"{Rounds} × {Dur(Minutes)}{(RestMin > 0 ? $", {Dur(RestMin)} rests" : "")}" : Dur(Minutes);
+
+    static string Dur(double min) => min < 1 ? $"{Math.Round(min * 60)}s" : min % 1 == 0 ? $"{min:0} min" : $"{min:0.#} min";
+}
+
+/// <summary>An ordered practice routine (warm-up, exercises, songs…).</summary>
+public class PracticePlan
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string Name { get; set; } = "My routine";
+    public List<PlanStep> Steps { get; set; } = new();
+    public DateTime Created { get; set; } = DateTime.Now;
+    public DateTime? LastRun { get; set; }
+    public double TotalMinutes => Steps.Sum(s => s.TotalMinutes);
+}
+
 /// <summary>A saved custom metronome (tempo map) that isn't tied to a library item.</summary>
 public class MetronomePreset
 {
@@ -198,4 +237,6 @@ public class AppSettings
     public List<Section> FreeSections { get; set; } = new() { new Section { Name = "Click", Bpm = 100 } };
     public bool FreePlayThrough { get; set; }
     public int WeeklyGoalMin { get; set; } = 150;
+    /// <summary>Plans: save each step's log automatically when it finishes instead of asking.</summary>
+    public bool AutoLogPlanSteps { get; set; }
 }

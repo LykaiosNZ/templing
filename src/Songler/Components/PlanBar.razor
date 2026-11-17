@@ -1,0 +1,127 @@
+@* Sticky banner for a running practice plan: where you are, what's next, and step controls.
+   Also owns logging when a step finishes (ask by default, or auto-log per settings). *@
+@implements IDisposable
+@inject PlanRunner Runner
+@inject MetronomeService Metro
+@inject DataStore Store
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+@if (Runner.Active && Runner.Plan is { } plan && Runner.Current is { } step)
+{
+    <section class="plan-bar @(step.Kind == PlanStepKind.Rest ? "rest" : "")" aria-label="Practice plan">
+        <div class="plan-bar-main">
+            <div class="plan-bar-info">
+                <span class="plan-name">@plan.Name</span>
+                <span class="plan-step">
+                    Step @(Runner.Index + 1) of @plan.Steps.Count:
+                    <strong>@Runner.Describe(step)</strong>
+                    <span class="muted">· @step.IntervalText@(step.Kind == PlanStepKind.Item ? $" · {(step.Mode == StepMode.Timer ? "timer" : "metronome")}" : "")</span>
+                </span>
+                @if (Runner.NextStep is { } next)
+                {
+                    <span class="plan-next muted">Next: @Runner.Describe(next) · @next.IntervalText</span>
+                }
+                else
+                {
+                    <span class="plan-next muted">Last step</span>
+                }
+            </div>
+            <div class="plan-bar-actions">
+                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.SkipPrevious" aria-label="Previous step" Disabled="Runner.Index == 0" OnClick="() => Runner.BackAsync()" />
+                @if (Runner.State == StepState.Ready && step.Kind == PlanStepKind.Item)
+                {
+                    <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.PlayArrow" OnClick="() => Runner.StartStepAsync()">
+                        @(Metro.SessionActiveSec >= 1 ? "Resume" : "Start step")
+                    </MudButton>
+                    @if (Metro.SessionActiveSec >= 1)
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Done" OnClick="FinishEarly">Finish step</MudButton>
+                    }
+                }
+                <MudButton Size="Size.Small" Variant="Variant.Text" EndIcon="@Icons.Material.Rounded.SkipNext" OnClick="() => Runner.SkipAsync()">Skip</MudButton>
+                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" OnClick="End">End plan</MudButton>
+            </div>
+        </div>
+        <div class="plan-dots" aria-hidden="true">
+            @for (int i = 0; i < plan.Steps.Count; i++)
+            {
+                var s = plan.Steps[i];
+                var cls = i == Runner.Index ? "on" : Runner.Completed.Contains(s.Id) ? "done" : i < Runner.Index ? "skipped" : "";
+                <span class="plan-dot @cls @(s.Kind == PlanStepKind.Rest ? "rest" : "")" title="@($"{i + 1}. {Runner.Describe(s)} · {s.IntervalText}")"></span>
+            }
+        </div>
+    </section>
+}
+else if (Runner.FinishedAll)
+{
+    <section class="plan-bar done" aria-label="Plan finished" role="status">
+        <div class="plan-bar-main">
+            <div class="plan-bar-info"><span class="plan-step"><strong>Plan complete.</strong> Nice work!</span></div>
+            <div class="plan-bar-actions"><MudButton Size="Size.Small" Variant="Variant.Text" OnClick="() => Runner.DismissSummary()">Dismiss</MudButton></div>
+        </div>
+    </section>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        Runner.Changed += OnChanged;
+        Metro.Changed += OnChanged;
+        Runner.StepFinished += OnStepFinished;
+    }
+
+    void OnChanged() => InvokeAsync(StateHasChanged);
+
+    async Task OnStepFinished(PlanStep step) => await InvokeAsync(() => LogAndAdvance(step));
+
+    async Task LogAndAdvance(PlanStep step)
+    {
+        if (Metro.SessionActiveSec >= 1)
+        {
+            var log = Metro.BuildSessionLog();
+            log.Source = "plan";
+            if (step.SectionId != null) log.SectionId = step.SectionId;
+            if (Store.Settings.AutoLogPlanSteps)
+            {
+                await Store.SaveLogAsync(log);
+                Snackbar.Add($"Logged {Stats.Clock(Metro.SessionActiveSec)} of {Runner.Describe(step)}", Severity.Success);
+            }
+            else
+            {
+                await LogDialog.ShowAsync(Dialogs, log, isNew: true);
+            }
+            Metro.ResetSession();
+        }
+        await Runner.AdvanceAsync();
+    }
+
+    async Task FinishEarly()
+    {
+        if (Runner.Current is { } s) await LogAndAdvance(s);
+    }
+
+    async Task End()
+    {
+        if (Metro.SessionActiveSec >= 1 && Runner.Current is { Kind: PlanStepKind.Item })
+        {
+            var r = await Dialogs.ShowMessageBoxAsync("End plan?", $"You have {Stats.Clock(Metro.SessionActiveSec)} on this step that hasn't been logged.",
+                yesText: "Log and end", noText: "End without logging", cancelText: "Keep going");
+            if (r == null) return;
+            if (r == true)
+            {
+                var log = Metro.BuildSessionLog(); log.Source = "plan";
+                await LogDialog.ShowAsync(Dialogs, log, isNew: true);
+            }
+            Metro.ResetSession();
+        }
+        await Runner.EndAsync();
+    }
+
+    public void Dispose()
+    {
+        Runner.Changed -= OnChanged;
+        Metro.Changed -= OnChanged;
+        Runner.StepFinished -= OnStepFinished;
+    }
+}

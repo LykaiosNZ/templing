@@ -19,5 +19,6 @@ builder.Services.AddSingleton<DataStore>();
 builder.Services.AddSingleton<MetronomeService>();
 builder.Services.AddSingleton<Shortcuts>();
 builder.Services.AddSingleton<ScoreImport>();
+builder.Services.AddSingleton<PlanRunner>();
 
 await builder.Build().RunAsync();

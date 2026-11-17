@@ -35,6 +35,7 @@ public class Shortcuts(IJSRuntime js) : IAsyncDisposable
         new("G then L", "Go to library", "Navigation"),
         new("G then M", "Go to metronome", "Navigation"),
         new("G then T", "Go to practice timer", "Navigation"),
+        new("G then P", "Go to plans", "Navigation"),
         new("G then H", "Go to history", "Navigation"),
         new("G then S", "Go to stats", "Navigation"),
         new("G then ,", "Go to settings", "Navigation"),
