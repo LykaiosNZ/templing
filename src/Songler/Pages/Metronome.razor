@@ -367,7 +367,12 @@
         else if (Nav.Uri.EndsWith("/metronome/free")) await Metro.LoadFreeAsync();
     }
 
-    protected override void OnInitialized() => Metro.Changed += OnChanged;
+    protected override async Task OnInitializedAsync()
+    {
+        Metro.Changed += OnChanged;
+        // coming back from the practice timer: turn the click back on
+        if (!Metro.IsRunning && Metro.Silent) await Metro.SetSilentAsync(false);
+    }
     void OnChanged() => InvokeAsync(StateHasChanged);
     public void Dispose() => Metro.Changed -= OnChanged;
 

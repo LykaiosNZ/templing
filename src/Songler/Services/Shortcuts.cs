@@ -17,7 +17,7 @@ public class Shortcuts(IJSRuntime js) : IAsyncDisposable
     /// <summary>Documented shortcuts for the help dialog.</summary>
     public static readonly ShortcutInfo[] All =
     [
-        new("Space", "Start / stop metronome", "Metronome"),
+        new("Space", "Start / stop metronome (or timer)", "Metronome"),
         new("R", "Restart section (with count-in)", "Metronome"),
         new("↑ / ↓", "Tempo +1 / −1", "Metronome"),
         new("Shift + ↑ / ↓", "Tempo +5 / −5", "Metronome"),
@@ -34,6 +34,7 @@ public class Shortcuts(IJSRuntime js) : IAsyncDisposable
         new("G then D", "Go to dashboard", "Navigation"),
         new("G then L", "Go to library", "Navigation"),
         new("G then M", "Go to metronome", "Navigation"),
+        new("G then T", "Go to practice timer", "Navigation"),
         new("G then H", "Go to history", "Navigation"),
         new("G then S", "Go to stats", "Navigation"),
         new("G then ,", "Go to settings", "Navigation"),

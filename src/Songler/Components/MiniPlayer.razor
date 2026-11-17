@@ -4,11 +4,25 @@
 
 <div class="mini-player @(Metro.IsRunning ? "running" : "")" role="group" aria-label="Metronome">
     <MudIconButton Size="Size.Small" Icon="@(Metro.IsRunning ? Icons.Material.Rounded.Stop : Icons.Material.Rounded.PlayArrow)"
-                   Color="Color.Primary" Variant="Variant.Filled" aria-label="@(Metro.IsRunning ? "Stop metronome" : "Start metronome")"
+                   Color="Color.Primary" Variant="Variant.Filled" aria-label="@(Metro.IsRunning ? "Stop" : "Start")"
                    OnClick="() => Metro.ToggleAsync()" />
     <a href="@Href" class="mini-info" aria-label="Open metronome">
         <span class="mini-title">@Metro.Title</span>
         <span class="mini-tempo">
+            @if (Metro.Silent)
+            {
+                <span>@(Metro.RestOnlyRunning ? "rest" : "timer")</span>
+                @if (Metro.IsRunning && Metro.State.remaining is { } rem)
+                {
+                    <span class="muted">· @Stats.Clock(Math.Ceiling(rem))</span>
+                }
+                else if (Metro.SessionActiveSec > 1)
+                {
+                    <span class="muted">· @Stats.Clock(Metro.SessionActiveSec)</span>
+                }
+            }
+            else
+            {
             @Metro.Value.ToString("0")@(Metro.Unit == TempoUnit.Percent ? "%" : "")
             <span class="muted">@(Metro.Unit == TempoUnit.Percent ? $"· {Metro.PlayingBpm:0} bpm" : "bpm")</span>
             @if (Metro.IsRunning && Metro.State.phase == "rest")
@@ -19,12 +33,13 @@
             {
                 <span class="muted">· @Stats.Clock(Metro.SessionActiveSec)</span>
             }
+            }
         </span>
     </a>
 </div>
 
 @code {
-    string Href => Metro.Source switch
+    string Href => Metro.Silent ? (Metro.Source == MetronomeSource.Item ? $"timer/item/{Metro.Item?.Id}" : "timer") : Metro.Source switch
     {
         MetronomeSource.Item => $"metronome/item/{Metro.Item?.Id}",
         MetronomeSource.Preset => $"metronome/preset/{Metro.Preset?.Id}",

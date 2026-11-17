@@ -40,6 +40,7 @@
             <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Rounded.SpaceDashboard">Dashboard</MudNavLink>
             <MudNavLink Href="library" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.LibraryMusic">Library</MudNavLink>
             <MudNavLink Href="metronome" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.Timer">Metronome</MudNavLink>
+            <MudNavLink Href="timer" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.HourglassBottom">Timer</MudNavLink>
             <MudNavLink Href="history" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.History">History</MudNavLink>
             <MudNavLink Href="stats" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.Insights">Stats</MudNavLink>
             <MudDivider Class="my-2" />
@@ -85,7 +86,7 @@
     private void RegisterGlobalKeys()
     {
         void Go(string combo, string url) => _keys.Add(Keys.Register(this, combo, () => Nav.NavigateTo(url)));
-        Go("g d", ""); Go("g l", "library"); Go("g m", "metronome"); Go("g h", "history"); Go("g s", "stats"); Go("g ,", "settings");
+        Go("g d", ""); Go("g l", "library"); Go("g m", "metronome"); Go("g t", "timer"); Go("g h", "history"); Go("g s", "stats"); Go("g ,", "settings");
         _keys.Add(Keys.Register(this, "?", ShowShortcuts));
         _keys.Add(Keys.Register(this, "n", QuickLog));
         _keys.Add(Keys.Register(this, "Space", () => Metro.ToggleAsync()));
@@ -123,8 +124,11 @@
 
     private async void OnFinished(string reason)
     {
+        // the timer page shows its own end-of-session panel
+        if (Nav.Uri.Contains("/timer")) return;
         await InvokeAsync(() =>
         {
+            if (reason == "rest") { Snackbar.Add("Rest's over. Back to it!", Severity.Info); return; }
             var msg = reason switch
             {
                 "interval" => "Interval session complete — nice work!",

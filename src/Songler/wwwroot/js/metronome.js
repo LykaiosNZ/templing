@@ -72,6 +72,7 @@ function jumpToStep(i) {
 // ------------------------------------------------------------------ sound
 function click(time, kind) {
     // kind: 'accent' | 'beat' | 'sub' | 'count' | 'cue-hi' | 'cue-lo' | 'cue-end'
+    if (cfg.silent && !kind.startsWith('cue')) return;
     const sound = cfg.sound;
     const freqs = {
         click: { accent: 2000, beat: 1400, sub: 1000, count: 1700 },
@@ -140,14 +141,20 @@ export function start() {
         finished: false,
         cuesDone: {},
     };
-    beginWork(now, true);
+    if (cfg.restFirstSec > 0) {
+        // timer extras: a rest before working ("+5 min after a rest"), or a rest-only countdown
+        st.phase = 'rest';
+        st.restStart = now;
+        st.restEnd = now + cfg.restFirstSec;
+        st.cuesDone = {};
+    } else beginWork(now, true);
     timer = setInterval(scheduler, LOOKAHEAD_MS);
     raf = requestAnimationFrame(drawLoop);
     emit('started');
 }
 
 function beginWork(t, first) {
-    st.phase = cfg.countIn.enabled && cfg.countIn.bars > 0 ? 'countin' : 'work';
+    st.phase = cfg.countIn.enabled && cfg.countIn.bars > 0 && !cfg.silent ? 'countin' : 'work';
     st.bar = 0; st.beat = 0; st.sub = 0; st.meter = null;
     if (!first && !cfg.playThrough) { /* keep current step */ }
     st.countInLeft = st.phase === 'countin' ? cfg.countIn.bars * stepCfg().beatsPerBar : 0;
@@ -158,6 +165,7 @@ function beginWork(t, first) {
 
 function startWorkClock(t) {
     st.workStart = t;
+    st.worked = true;
     st.phaseEnd = cfg.interval.enabled ? t + cfg.interval.workSec : Infinity;
     st.cuesDone = {};
 }
@@ -183,7 +191,7 @@ export function restartSection() {
     st.bar = 0; st.beat = 0; st.sub = 0; st.meter = null;
     if (st.phase === 'rest') return;
     st.nextTime = t;
-    if (cfg.countIn.enabled && cfg.countIn.bars > 0) {
+    if (cfg.countIn.enabled && cfg.countIn.bars > 0 && !cfg.silent) {
         accumulateActive();
         st.phase = 'countin';
         st.countInLeft = cfg.countIn.bars * stepCfg().beatsPerBar;
@@ -257,7 +265,8 @@ function scheduler() {
             }
         }
         if (st.restEnd <= horizon) {
-            st.round++;
+            if (cfg.restOnly) { finish(st.restEnd, 'rest'); return; }
+            if (st.worked) st.round++;
             if (cfg.interval.cues) click(st.restEnd, 'cue-hi');
             beginWork(st.restEnd + (cfg.interval.cues ? 0.35 : 0), false);
             queue.push({ time: st.restEnd, kind: 'phase' });
@@ -357,7 +366,7 @@ function enterRestOrFinish(t) {
 }
 
 function finish(t, reason) {
-    if (cfg.interval.cues || reason !== 'end') click(Math.max(t, ctx.currentTime), 'cue-end');
+    if (cfg.interval.cues || reason !== 'end') click(Math.max(t, ctx.currentTime), reason === 'rest' ? 'cue-hi' : 'cue-end');
     accumulateActive();
     st.finished = reason;
     st.running = false;
@@ -432,6 +441,7 @@ function snapshot() {
         remaining,
         round: st.round,
         count: st.phase === 'countin' ? st.countDisplay : null,
+        workElapsed: st.phase === 'work' && st.workStart != null ? Math.max(0, now - st.workStart) : null,
         beats: (st.meter || meterAt(stepCfg(), st.bar)).n,
         unit: (st.meter || meterAt(stepCfg(), st.bar)).d,
         barInPart: (() => { const sb = stepCfg().scoreBars; return sb && sb.length ? st.bar % sb.length : st.bar; })(),

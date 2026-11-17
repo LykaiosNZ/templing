@@ -21,6 +21,7 @@ public class EngineState
     public int unit { get; set; } = 4;
     public int barInPart { get; set; }
     public double? trainingProgress { get; set; }
+    public double? workElapsed { get; set; }
     public string? finished { get; set; }
     public string? @event { get; set; }
     public string? reason { get; set; }
@@ -55,6 +56,47 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     public double? SessionMax { get; private set; }
     public double? SessionMin { get; private set; }
     public string? LastFinishReason { get; private set; }
+
+    /// <summary>Timer mode: no click at all (e.g. playing along to Guitar Pro); intervals and cues still run.</summary>
+    public bool Silent { get; private set; }
+    /// <summary>True while a rest-only countdown is running (not practice time).</summary>
+    public bool RestOnlyRunning => IsRunning && _override is { RestOnly: true };
+
+    /// <summary>One-off interval override for timer extras (extend / rest countdown); cleared when the run ends.</summary>
+    private record IntervalOverride(bool Enabled, double WorkSec, double RestSec, int Rounds, double RestFirstSec, bool RestOnly);
+    private IntervalOverride? _override;
+
+    /// <summary>Starts a silent practice timer using the interval settings (or a stopwatch when intervals are off).</summary>
+    public async Task StartTimerAsync()
+    {
+        Silent = true; _override = null;
+        await StartAsync();
+    }
+
+    /// <summary>Another work block, optionally after a rest (e.g. +5 min after 1 min rest).</summary>
+    public async Task ExtendAsync(double workMin, double restFirstMin)
+    {
+        Silent = true;
+        _override = new(true, workMin * 60, 0, 1, restFirstMin * 60, false);
+        await StartAsync();
+    }
+
+    /// <summary>A rest countdown between pieces. Not counted as practice.</summary>
+    public async Task StartRestAsync(double minutes)
+    {
+        Silent = true;
+        _override = new(false, 0, 0, 0, minutes * 60, true);
+        await StartAsync();
+    }
+
+    /// <summary>Leave timer mode so the metronome clicks again.</summary>
+    public async Task SetSilentAsync(bool silent)
+    {
+        if (Silent == silent) return;
+        Silent = silent; _override = null;
+        await PushConfig();
+        Changed?.Invoke();
+    }
 
     public event Action? Changed;
     /// <summary>Raised when an interval / training / play-through run completes on its own.</summary>
@@ -262,13 +304,16 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
                 quantum,
                 stopAtEnd = tr.StopAtEnd,
             },
+            silent = Silent,
+            restFirstSec = _override?.RestFirstSec ?? 0,
+            restOnly = _override?.RestOnly ?? false,
             interval = new
             {
-                enabled = iv.Enabled,
-                workSec = iv.WorkMin * 60,
-                restSec = iv.RestMin * 60,
-                rounds = iv.Rounds,
-                cues = iv.VoiceCues,
+                enabled = _override?.Enabled ?? iv.Enabled,
+                workSec = _override?.WorkSec ?? iv.WorkMin * 60,
+                restSec = _override?.RestSec ?? iv.RestMin * 60,
+                rounds = _override?.Rounds ?? iv.Rounds,
+                cues = iv.VoiceCues || Silent,
             }
         };
         await _mod.InvokeVoidAsync("configure", JsonSerializer.Serialize(cfg));
@@ -288,7 +333,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         if (s == null) return;
         var wasRunning = State.running;
         State = s;
-        if (s.running && s.phase == "work")
+        if (s.running && s.phase == "work" && !Silent)
         {
             var v = ToValue(s.factor);
             SessionMax = SessionMax is null ? v : Math.Max(SessionMax.Value, v);
@@ -297,6 +342,8 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         if (s.running) CurrentStep = s.step;
         if (s.@event is "stopped" or "finished")
         {
+            if (_override is { RestOnly: true }) s.active = 0; // rest countdown isn't practice
+            _override = null;
             SessionBankedSec += s.active;
             if (Settings.Training.Enabled)
             {
@@ -335,10 +382,12 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
             Date = DateTime.Today,
             ItemId = item?.Id,
             ItemName = item?.Name ?? (Preset?.Name ?? "Metronome"),
-            SectionId = item != null && item.Sections.Count > 1 && !PlayThrough ? RefSection.Id : null,
+            // timer mode usually means playing along to the whole song: default to a full run-through
+            SectionId = item != null && item.Sections.Count > 1 && !PlayThrough && !Silent ? RefSection.Id : null,
             Unit = Unit,
-            Value = Math.Round(max),
-            ValueMin = min.HasValue && Math.Round(min.Value) < Math.Round(max) - 0.5 ? Math.Round(min.Value) : null,
+            // timer mode has no click, so there's no tempo to record (type it in if you know it)
+            Value = Silent ? null : Math.Round(max),
+            ValueMin = !Silent && min.HasValue && Math.Round(min.Value) < Math.Round(max) - 0.5 ? Math.Round(min.Value) : null,
             DurationSec = (int)Math.Round(SessionActiveSec),
             Source = "metronome"
         };

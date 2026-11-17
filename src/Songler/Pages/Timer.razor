@@ -1,0 +1,269 @@
+@page "/timer"
+@page "/timer/free"
+@page "/timer/item/{ItemId}"
+@implements IDisposable
+@inject MetronomeService Metro
+@inject DataStore Store
+@inject NavigationManager Nav
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<PageTitle>@(Metro.IsRunning ? $"{Clock} · " : "")Timer · Songler</PageTitle>
+
+<div class="page-head">
+    <div>
+        <MudText Typo="Typo.overline" Class="muted">Practice timer · no click</MudText>
+        <h1 class="page-title" tabindex="-1">@(Metro.Item is { } it && Metro.Source == MetronomeSource.Item ? it.Name : "Timer")</h1>
+        <MudText Typo="Typo.body2" Class="muted">For playing along to Guitar Pro or a backing track. Only work time is logged, not rests.</MudText>
+    </div>
+    <div class="d-flex gap-2 align-center flex-wrap">
+        <MudSelect T="string" Value="@(Metro.Source == MetronomeSource.Item ? Metro.Item?.Id : null)" ValueChanged="PickItem" Label="Practising" Clearable="true"
+                   Variant="Variant.Outlined" Margin="Margin.Dense" Style="min-width:260px" Disabled="Metro.IsRunning" HelperText="Optional">
+            @foreach (var i in Store.Items.Where(i => !i.Archived)) { <MudSelectItem T="string" Value="@i.Id">@i.Name</MudSelectItem> }
+        </MudSelect>
+        @if (Metro.Source == MetronomeSource.Item && Metro.Item != null)
+        {
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Timer" Href="@($"metronome/item/{Metro.Item.Id}")" Disabled="Metro.IsRunning">Use metronome instead</MudButton>
+        }
+    </div>
+</div>
+
+<MudGrid Spacing="4">
+    <MudItem xs="12" lg="7">
+        <section class="timer-stage @PhaseClass" aria-label="Timer">
+            <div class="timer-flash" @key="_flashKey" aria-hidden="true"></div>
+            <div class="timer-ring">
+                <svg viewBox="0 0 200 200" aria-hidden="true">
+                    <circle cx="100" cy="100" r="88" class="ring-track" />
+                    <circle cx="100" cy="100" r="88" class="ring-fill" style="stroke-dasharray:@Dash" transform="rotate(-90 100 100)" />
+                </svg>
+                <div class="timer-center" role="timer" aria-live="off">
+                    <div class="timer-phase" aria-live="polite">@PhaseLabel</div>
+                    <div class="timer-clock">@Clock</div>
+                    <div class="timer-sub">@SubLabel</div>
+                </div>
+            </div>
+
+            <div class="transport">
+                <button class="play-btn @(Metro.IsRunning ? "on" : "")" @onclick="Toggle" aria-label="@(Metro.IsRunning ? "Stop (Space)" : "Start (Space)")">
+                    <MudIcon Icon="@(Metro.IsRunning ? Icons.Material.Rounded.Stop : Icons.Material.Rounded.PlayArrow)" Style="font-size:2.6rem" />
+                </button>
+            </div>
+
+            @if (ShowEndPanel)
+            {
+                <div class="timer-end" role="region" aria-label="Session finished">
+                    <div class="timer-end-title">
+                        @if (Metro.LastFinishReason == "rest")
+                        {
+                            <span>Rest's over.</span>
+                        }
+                        else
+                        {
+                            <span>@(Metro.LastFinishReason == "interval" ? "Done!" : "Paused.") <strong>@Stats.Clock(Metro.SessionActiveSec)</strong> practised.</span>
+                        }
+                    </div>
+                    <div class="timer-end-actions">
+                        @if (Metro.LastFinishReason == "rest")
+                        {
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.PlayArrow" OnClick="() => Metro.StartTimerAsync()">Start next block</MudButton>
+                        }
+                        @if (Metro.SessionActiveSec >= 1)
+                        {
+                            <MudButton Variant="@(Metro.LastFinishReason == "rest" ? Variant.Outlined : Variant.Filled)" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.AddTask" OnClick="Log">Log @Stats.Clock(Metro.SessionActiveSec) (L)</MudButton>
+                        }
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.MoreTime" OnClick="() => Metro.ExtendAsync(_extendMin, _extendRestMin)">
+                            +@_extendMin.ToString("0.#") min@(_extendRestMin > 0 ? $" after {_extendRestMin:0.#} min rest" : "")
+                        </MudButton>
+                        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Rounded.SelfImprovement" OnClick="() => Metro.StartRestAsync(_restMin)">Rest @_restMin.ToString("0.#") min</MudButton>
+                        @if (Metro.SessionActiveSec >= 1)
+                        {
+                            <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Discard">Discard</MudButton>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="timer-session muted">This session: <strong>@Stats.Clock(Metro.SessionActiveSec)</strong> practised</div>
+            }
+        </section>
+    </MudItem>
+
+    <MudItem xs="12" lg="5">
+        <section class="card">
+            <h2 class="card-title">Intervals</h2>
+            @{ var iv = Metro.Settings.Interval; }
+            <MudSwitch T="bool" @bind-Value="iv.Enabled" @bind-Value:after="Apply" Color="Color.Primary" Disabled="Metro.IsRunning"
+                       Label="@(iv.Enabled ? "Work / rest intervals" : "Off: open-ended stopwatch")" />
+            <div class="d-flex gap-2 flex-wrap my-2">
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" Disabled="Metro.IsRunning" OnClick="() => Preset(5, 1, 2)">5 · 1 · 5</MudButton>
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" Disabled="Metro.IsRunning" OnClick="() => Preset(10, 0, 1)">10 min</MudButton>
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" Disabled="Metro.IsRunning" OnClick="() => Preset(15, 0, 1)">15 min</MudButton>
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" Disabled="Metro.IsRunning" OnClick="() => Preset(10, 2, 3)">3 × 10 · 2</MudButton>
+            </div>
+            @if (iv.Enabled)
+            {
+                <div class="form-grid three">
+                    <MudNumericField T="double" @bind-Value="iv.WorkMin" @bind-Value:after="Apply" Label="Work (min)" Min="0.25" Max="120" Step="0.5" Disabled="Metro.IsRunning" />
+                    <MudNumericField T="double" @bind-Value="iv.RestMin" @bind-Value:after="Apply" Label="Rest (min)" Min="0" Max="60" Step="0.5" Disabled="Metro.IsRunning" />
+                    <MudNumericField T="int" @bind-Value="iv.Rounds" @bind-Value:after="Apply" Label="Rounds" Min="0" Max="99" HelperText="0 = endless" Disabled="Metro.IsRunning" />
+                </div>
+            }
+            <MudText Typo="Typo.caption" Class="muted d-block mt-2">
+                You'll hear 3-2-1 pips before each change, a chime when work ends and a high tone when it starts again. The screen turns blue during rests.
+            </MudText>
+        </section>
+
+        <section class="card mt-4">
+            <h2 class="card-title">Between pieces</h2>
+            <MudText Typo="Typo.body2" Class="muted mb-2">A rest countdown that doesn't count as practice.</MudText>
+            <div class="d-flex gap-2 flex-wrap">
+                @foreach (var m in new[] { 1.0, 2.0, 3.0, 5.0 })
+                {
+                    var min = m;
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.SelfImprovement" Disabled="Metro.IsRunning" OnClick="() => Metro.StartRestAsync(min)">@min.ToString("0") min</MudButton>
+                }
+            </div>
+            <div class="form-grid mt-4">
+                <MudNumericField T="double" @bind-Value="_extendMin" Label="Extend by (min)" Min="0.5" Max="60" Step="1" />
+                <MudNumericField T="double" @bind-Value="_extendRestMin" Label="…after a rest of (min)" Min="0" Max="30" Step="0.5" />
+            </div>
+            <MudNumericField T="double" @bind-Value="_restMin" Label="Rest button length (min)" Min="0.5" Max="30" Step="0.5" Class="mt-2" Style="max-width:240px" />
+        </section>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public string? ItemId { get; set; }
+    double _extendMin = 5, _extendRestMin = 1, _restMin = 2;
+    string? _lastPhase;
+    int _flashKey;
+    bool _dismissed;
+
+    bool Rest => Metro.IsRunning && Metro.State.phase == "rest";
+    bool Work => Metro.IsRunning && Metro.State.phase == "work";
+    bool ShowEndPanel => !Metro.IsRunning && !_dismissed && (Metro.SessionActiveSec >= 1 || Metro.LastFinishReason == "rest");
+
+    string PhaseClass => !Metro.IsRunning ? (ShowEndPanel ? "phase-done" : "phase-idle") : Rest ? "phase-rest" : "phase-work";
+
+    string PhaseLabel => !Metro.IsRunning ? (ShowEndPanel ? "Finished" : "Ready")
+        : Metro.RestOnlyRunning ? "Rest"
+        : Rest ? "Rest · next up: work"
+        : "Practise";
+
+    string Clock
+    {
+        get
+        {
+            if (!Metro.IsRunning)
+            {
+                if (ShowEndPanel && Metro.SessionActiveSec >= 1) return Stats.Clock(Metro.SessionActiveSec);
+                var iv = Metro.Settings.Interval;
+                return iv.Enabled ? Stats.Clock(iv.WorkMin * 60) : "0:00";
+            }
+            if (Metro.State.remaining is { } rem) return Stats.Clock(Math.Ceiling(rem));
+            return Stats.Clock(Metro.State.workElapsed ?? 0); // stopwatch
+        }
+    }
+
+    string SubLabel
+    {
+        get
+        {
+            var iv = Metro.Settings.Interval;
+            if (!Metro.IsRunning)
+            {
+                if (ShowEndPanel && Metro.SessionActiveSec >= 1) return "practised this session";
+                return iv.Enabled ? $"{iv.Rounds switch { 0 => "endless", 1 => "1 round", var n => $"{n} rounds" }}{(iv.RestMin > 0 && iv.Rounds != 1 ? $" · {Stats.Clock(iv.RestMin * 60)} rests" : "")}" : "stopwatch";
+            }
+            if (Metro.RestOnlyRunning) return "not counted as practice";
+            if (Metro.State.remaining is null) return "elapsed";
+            return iv.Enabled && iv.Rounds > 1 ? $"round {Metro.State.round} of {iv.Rounds}" : Rest ? "until work" : "remaining";
+        }
+    }
+
+    // ring: fraction of the current block that's elapsed
+    string Dash
+    {
+        get
+        {
+            const double c = 2 * Math.PI * 88;
+            double frac = 0;
+            if (Metro.IsRunning && Metro.State.remaining is { } rem)
+            {
+                var total = Rest ? _restTotal : Math.Max(1, (Metro.State.workElapsed ?? 0) + rem);
+                frac = 1 - rem / Math.Max(1, total);
+            }
+            else if (Metro.IsRunning) frac = ((Metro.State.workElapsed ?? 0) % 60) / 60; // stopwatch: one lap per minute
+            var on = Math.Clamp(frac, 0, 1) * c;
+            return $"{on.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)} {c.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)}";
+        }
+    }
+    double _restTotal = 60;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ItemId != null)
+        {
+            var item = Store.GetItem(ItemId);
+            if (item == null) { Nav.NavigateTo("timer"); return; }
+            if (!Metro.IsRunning) await Metro.LoadItemAsync(item);
+        }
+        else if (Nav.Uri.EndsWith("/timer/free") && !Metro.IsRunning) await Metro.LoadFreeAsync();
+        if (!Metro.IsRunning) await Metro.SetSilentAsync(true);
+    }
+
+    protected override void OnInitialized() => Metro.Changed += OnChanged;
+
+    void OnChanged()
+    {
+        var phase = Metro.IsRunning ? Metro.State.phase : "stopped";
+        if (phase != _lastPhase)
+        {
+            if (phase == "rest") _restTotal = Math.Max(1, Metro.State.remaining ?? 60);
+            if (_lastPhase != null) { _flashKey++; Vibrate(); }
+            if (Metro.IsRunning) _dismissed = false;
+            _lastPhase = phase;
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    [Inject] IJSRuntime JS { get; set; } = default!;
+    async void Vibrate()
+    {
+        try { await JS.InvokeVoidAsync("navigator.vibrate", (object)new[] { 120, 60, 120 }); } catch { /* not supported */ }
+    }
+
+    async Task Toggle()
+    {
+        if (Metro.IsRunning) await Metro.StopAsync();
+        else { _dismissed = false; await Metro.StartTimerAsync(); }
+    }
+
+    Task Apply() => Metro.ApplyAsync();
+
+    async Task Preset(double work, double rest, int rounds)
+    {
+        var iv = Metro.Settings.Interval;
+        iv.WorkMin = work; iv.RestMin = rest; iv.Rounds = rounds; iv.Enabled = true;
+        await Metro.ApplyAsync();
+    }
+
+    void PickItem(string? id) => Nav.NavigateTo(id == null ? "timer/free" : $"timer/item/{id}");
+
+    async Task Log()
+    {
+        var log = Metro.BuildSessionLog();
+        if (await LogDialog.ShowAsync(Dialogs, log, isNew: true))
+        {
+            Metro.ResetSession();
+            _dismissed = true;
+            Snackbar.Add("Session logged", Severity.Success);
+        }
+    }
+
+    void Discard() { Metro.ResetSession(); _dismissed = true; }
+
+    public void Dispose() => Metro.Changed -= OnChanged;
+}
