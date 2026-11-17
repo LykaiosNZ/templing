@@ -1,0 +1,128 @@
+@page "/library"
+@implements IDisposable
+@inject DataStore Store
+@inject IDialogService Dialogs
+@inject NavigationManager Nav
+@inject Shortcuts Keys
+
+<PageTitle>Library · Songler</PageTitle>
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title" tabindex="-1">Library</h1>
+        <MudText Typo="Typo.body2" Class="muted">@_rows.Count of @Store.Items.Count(i => _showArchived || !i.Archived) songs, exercises &amp; riffs</MudText>
+    </div>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.Add" OnClick="Add">Add item</MudButton>
+</div>
+
+<div class="toolbar">
+    <MudTextField @bind-Value="_search" @bind-Value:after="Refresh" Placeholder="Search (/)" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.Search"
+                  Immediate="true" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="search-box" InputId="library-search" aria-label="Search library" />
+    <MudChipSet T="string" @bind-SelectedValue="_type" @bind-SelectedValue:after="Refresh" SelectionMode="SelectionMode.SingleSelection" CheckMark="false" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" aria-label="Filter by type">
+        <MudChip T="string" Value="@("all")" Default="true">All</MudChip>
+        @foreach (var t in Enum.GetValues<ItemType>().Where(t => Store.Items.Any(i => i.Type == t)))
+        {
+            <MudChip T="string" Value="@t.ToString()" Icon="@t.Icon()">@t.Label()</MudChip>
+        }
+    </MudChipSet>
+    <MudSpacer />
+    <MudSelect T="string" @bind-Value="_sort" @bind-Value:after="Refresh" Label="Sort" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width:200px" Dense="true">
+        <MudSelectItem T="string" Value="@("recent")">Recently practised</MudSelectItem>
+        <MudSelectItem T="string" Value="@("name")">Name</MudSelectItem>
+        <MudSelectItem T="string" Value="@("progress")">Progress</MudSelectItem>
+        <MudSelectItem T="string" Value="@("time")">Total time</MudSelectItem>
+    </MudSelect>
+    <MudSwitch T="bool" @bind-Value="_showArchived" @bind-Value:after="Refresh" Label="Archived" Color="Color.Primary" />
+</div>
+
+@if (Store.Items.Count == 0)
+{
+    <div class="empty-state">
+        <MudIcon Icon="@Icons.Material.Rounded.LibraryMusic" Style="font-size:3rem" />
+        <MudText Typo="Typo.h6">Your library is empty</MudText>
+        <MudText Class="muted">Add songs, exercises and riffs, or import your spreadsheet in <a href="settings">Settings &amp; data</a>.</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Add" Class="mt-2">Add your first item</MudButton>
+    </div>
+}
+else
+{
+    <div class="item-grid" role="list">
+        @foreach (var (item, st) in _rows)
+        {
+            <article class="item-card @(item.Archived ? "archived" : "")" role="listitem">
+                <a class="item-card-link" href="library/@item.Id" aria-label="@($"{item.Name} details")">
+                    <div class="item-card-top">
+                        <span class="type-pill type-@item.Type"><MudIcon Icon="@item.Type.Icon()" Size="Size.Small" />@item.Type.Label()</span>
+                        <span class="muted small">@Stats.Ago(st.LastDate, DateTime.Today)</span>
+                    </div>
+                    <h2 class="item-name">@item.Name</h2>
+                    <div class="item-tempo">
+                        <span class="big">@(st.Last?.ToString("0") ?? "—")</span><span class="muted">@(st.Last.HasValue ? item.Unit.Suffix() : "")</span>
+                        @if (item.Goal is { } g)
+                        {
+                            <span class="muted"> / @g.ToString("0")@item.Unit.Suffix()</span>
+                        }
+                    </div>
+                    <div class="progress-track" role="progressbar" aria-valuenow="@((int)((st.Progress ?? 0) * 100))" aria-valuemin="0" aria-valuemax="100" aria-label="Progress to goal">
+                        <div class="progress-fill @(st.Progress >= 1 ? "done" : "")" style="width:@(Math.Min(100, (st.Progress ?? 0) * 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                    </div>
+                    <div class="item-meta">
+                        <span>@(st.Progress is { } p ? $"{p:P0}" : "No goal")</span>
+                        <span>@st.DaysPracticed days · @Stats.Duration(st.TotalSec, true)</span>
+                    </div>
+                </a>
+                <div class="item-card-actions">
+                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.PlayArrow" Href="@($"metronome/item/{item.Id}")" aria-label="@($"Practise {item.Name}")">Practise</MudButton>
+                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.AddTask" aria-label="@($"Log practice for {item.Name}")" OnClick="() => Log(item)" />
+                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit {item.Name}")" OnClick="() => Edit(item)" />
+                </div>
+            </article>
+        }
+    </div>
+}
+
+@code {
+    string? _search;
+    string? _type = "all";
+    string _sort = "recent";
+    bool _showArchived;
+    List<(PracticeItem item, ItemStats st)> _rows = new();
+    IDisposable? _keys;
+
+    protected override void OnInitialized()
+    {
+        Store.Changed += OnStoreChanged;
+        _keys = Keys.Register(this, "/", () => Keys.FocusAsync("#library-search").AsTask());
+        Refresh();
+    }
+
+    void OnStoreChanged() { Refresh(); InvokeAsync(StateHasChanged); }
+
+    void Refresh()
+    {
+        var q = Store.Items.Where(i => _showArchived || !i.Archived);
+        if (!string.IsNullOrWhiteSpace(_search)) q = q.Where(i => i.Name.Contains(_search, StringComparison.OrdinalIgnoreCase));
+        if (_type is { } t && t != "all") q = q.Where(i => i.Type.ToString() == t);
+        var rows = q.Select(i => (i, Stats.ForItem(i, Store.Logs)));
+        _rows = (_sort switch
+        {
+            "name" => rows.OrderBy(r => r.Item1.Name),
+            "progress" => rows.OrderByDescending(r => r.Item2.Progress ?? -1),
+            "time" => rows.OrderByDescending(r => r.Item2.TotalSec),
+            _ => rows.OrderByDescending(r => r.Item2.LastDate ?? DateTime.MinValue).ThenBy(r => r.Item1.Name)
+        }).ToList();
+    }
+
+    async Task Add()
+    {
+        var item = await ItemDialog.ShowAsync(Dialogs);
+        if (item != null) Nav.NavigateTo($"library/{item.Id}");
+    }
+
+    async Task Edit(PracticeItem item) => await ItemDialog.ShowAsync(Dialogs, item);
+
+    async Task Log(PracticeItem item) =>
+        await LogDialog.ShowAsync(Dialogs, new PracticeLog { ItemId = item.Id, ItemName = item.Name, Unit = item.Unit }, true);
+
+    public void Dispose() { Store.Changed -= OnStoreChanged; _keys?.Dispose(); }
+}

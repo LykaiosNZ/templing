@@ -1,0 +1,18 @@
+<div class="stat-tile">
+    <div class="stat-label">
+        @if (Icon != null) { <MudIcon Icon="@Icon" Size="Size.Small" aria-hidden="true" /> }
+        <span>@Label</span>
+    </div>
+    <div class="stat-value">@Value@if (Unit != null) { <span class="stat-unit">@Unit</span> }</div>
+    @if (Sub != null) { <div class="stat-sub">@Sub</div> }
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public string? Unit { get; set; }
+    [Parameter] public string? Sub { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

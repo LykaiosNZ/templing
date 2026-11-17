@@ -1,0 +1,115 @@
+@inject DataStore Store
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(IsNew ? "Log practice" : "Edit log entry")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" Class="d-flex flex-column gap-3">
+            <MudDatePicker Label="Date" @bind-Date="_date" DateFormat="ddd d MMM yyyy" Editable="true" MaxDate="DateTime.Today" />
+            <MudSelect T="string" Label="Item" @bind-Value="_itemId" @bind-Value:after="OnItemChanged" AnchorOrigin="Origin.BottomCenter" Clearable="true"
+                       HelperText="Leave empty for free practice">
+                @foreach (var i in Store.Items.Where(i => !i.Archived || i.Id == _itemId))
+                {
+                    <MudSelectItem T="string" Value="@i.Id">@i.Name</MudSelectItem>
+                }
+            </MudSelect>
+            @if (_item == null)
+            {
+                <MudTextField @bind-Value="_name" Label="What did you practise?" />
+            }
+            else if (_item.Sections.Count > 1)
+            {
+                <MudSelect T="string" Label="Section" @bind-Value="_sectionId" Clearable="true" HelperText="Empty = whole piece">
+                    @foreach (var s in _item.Sections)
+                    {
+                        <MudSelectItem T="string" Value="@s.Id">@s.Name (@s.Bpm.ToString("0") bpm, @s.Meter)</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+            <div class="d-flex gap-3">
+                <MudTextField @bind-Value="_tempo" Label="@($"Tempo reached{(_item != null ? $" ({(_item.Unit == TempoUnit.Percent ? "%" : "bpm")})" : "")}")"
+                              HelperText="e.g. 120, 65 - 145 or 85%" Class="flex-1" Immediate="true" AutoFocus="true" />
+                <MudNumericField T="double?" @bind-Value="_minutes" Label="Active minutes" HelperText="Excluding rests" Min="0" Step="1" Class="flex-1" />
+            </div>
+            <MudTextField @bind-Value="_notes" Label="Notes" Lines="2" Sizing="InputSizing.Auto" MaxLines="6" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        @if (!IsNew)
+        {
+            <MudButton Color="Color.Error" OnClick="Delete" StartIcon="@Icons.Material.Rounded.Delete">Delete</MudButton>
+            <MudSpacer />
+        }
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save" Disabled="@(_item == null && string.IsNullOrWhiteSpace(_name))">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public PracticeLog Log { get; set; } = new();
+    [Parameter] public bool IsNew { get; set; }
+
+    MudForm? _form;
+    DateTime? _date;
+    string? _itemId, _sectionId, _name, _tempo, _notes;
+    double? _minutes;
+    PracticeItem? _item;
+
+    public static async Task<bool> ShowAsync(IDialogService dialogs, PracticeLog log, bool isNew)
+    {
+        var p = new DialogParameters<LogDialog> { { x => x.Log, log }, { x => x.IsNew, isNew } };
+        var r = await dialogs.ShowAsync<LogDialog>(isNew ? "Log practice" : "Edit entry", p,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
+        var res = await r.Result;
+        return res is { Canceled: false };
+    }
+
+    protected override void OnInitialized()
+    {
+        _date = Log.Date;
+        _itemId = Log.ItemId;
+        _item = Store.GetItem(_itemId);
+        _sectionId = Log.SectionId;
+        _name = Log.ItemName;
+        _notes = Log.Notes;
+        _minutes = Log.DurationSec is { } s ? Math.Round(s / 60.0, 1) : null;
+        if (Log.Value is { } v)
+        {
+            var suf = Log.Unit == TempoUnit.Percent ? "%" : "";
+            _tempo = Log.ValueMin is { } mn && mn != v ? $"{mn:0} - {v:0}{suf}" : $"{v:0}{suf}";
+        }
+    }
+
+    void OnItemChanged()
+    {
+        _item = Store.GetItem(_itemId);
+        _sectionId = null;
+        if (_item != null) _name = _item.Name;
+    }
+
+    async Task Save()
+    {
+        var (min, max, unit) = CsvImport.ParseSpeed(_tempo);
+        if (_item != null && !(_tempo ?? "").Contains('%') && !(_tempo ?? "").Contains("bpm", StringComparison.OrdinalIgnoreCase))
+            unit = _item.Unit;
+        Log.Date = (_date ?? DateTime.Today).Date;
+        Log.ItemId = _item?.Id;
+        Log.ItemName = _item?.Name ?? _name?.Trim() ?? "Practice";
+        Log.SectionId = _item != null ? _sectionId : null;
+        Log.Unit = unit;
+        Log.Value = max;
+        Log.ValueMin = min;
+        Log.DurationSec = _minutes is { } m ? (int)Math.Round(m * 60) : null;
+        Log.Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim();
+        await Store.SaveLogAsync(Log);
+        Dialog.Close(DialogResult.Ok(Log));
+    }
+
+    async Task Delete()
+    {
+        await Store.DeleteLogAsync(Log);
+        Dialog.Close(DialogResult.Ok(Log));
+    }
+}

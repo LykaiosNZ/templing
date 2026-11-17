@@ -1,0 +1,77 @@
+@inject DataStore Store
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(IsNew ? "Add to library" : $"Edit {Item.Name}")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <div class="d-flex flex-column gap-4">
+            <div class="d-flex flex-wrap gap-3">
+                <MudTextField @bind-Value="_m.Name" Label="Name" Required="true" AutoFocus="true" Class="flex-grow-1" Style="min-width:240px" Immediate="true" />
+                <MudSelect T="ItemType" @bind-Value="_m.Type" Label="Type" Style="max-width:180px">
+                    @foreach (var t in Enum.GetValues<ItemType>()) { <MudSelectItem T="ItemType" Value="t">@t.Label()</MudSelectItem> }
+                </MudSelect>
+            </div>
+            <div>
+                <MudText Typo="Typo.subtitle2" Class="mb-1">Measure progress in</MudText>
+                <MudToggleGroup T="TempoUnit" @bind-Value="_m.Unit" Color="Color.Primary" Size="Size.Small" Outlined="true" CheckMark="true" Style="max-width:380px">
+                    <MudToggleItem Value="TempoUnit.Bpm" Text="BPM" />
+                    <MudToggleItem Value="TempoUnit.Percent" Text="% of song tempo" />
+                </MudToggleGroup>
+                <MudText Typo="Typo.caption" Class="muted d-block mt-1">
+                    @(_m.Unit == TempoUnit.Percent
+                        ? "Great for songs: section tempos are the real song tempos and you work up to 100%."
+                        : "Great for exercises: track the metronome BPM directly.")
+                </MudText>
+            </div>
+            <MudNumericField T="double?" @bind-Value="_m.Goal" Label="@($"Goal ({(_m.Unit == TempoUnit.Percent ? "%" : "bpm")})")" Min="1" Max="400" Style="max-width:220px" />
+            <div>
+                <MudText Typo="Typo.subtitle2">Sections &amp; tempo map</MudText>
+                <MudText Typo="Typo.caption" Class="muted d-block mb-2">
+                    Each section has its own tempo and time signature. Set <em>Bars</em> to play the sections through in order (e.g. intro 8 bars, verse 16 bars).
+                </MudText>
+                <SectionsEditor Sections="_m.Sections" BpmLabel="@(_m.Unit == TempoUnit.Percent ? "Song BPM" : "BPM")" OnChanged="StateHasChanged" />
+            </div>
+            <MudTextField @bind-Value="_m.Link" Label="Link (tab, video, backing track)" />
+            <MudTextField @bind-Value="_m.Notes" Label="Notes" Lines="2" Sizing="InputSizing.Auto" MaxLines="8" />
+            @if (!IsNew)
+            {
+                <MudSwitch T="bool" @bind-Value="_m.Archived" Color="Color.Primary" Label="Archived (hidden from library)" />
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="string.IsNullOrWhiteSpace(_m.Name)" OnClick="Save">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public PracticeItem Item { get; set; } = new();
+    [Parameter] public bool IsNew { get; set; }
+    PracticeItem _m = new();
+
+    public static async Task<PracticeItem?> ShowAsync(IDialogService dialogs, PracticeItem? item = null)
+    {
+        var p = new DialogParameters<ItemDialog> { { x => x.Item, item ?? new PracticeItem() }, { x => x.IsNew, item == null } };
+        var r = await dialogs.ShowAsync<ItemDialog>(item == null ? "Add item" : "Edit item", p,
+            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true });
+        var res = await r.Result;
+        return res is { Canceled: false } ? res.Data as PracticeItem : null;
+    }
+
+    protected override void OnInitialized()
+    {
+        // edit a copy so Cancel discards changes
+        _m = System.Text.Json.JsonSerializer.Deserialize<PracticeItem>(System.Text.Json.JsonSerializer.Serialize(Item, DataStore.Json), DataStore.Json)!;
+    }
+
+    async Task Save()
+    {
+        _m.Name = _m.Name.Trim();
+        if (_m.Sections.Count == 0) _m.Sections.Add(new Section());
+        await Store.SaveItemAsync(_m);
+        Dialog.Close(DialogResult.Ok(_m));
+    }
+}

@@ -1,0 +1,139 @@
+@page "/settings"
+@inject DataStore Store
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<PageTitle>Settings · Songler</PageTitle>
+
+<div class="page-head">
+    <h1 class="page-title" tabindex="-1">Settings &amp; data</h1>
+</div>
+
+<MudGrid Spacing="4">
+    <MudItem xs="12" lg="6">
+        <section class="card">
+            <h2 class="card-title">Import from Google Sheets (CSV)</h2>
+            <MudText Typo="Typo.body2" Class="muted mb-3">
+                Import your <strong>Pieces</strong> sheet first (sets types and goals), then your <strong>Practice Log</strong> sheet.
+                Tempos like <code>65 - 145</code> are stored as ranges and <code>85%</code> as percent. Re-importing skips entries that already exist.
+            </MudText>
+            <label class="file-drop" for="csv-input">
+                <MudIcon Icon="@Icons.Material.Rounded.UploadFile" />
+                <span>Choose CSV file(s)…</span>
+                <InputFile id="csv-input" OnChange="ImportCsv" multiple accept=".csv,text/csv" class="file-input" />
+            </label>
+            @if (_report.Count > 0)
+            {
+                <ul class="import-report">
+                    @foreach (var r in _report) { <li>@r</li> }
+                </ul>
+            }
+        </section>
+
+        <section class="card mt-4">
+            <h2 class="card-title">Backup</h2>
+            <MudText Typo="Typo.body2" Class="muted mb-3">Everything is stored locally in this browser (IndexedDB). Export a backup regularly, or to move to another device.</MudText>
+            <div class="d-flex gap-2 flex-wrap">
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Download" OnClick="ExportJson">Export backup (JSON)</MudButton>
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.TableView" OnClick="ExportCsv">Export log (CSV)</MudButton>
+            </div>
+            <label class="file-drop mt-3" for="json-input">
+                <MudIcon Icon="@Icons.Material.Rounded.Restore" />
+                <span>Restore from backup (JSON)…</span>
+                <InputFile id="json-input" OnChange="ImportJson" accept=".json,application/json" class="file-input" />
+            </label>
+        </section>
+    </MudItem>
+
+    <MudItem xs="12" lg="6">
+        <section class="card">
+            <h2 class="card-title">Goals</h2>
+            <MudNumericField T="int" @bind-Value="Store.Settings.WeeklyGoalMin" @bind-Value:after="Save" Label="Weekly practice goal (minutes)" Min="0" Max="5000" Style="max-width:260px" />
+        </section>
+
+        <section class="card mt-4">
+            <h2 class="card-title">About time tracking</h2>
+            <MudText Typo="Typo.body2" Class="muted">
+                The metronome counts <em>active</em> time only: while the click is playing in a work phase. Count-ins, rests between intervals and paused time are not counted,
+                so a 5 · 1 · 5 interval session logs 10 minutes, matching how you've been logging. When you're done, press <kbd>L</kbd> (or <em>Log session</em>) to save it with the
+                tempo range you played. You can always log or edit entries manually.
+            </MudText>
+        </section>
+
+        <section class="card mt-4 danger">
+            <h2 class="card-title">Danger zone</h2>
+            <MudText Typo="Typo.body2" Class="muted mb-3">@Store.Items.Count items · @Store.Logs.Count log entries · @Store.Presets.Count custom metronomes</MudText>
+            <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Rounded.DeleteForever" OnClick="ClearAll">Delete all data</MudButton>
+        </section>
+    </MudItem>
+</MudGrid>
+
+@code {
+    List<string> _report = new();
+
+    record Backup(int Version, List<PracticeItem> Items, List<PracticeLog> Logs, List<MetronomePreset> Presets, AppSettings? Settings);
+
+    Task Save() => Store.SaveSettingsAsync();
+
+    async Task ImportCsv(InputFileChangeEventArgs e)
+    {
+        _report.Clear();
+        // import pieces before logs regardless of selection order
+        var files = new List<(string name, string text)>();
+        foreach (var f in e.GetMultipleFiles(5))
+        {
+            using var reader = new StreamReader(f.OpenReadStream(5_000_000));
+            files.Add((f.Name, await reader.ReadToEndAsync()));
+        }
+        foreach (var (name, text) in files.OrderBy(f => CsvImport.LooksLikePieces(CsvImport.Parse(f.text).FirstOrDefault() ?? []) ? 0 : 1))
+        {
+            try
+            {
+                var r = CsvImport.Import(text, Store);
+                await Store.ImportAsync(r.NewItems.Concat(r.UpdatedItems), r.Logs);
+                _report.Add($"{name}: {r.NewItems.Count} new items, {r.UpdatedItems.Count} updated, {r.Logs.Count} log entries" + (r.Skipped > 0 ? $", {r.Skipped} skipped (duplicates/invalid)" : ""));
+            }
+            catch (Exception ex)
+            {
+                _report.Add($"{name}: {ex.Message}");
+            }
+        }
+        Snackbar.Add("Import finished", Severity.Success);
+    }
+
+    async Task ExportJson()
+    {
+        var b = new Backup(1, Store.Items, Store.Logs, Store.Presets, Store.Settings);
+        var json = System.Text.Json.JsonSerializer.Serialize(b, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        await Store.DownloadAsync($"songler-backup-{DateTime.Today:yyyy-MM-dd}.json", json, "application/json");
+    }
+
+    async Task ExportCsv() =>
+        await Store.DownloadAsync($"songler-log-{DateTime.Today:yyyy-MM-dd}.csv", CsvImport.ExportLogCsv(Store), "text/csv");
+
+    async Task ImportJson(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            using var reader = new StreamReader(e.File.OpenReadStream(20_000_000));
+            var b = System.Text.Json.JsonSerializer.Deserialize<Backup>(await reader.ReadToEndAsync());
+            if (b == null) throw new FormatException("Empty backup");
+            await Store.ImportAsync(b.Items ?? [], b.Logs ?? [], b.Presets ?? []);
+            Snackbar.Add($"Restored {b.Items?.Count} items and {b.Logs?.Count} log entries", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Restore failed: {ex.Message}", Severity.Error);
+        }
+    }
+
+    async Task ClearAll()
+    {
+        var ok = await Dialogs.ShowMessageBoxAsync("Delete all data?",
+            "This permanently removes every item, log entry and custom metronome from this browser. Export a backup first if you might want it back.",
+            "Delete everything", cancelText: "Cancel");
+        if (ok != true) return;
+        await Store.ClearAllAsync();
+        Snackbar.Add("All data deleted", Severity.Info);
+    }
+}

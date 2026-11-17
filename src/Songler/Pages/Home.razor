@@ -1,0 +1,146 @@
+﻿@page "/"
+@implements IDisposable
+@inject DataStore Store
+@inject IDialogService Dialogs
+
+<PageTitle>Dashboard · Songler</PageTitle>
+
+<div class="page-head">
+    <div>
+        <MudText Typo="Typo.overline" Class="muted">@DateTime.Today.ToString("dddd d MMMM")</MudText>
+        <h1 class="page-title" tabindex="-1">@Greeting</h1>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.Timer" Href="metronome">Open metronome</MudButton>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.AddTask" OnClick="QuickLog">Log practice</MudButton>
+    </div>
+</div>
+
+@if (Store.Logs.Count == 0)
+{
+    <div class="empty-state">
+        <MudIcon Icon="@Icons.Material.Rounded.Insights" Style="font-size:3rem" />
+        <MudText Typo="Typo.h6">No practice logged yet</MudText>
+        <MudText Class="muted">Start the metronome and log your session, or import your existing spreadsheet in <a href="settings">Settings &amp; data</a>.</MudText>
+    </div>
+}
+else
+{
+    <div class="tiles">
+        <StatTile Label="This week" Value="@Stats.Duration(_weekSec)" Icon="@Icons.Material.Rounded.DateRange" Sub="@($"Goal {Stats.Duration(Store.Settings.WeeklyGoalMin * 60)}")">
+            <div class="progress-track mt-2" role="progressbar" aria-label="Weekly goal" aria-valuenow="@((int)(_weekPct * 100))" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-fill @(_weekPct >= 1 ? "done" : "")" style="width:@Pct(_weekPct)%"></div>
+            </div>
+        </StatTile>
+        <StatTile Label="Current streak" Value="@_streak.current.ToString()" Unit="@(_streak.current == 1 ? " day" : " days")" Icon="@Icons.Material.Rounded.LocalFireDepartment"
+                  Sub="@($"Longest {_streak.longest} days")" />
+        <StatTile Label="Days practised" Value="@_days.ToString()" Icon="@Icons.Material.Rounded.CalendarMonth" Sub="@($"{_last30} of the last 30")" />
+        <StatTile Label="Total logged" Value="@Stats.Duration(_totalSec)" Icon="@Icons.Material.Rounded.Timer" Sub="@($"{Store.Logs.Count} entries")" />
+    </div>
+
+    <MudGrid Spacing="4" Class="mt-1">
+        <MudItem xs="12" lg="8">
+            <section class="card">
+                <div class="card-head">
+                    <h2 class="card-title">Practice calendar</h2>
+                    <a href="stats" class="small">All stats →</a>
+                </div>
+                <Heatmap SecondsByDay="_byDay" Practiced="_practiced" Weeks="26" />
+            </section>
+            <section class="card mt-4">
+                <h2 class="card-title">Weekly practice time</h2>
+                <BarChart Labels="_weekLabels" TipLabels="_weekTips" Values="_weekValues" ValueFormat="@(v => Stats.Duration((int)(v * 60)))" AxisFormat="@(v => $"{v:0}m")"
+                          HighlightLast="true" Target="Store.Settings.WeeklyGoalMin" TargetLabel="Weekly goal" LabelEvery="2" AriaLabel="Minutes practised per week, last 16 weeks" />
+            </section>
+        </MudItem>
+        <MudItem xs="12" lg="4">
+            <section class="card">
+                <div class="card-head">
+                    <h2 class="card-title">Goals in progress</h2>
+                    <a href="library" class="small">Library →</a>
+                </div>
+                <ul class="goal-list">
+                    @foreach (var (item, st) in _goals)
+                    {
+                        <li>
+                            <a href="library/@item.Id" class="goal-row">
+                                <div class="goal-top">
+                                    <span class="goal-name">@item.Name</span>
+                                    <span class="mono small">@(st.Last?.ToString("0"))/@item.Goal?.ToString("0")@item.Unit.Suffix()</span>
+                                </div>
+                                <div class="progress-track"><div class="progress-fill @(st.Progress >= 1 ? "done" : "")" style="width:@Pct(st.Progress)%"></div></div>
+                            </a>
+                        </li>
+                    }
+                </ul>
+            </section>
+            <section class="card mt-4">
+                <div class="card-head">
+                    <h2 class="card-title">Recent sessions</h2>
+                    <a href="history" class="small">History →</a>
+                </div>
+                <ul class="recent-list">
+                    @foreach (var day in _recent)
+                    {
+                        <li>
+                            <div class="recent-day">@Stats.Ago(day.Key, DateTime.Today) <span class="muted">· @Stats.Duration(day.Sum(l => l.DurationSec ?? 0))</span></div>
+                            <div class="recent-items">
+                                @foreach (var l in day)
+                                {
+                                    <span class="recent-chip">@l.ItemName <span class="mono">@l.ValueText</span></span>
+                                }
+                            </div>
+                        </li>
+                    }
+                </ul>
+            </section>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    int _weekSec, _totalSec, _days, _last30;
+    double _weekPct;
+    (int current, int longest) _streak;
+    Dictionary<DateTime, int> _byDay = new();
+    HashSet<DateTime> _practiced = new();
+    List<string> _weekLabels = new(), _weekTips = new();
+    List<double> _weekValues = new();
+    List<(PracticeItem, ItemStats)> _goals = new();
+    List<IGrouping<DateTime, PracticeLog>> _recent = new();
+
+    string Greeting => DateTime.Now.Hour switch { < 12 => "Good morning", < 18 => "Good afternoon", _ => "Good evening" };
+    static string Pct(double? p) => Math.Min(100, (p ?? 0) * 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+
+    protected override void OnInitialized() { Store.Changed += OnChanged; Refresh(); }
+    void OnChanged() { Refresh(); InvokeAsync(StateHasChanged); }
+
+    void Refresh()
+    {
+        var today = DateTime.Today;
+        var logs = Store.Logs;
+        _byDay = Stats.SecondsByDay(logs);
+        _practiced = Stats.DaysPracticed(logs);
+        var ws = Stats.WeekStart(today);
+        _weekSec = logs.Where(l => l.Date >= ws).Sum(l => l.DurationSec ?? 0);
+        _weekPct = Store.Settings.WeeklyGoalMin > 0 ? _weekSec / 60.0 / Store.Settings.WeeklyGoalMin : 0;
+        _totalSec = logs.Sum(l => l.DurationSec ?? 0);
+        _days = _practiced.Count;
+        _last30 = _practiced.Count(d => d > today.AddDays(-30));
+        _streak = Stats.Streaks(logs, today);
+        var weeks = Stats.WeeklySeconds(logs, today, 16);
+        _weekLabels = weeks.Select(w => w.week.ToString("d MMM")).ToList();
+        _weekTips = weeks.Select(w => $"Week of {w.week:d MMM}").ToList();
+        _weekValues = weeks.Select(w => w.sec / 60.0).ToList();
+        _goals = Store.Items.Where(i => !i.Archived && i.Goal.HasValue)
+            .Select(i => (i, Stats.ForItem(i, logs)))
+            .Where(x => x.Item2.LastDate >= today.AddDays(-30))
+            .OrderByDescending(x => x.Item2.LastDate)
+            .Take(8).ToList();
+        _recent = logs.Where(l => l.Date >= today.AddDays(-14)).OrderByDescending(l => l.Date).GroupBy(l => l.Date.Date).Take(5).ToList();
+    }
+
+    async Task QuickLog() => await LogDialog.ShowAsync(Dialogs, new PracticeLog(), true);
+
+    public void Dispose() => Store.Changed -= OnChanged;
+}

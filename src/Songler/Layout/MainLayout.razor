@@ -1,0 +1,173 @@
+﻿@inherits LayoutComponentBase
+@implements IDisposable
+@inject DataStore Store
+@inject MetronomeService Metro
+@inject Shortcuts Keys
+@inject NavigationManager Nav
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<MudThemeProvider Theme="@AppTheme.Theme" IsDarkMode="@_dark" />
+<MudPopoverProvider />
+<MudDialogProvider CloseOnEscapeKey="true" BackdropClick="true" />
+<MudSnackbarProvider />
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<MudLayout Class="@(_dark ? "theme-dark" : "theme-light")">
+    <MudAppBar Elevation="0" Dense="false" Class="app-bar">
+        <MudIconButton Icon="@Icons.Material.Rounded.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                       aria-label="Toggle navigation" OnClick="@(() => _drawer = !_drawer)" />
+        <a href="" class="brand" aria-label="Songler home">
+            <span class="brand-mark" aria-hidden="true">♪</span>
+            <span class="brand-name">Songler</span>
+        </a>
+        <MudSpacer />
+        <MiniPlayer />
+        <MudTooltip Text="Log practice (N)">
+            <MudIconButton Icon="@Icons.Material.Rounded.AddTask" Color="Color.Inherit" aria-label="Log practice" OnClick="QuickLog" />
+        </MudTooltip>
+        <MudTooltip Text="Keyboard shortcuts (?)">
+            <MudIconButton Icon="@Icons.Material.Rounded.Keyboard" Color="Color.Inherit" aria-label="Keyboard shortcuts" OnClick="ShowShortcuts" />
+        </MudTooltip>
+        <MudTooltip Text="@(_dark ? "Light mode" : "Dark mode")">
+            <MudIconButton Icon="@(_dark ? Icons.Material.Rounded.LightMode : Icons.Material.Rounded.DarkMode)" Color="Color.Inherit"
+                           aria-label="Toggle dark mode" OnClick="ToggleDark" />
+        </MudTooltip>
+    </MudAppBar>
+    <MudDrawer @bind-Open="_drawer" ClipMode="DrawerClipMode.Always" Elevation="0" Variant="DrawerVariant.Responsive" Class="app-drawer">
+        <MudNavMenu Rounded="true" Margin="Margin.Dense" Color="Color.Primary" Class="pa-2" aria-label="Main">
+            <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Rounded.SpaceDashboard">Dashboard</MudNavLink>
+            <MudNavLink Href="library" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.LibraryMusic">Library</MudNavLink>
+            <MudNavLink Href="metronome" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.Timer">Metronome</MudNavLink>
+            <MudNavLink Href="history" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.History">History</MudNavLink>
+            <MudNavLink Href="stats" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.Insights">Stats</MudNavLink>
+            <MudDivider Class="my-2" />
+            <MudNavLink Href="settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.Settings">Settings &amp; data</MudNavLink>
+        </MudNavMenu>
+        <div class="drawer-foot">
+            <MudText Typo="Typo.caption" Class="muted">Press <kbd>?</kbd> for shortcuts</MudText>
+        </div>
+    </MudDrawer>
+    <MudMainContent>
+        <main id="main" tabindex="-1">
+            @if (!_ready)
+            {
+                <div class="d-flex justify-center pa-16"><MudProgressCircular Indeterminate="true" Color="Color.Primary" /></div>
+            }
+            else
+            {
+                <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-6 px-4 px-md-8">
+                    @Body
+                </MudContainer>
+            }
+        </main>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _drawer = true;
+    private bool _dark = true;
+    private bool _ready;
+    private readonly List<IDisposable> _keys = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Store.EnsureLoadedAsync();
+        _dark = Store.Settings.DarkMode;
+        await Keys.InitAsync();
+        await Metro.InitAsync();
+        Metro.Finished += OnFinished;
+        RegisterGlobalKeys();
+        _ready = true;
+    }
+
+    private void RegisterGlobalKeys()
+    {
+        void Go(string combo, string url) => _keys.Add(Keys.Register(this, combo, () => Nav.NavigateTo(url)));
+        Go("g d", ""); Go("g l", "library"); Go("g m", "metronome"); Go("g h", "history"); Go("g s", "stats"); Go("g ,", "settings");
+        _keys.Add(Keys.Register(this, "?", ShowShortcuts));
+        _keys.Add(Keys.Register(this, "n", QuickLog));
+        _keys.Add(Keys.Register(this, "Space", () => Metro.ToggleAsync()));
+        _keys.Add(Keys.Register(this, "Escape", () => Metro.StopAsync()));
+        _keys.Add(Keys.Register(this, "r", () => Metro.RestartSectionAsync()));
+        _keys.Add(Keys.Register(this, "ArrowUp", () => Metro.NudgeAsync(1)));
+        _keys.Add(Keys.Register(this, new[] { "+", "=" }, () => Metro.NudgeAsync(1)));
+        _keys.Add(Keys.Register(this, "ArrowDown", () => Metro.NudgeAsync(-1)));
+        _keys.Add(Keys.Register(this, "-", () => Metro.NudgeAsync(-1)));
+        _keys.Add(Keys.Register(this, "Shift+ArrowUp", () => Metro.NudgeAsync(5)));
+        _keys.Add(Keys.Register(this, "Shift+ArrowDown", () => Metro.NudgeAsync(-5)));
+        _keys.Add(Keys.Register(this, new[] { "ArrowRight", "]" }, () => Metro.NextStepAsync()));
+        _keys.Add(Keys.Register(this, new[] { "ArrowLeft", "[" }, () => Metro.PrevStepAsync()));
+        _keys.Add(Keys.Register(this, "t", () => Metro.TapAsync()));
+        _keys.Add(Keys.Register(this, "c", async () =>
+        {
+            Metro.Settings.CountIn = !Metro.Settings.CountIn;
+            await Metro.ApplyAsync();
+            Snackbar.Add($"Count-in {(Metro.Settings.CountIn ? "on" : "off")}", Severity.Normal);
+        }));
+        _keys.Add(Keys.Register(this, "x", async () =>
+        {
+            Metro.Settings.Training.Enabled = !Metro.Settings.Training.Enabled;
+            await Metro.ApplyAsync();
+            Snackbar.Add($"Speed trainer {(Metro.Settings.Training.Enabled ? "on" : "off")}", Severity.Normal);
+        }));
+        _keys.Add(Keys.Register(this, "i", async () =>
+        {
+            Metro.Settings.Interval.Enabled = !Metro.Settings.Interval.Enabled;
+            await Metro.ApplyAsync();
+            Snackbar.Add($"Interval trainer {(Metro.Settings.Interval.Enabled ? "on" : "off")}", Severity.Normal);
+        }));
+        _keys.Add(Keys.Register(this, "l", LogMetronomeSession));
+    }
+
+    private async void OnFinished(string reason)
+    {
+        await InvokeAsync(() =>
+        {
+            var msg = reason switch
+            {
+                "interval" => "Interval session complete — nice work!",
+                "training" => "Speed trainer reached its target tempo.",
+                _ => "Finished."
+            };
+            Snackbar.Add(msg, Severity.Success, o =>
+            {
+                o.Action = "Log it";
+                o.ActionColor = Color.Primary;
+                o.OnClick = _ => LogMetronomeSession();
+            });
+        });
+    }
+
+    private async Task LogMetronomeSession()
+    {
+        await Metro.StopAsync();
+        var log = Metro.BuildSessionLog();
+        var saved = await LogDialog.ShowAsync(Dialogs, log, isNew: true);
+        if (saved) { Metro.ResetSession(); Snackbar.Add("Session logged", Severity.Success); }
+    }
+
+    private async Task QuickLog()
+    {
+        var log = new PracticeLog { Date = DateTime.Today };
+        if (Metro.Source == MetronomeSource.Item && Metro.Item != null) { log = Metro.BuildSessionLog(); }
+        if (await LogDialog.ShowAsync(Dialogs, log, isNew: true)) Snackbar.Add("Practice logged", Severity.Success);
+    }
+
+    private async Task ShowShortcuts() =>
+        await Dialogs.ShowAsync<ShortcutsDialog>("Keyboard shortcuts", new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
+
+    private async Task ToggleDark()
+    {
+        _dark = !_dark;
+        Store.Settings.DarkMode = _dark;
+        await Store.SaveSettingsAsync();
+    }
+
+    public void Dispose()
+    {
+        Metro.Finished -= OnFinished;
+        Keys.Unregister(this);
+    }
+}

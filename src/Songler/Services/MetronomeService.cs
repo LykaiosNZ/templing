@@ -1,0 +1,349 @@
+using System.Text.Json;
+using Microsoft.JSInterop;
+using Songler.Models;
+
+namespace Songler.Services;
+
+public enum MetronomeSource { Free, Item, Preset }
+
+public class EngineState
+{
+    public bool running { get; set; }
+    public string phase { get; set; } = "stopped";
+    public int step { get; set; }
+    public int bar { get; set; }
+    public double factor { get; set; } = 1;
+    public double active { get; set; }
+    public double? remaining { get; set; }
+    public int round { get; set; } = 1;
+    public int? count { get; set; }
+    public double? trainingProgress { get; set; }
+    public string? finished { get; set; }
+    public string? @event { get; set; }
+    public string? reason { get; set; }
+}
+
+/// <summary>
+/// App-wide metronome. Lives for the whole app so it keeps playing while you browse other pages.
+/// Tempo is held as a factor over each section's reference BPM so tempo maps scale together.
+/// </summary>
+public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
+{
+    private IJSObjectReference? _mod;
+    private DotNetObjectReference<MetronomeService>? _ref;
+    private readonly List<DateTime> _taps = new();
+
+    public MetronomeSource Source { get; private set; } = MetronomeSource.Free;
+    public PracticeItem? Item { get; private set; }
+    public MetronomePreset? Preset { get; private set; }
+    public List<Section> Sections { get; private set; } = new() { new Section { Name = "Click", Bpm = 100 } };
+    public bool PlayThrough { get; set; }
+    public bool Loop { get; set; } = true;
+    public int CurrentStep { get; private set; }
+    public double Factor { get; private set; } = 1;
+    public TempoUnit Unit => Source == MetronomeSource.Item && Item != null ? Item.Unit : TempoUnit.Bpm;
+    public MetronomeSettings Settings => store.Settings.Metronome;
+    public EngineState State { get; private set; } = new();
+    public bool IsRunning => State.running;
+
+    // session tracking (survives multiple start/stop cycles until logged or reset)
+    public double SessionBankedSec { get; private set; }
+    public double SessionActiveSec => SessionBankedSec + (State.running ? State.active : 0);
+    public double? SessionMax { get; private set; }
+    public double? SessionMin { get; private set; }
+    public string? LastFinishReason { get; private set; }
+
+    public event Action? Changed;
+    /// <summary>Raised when an interval / training / play-through run completes on its own.</summary>
+    public event Action<string>? Finished;
+
+    public string Title => Source switch
+    {
+        MetronomeSource.Item => Item?.Name ?? "Item",
+        MetronomeSource.Preset => Preset?.Name ?? "Preset",
+        _ => "Metronome"
+    };
+
+    public Section RefSection => Sections[Math.Clamp(CurrentStep, 0, Sections.Count - 1)];
+    public Section PlayingSection => Sections[Math.Clamp(IsRunning ? State.step : CurrentStep, 0, Sections.Count - 1)];
+
+    /// <summary>The tempo value shown to the user, in <see cref="Unit"/>.</summary>
+    public double Value => ToValue(IsRunning ? State.factor : Factor);
+    public double PlayingBpm => PlayingSection.Bpm * (IsRunning ? State.factor : Factor);
+
+    public double ToValue(double factor) => Unit == TempoUnit.Percent ? Math.Round(factor * 100, 1) : Math.Round(RefSection.Bpm * factor, 1);
+    public double ToFactor(double value) => Unit == TempoUnit.Percent ? value / 100.0 : value / Math.Max(1, RefSection.Bpm);
+    public double Min => Unit == TempoUnit.Percent ? 10 : 20;
+    public double Max => Unit == TempoUnit.Percent ? 200 : 400;
+
+    public async Task InitAsync()
+    {
+        if (_mod != null) return;
+        await store.EnsureLoadedAsync();
+        _mod = await js.InvokeAsync<IJSObjectReference>("import", "./js/metronome.js");
+        _ref = DotNetObjectReference.Create(this);
+        await _mod.InvokeVoidAsync("init", _ref);
+        LoadFreeInternal();
+        await PushConfig();
+    }
+
+    // ------------------------------------------------------------ loading
+    private void LoadFreeInternal()
+    {
+        Source = MetronomeSource.Free; Item = null; Preset = null;
+        Sections = store.Settings.FreeSections.Count > 0 ? store.Settings.FreeSections : [new Section { Name = "Click", Bpm = 100 }];
+        PlayThrough = store.Settings.FreePlayThrough;
+        CurrentStep = 0; Factor = 1;
+    }
+
+    public async Task LoadFreeAsync()
+    {
+        if (Source == MetronomeSource.Free) return;
+        await StopAsync();
+        LoadFreeInternal();
+        ResetSession();
+        await PushConfig();
+    }
+
+    public async Task LoadItemAsync(PracticeItem item, string? sectionId = null)
+    {
+        if (Source == MetronomeSource.Item && Item?.Id == item.Id)
+        {
+            if (sectionId != null) await SetStepAsync(Math.Max(0, Item.Sections.FindIndex(s => s.Id == sectionId)));
+            return;
+        }
+        await StopAsync();
+        Source = MetronomeSource.Item; Item = item; Preset = null;
+        Sections = item.Sections.Count > 0 ? item.Sections.Select(s => s.Clone()).ToList() : [new Section()];
+        PlayThrough = false;
+        CurrentStep = sectionId == null ? 0 : Math.Max(0, Sections.FindIndex(s => s.Id == sectionId));
+        var stats = Stats.ForItem(item, store.Logs);
+        var start = stats.Last ?? (item.Unit == TempoUnit.Percent ? 80 : RefSection.Bpm);
+        Factor = ToFactor(start);
+        var tr = Settings.Training;
+        tr.End = Math.Round(stats.Last ?? item.Goal ?? start);
+        tr.Start = Math.Round(tr.End * 0.85);
+        ResetSession();
+        await PushConfig();
+    }
+
+    public async Task LoadPresetAsync(MetronomePreset p)
+    {
+        await StopAsync();
+        Source = MetronomeSource.Preset; Preset = p; Item = null;
+        Sections = p.Sections.Select(s => s.Clone()).ToList();
+        if (Sections.Count == 0) Sections.Add(new Section());
+        PlayThrough = p.PlayThrough;
+        CurrentStep = 0; Factor = 1;
+        ResetSession();
+        await PushConfig();
+    }
+
+    /// <summary>Copy the current tempo map into a new free/custom metronome.</summary>
+    public MetronomePreset ToPreset(string name) => new() { Name = name, Sections = Sections.Select(s => s.Clone()).ToList(), PlayThrough = PlayThrough };
+
+    // ------------------------------------------------------------ transport
+    public async Task StartAsync()
+    {
+        await PushConfig();
+        LastFinishReason = null;
+        await _mod!.InvokeVoidAsync("start");
+    }
+
+    public async Task StopAsync()
+    {
+        if (_mod != null && IsRunning) await _mod.InvokeVoidAsync("stop");
+    }
+
+    public Task ToggleAsync() => IsRunning ? StopAsync() : StartAsync();
+
+    public async Task RestartSectionAsync()
+    {
+        if (_mod != null) await _mod.InvokeVoidAsync("restartSection");
+    }
+
+    public async Task SetStepAsync(int i)
+    {
+        if (Sections.Count == 0) return;
+        i = (i % Sections.Count + Sections.Count) % Sections.Count;
+        // in BPM mode keep the *displayed* tempo relative to the new reference section's own tempo
+        CurrentStep = i;
+        await PushConfig();
+        if (_mod != null) await _mod.InvokeVoidAsync("setStep", i);
+        Changed?.Invoke();
+    }
+
+    public Task NextStepAsync() => SetStepAsync((IsRunning ? State.step : CurrentStep) + 1);
+    public Task PrevStepAsync() => SetStepAsync((IsRunning ? State.step : CurrentStep) - 1);
+
+    // ------------------------------------------------------------ tempo
+    public async Task SetValueAsync(double value)
+    {
+        value = Math.Clamp(Math.Round(value), Min, Max);
+        if (Source != MetronomeSource.Item && Sections.Count == 1)
+        {
+            // single-section free metronome: tempo *is* the section tempo
+            Sections[0].Bpm = value; Factor = 1;
+            if (Source == MetronomeSource.Free) _ = store.SaveSettingsAsync();
+        }
+        else Factor = ToFactor(value);
+        if (Settings.Training.Enabled && IsRunning) Settings.Training.Enabled = false; // manual override ends ramp
+        await PushConfig();
+        Changed?.Invoke();
+    }
+
+    public Task NudgeAsync(double delta) => SetValueAsync(Value + delta);
+
+    public async Task TapAsync()
+    {
+        var now = DateTime.UtcNow;
+        if (_taps.Count > 0 && (now - _taps[^1]).TotalSeconds > 2) _taps.Clear();
+        _taps.Add(now);
+        if (_taps.Count > 6) _taps.RemoveAt(0);
+        if (_taps.Count < 2) { Changed?.Invoke(); return; }
+        var avg = (_taps[^1] - _taps[0]).TotalSeconds / (_taps.Count - 1);
+        var bpm = 60 / avg;
+        var value = Unit == TempoUnit.Percent ? bpm / RefSection.Bpm * 100 : bpm;
+        if (Source != MetronomeSource.Item && Sections.Count > 1) value = bpm; // relative to ref section
+        await SetValueAsync(value);
+    }
+
+    public int TapCount => _taps.Count;
+
+    public async Task ResetFactorAsync()
+    {
+        Factor = 1; await PushConfig(); Changed?.Invoke();
+    }
+
+    // ------------------------------------------------------------ config
+    public async Task ApplyAsync(bool persist = true)
+    {
+        if (CurrentStep >= Sections.Count) CurrentStep = Math.Max(0, Sections.Count - 1);
+        await PushConfig();
+        if (persist)
+        {
+            if (Source == MetronomeSource.Free) { store.Settings.FreeSections = Sections; store.Settings.FreePlayThrough = PlayThrough; }
+            await store.SaveSettingsAsync();
+        }
+        Changed?.Invoke();
+    }
+
+    private async Task PushConfig()
+    {
+        if (_mod == null) return;
+        var s = Settings;
+        var tr = s.Training;
+        var iv = s.Interval;
+        double quantum = Unit == TempoUnit.Percent ? 0.01 : 1.0 / Math.Max(1, RefSection.Bpm);
+        var cfg = new
+        {
+            steps = Sections.Select(x => new { bpm = x.Bpm, beatsPerBar = x.BeatsPerBar, beatUnit = x.BeatUnit, subdivision = x.Subdivision, bars = x.Bars }),
+            playThrough = PlayThrough && Sections.Count > 1,
+            loop = Loop,
+            step = CurrentStep,
+            factor = Factor,
+            countIn = new { enabled = s.CountIn, bars = s.CountInBars },
+            volume = s.Volume,
+            sound = s.Sound,
+            accentFirst = s.AccentFirst,
+            flash = s.Flash,
+            training = new
+            {
+                enabled = tr.Enabled,
+                startFactor = ToFactor(tr.Start),
+                endFactor = ToFactor(tr.End),
+                mode = tr.Mode == RampMode.EveryNBars ? "bars" : "time",
+                durationSec = tr.DurationMin * 60,
+                everyBars = tr.EveryBars,
+                incFactor = Unit == TempoUnit.Percent ? tr.Increment / 100 : tr.Increment / Math.Max(1, RefSection.Bpm),
+                quantum,
+                stopAtEnd = tr.StopAtEnd,
+            },
+            interval = new
+            {
+                enabled = iv.Enabled,
+                workSec = iv.WorkMin * 60,
+                restSec = iv.RestMin * 60,
+                rounds = iv.Rounds,
+                cues = iv.VoiceCues,
+            }
+        };
+        await _mod.InvokeVoidAsync("configure", JsonSerializer.Serialize(cfg));
+    }
+
+    public async Task PreviewSoundAsync()
+    {
+        await PushConfig();
+        await _mod!.InvokeVoidAsync("previewClick");
+    }
+
+    // ------------------------------------------------------------ engine callbacks
+    [JSInvokable]
+    public void OnEngineEvent(string json)
+    {
+        var s = JsonSerializer.Deserialize<EngineState>(json);
+        if (s == null) return;
+        var wasRunning = State.running;
+        State = s;
+        if (s.running && s.phase == "work")
+        {
+            var v = ToValue(s.factor);
+            SessionMax = SessionMax is null ? v : Math.Max(SessionMax.Value, v);
+            SessionMin = SessionMin is null ? v : Math.Min(SessionMin.Value, v);
+        }
+        if (s.running) CurrentStep = s.step;
+        if (s.@event is "stopped" or "finished")
+        {
+            SessionBankedSec += s.active;
+            if (Settings.Training.Enabled)
+            {
+                // keep where the ramp got to
+                if (Source != MetronomeSource.Item && Sections.Count == 1)
+                {
+                    Sections[0].Bpm = Math.Round(Sections[0].Bpm * s.factor);
+                    Factor = 1;
+                }
+                else Factor = s.factor;
+            }
+        }
+        if (s.@event == "finished")
+        {
+            LastFinishReason = s.reason;
+            Finished?.Invoke(s.reason ?? "end");
+        }
+        _ = wasRunning;
+        Changed?.Invoke();
+    }
+
+    // ------------------------------------------------------------ session
+    public void ResetSession()
+    {
+        SessionBankedSec = 0; SessionMax = null; SessionMin = null;
+        Changed?.Invoke();
+    }
+
+    public PracticeLog BuildSessionLog()
+    {
+        var item = Source == MetronomeSource.Item ? Item : null;
+        var max = SessionMax ?? Value;
+        var min = SessionMin;
+        return new PracticeLog
+        {
+            Date = DateTime.Today,
+            ItemId = item?.Id,
+            ItemName = item?.Name ?? (Preset?.Name ?? "Metronome"),
+            SectionId = item != null && item.Sections.Count > 1 && !PlayThrough ? RefSection.Id : null,
+            Unit = Unit,
+            Value = Math.Round(max),
+            ValueMin = min.HasValue && Math.Round(min.Value) < Math.Round(max) - 0.5 ? Math.Round(min.Value) : null,
+            DurationSec = (int)Math.Round(SessionActiveSec),
+            Source = "metronome"
+        };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_mod != null) { try { await _mod.InvokeVoidAsync("stop"); await _mod.DisposeAsync(); } catch { } }
+        _ref?.Dispose();
+    }
+}

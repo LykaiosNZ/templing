@@ -1,0 +1,146 @@
+using System.Text.Json;
+using Microsoft.JSInterop;
+using Songler.Models;
+
+namespace Songler.Services;
+
+/// <summary>In-memory cache over IndexedDB. Load once at startup; writes go through to the DB.</summary>
+public class DataStore(IJSRuntime js)
+{
+    public static readonly JsonSerializerOptions Json = new() { PropertyNamingPolicy = null };
+
+    private IJSObjectReference? _db;
+    private Task? _loading;
+
+    public List<PracticeItem> Items { get; private set; } = new();
+    public List<PracticeLog> Logs { get; private set; } = new();
+    public List<MetronomePreset> Presets { get; private set; } = new();
+    public AppSettings Settings { get; private set; } = new();
+    public bool Loaded { get; private set; }
+
+    /// <summary>Raised after any write.</summary>
+    public event Action? Changed;
+
+    public Task EnsureLoadedAsync() => _loading ??= LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _db = await js.InvokeAsync<IJSObjectReference>("import", "./js/db.js");
+        Items = await GetAll<PracticeItem>("items");
+        Logs = await GetAll<PracticeLog>("logs");
+        Presets = await GetAll<MetronomePreset>("presets");
+        var settings = await GetAll<AppSettings>("settings");
+        Settings = settings.FirstOrDefault() ?? new AppSettings();
+        Items.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+        Loaded = true;
+        Changed?.Invoke();
+    }
+
+    private async Task<List<T>> GetAll<T>(string store)
+    {
+        var json = await _db!.InvokeAsync<string>("getAll", store);
+        return JsonSerializer.Deserialize<List<T>>(json, Json) ?? new();
+    }
+
+    private Task Put<T>(string store, T value) => _db!.InvokeVoidAsync("put", store, JsonSerializer.Serialize(value, Json)).AsTask();
+    private Task PutMany<T>(string store, IEnumerable<T> values) => _db!.InvokeVoidAsync("putMany", store, JsonSerializer.Serialize(values, Json)).AsTask();
+    private Task Remove(string store, string id) => _db!.InvokeVoidAsync("remove", store, id).AsTask();
+
+    // ---------- Items ----------
+    public PracticeItem? GetItem(string? id) => id is null ? null : Items.FirstOrDefault(i => i.Id == id);
+
+    public PracticeItem? FindItemByName(string name) =>
+        Items.FirstOrDefault(i => string.Equals(i.Name.Trim(), name.Trim(), StringComparison.OrdinalIgnoreCase));
+
+    public async Task SaveItemAsync(PracticeItem item)
+    {
+        var idx = Items.FindIndex(i => i.Id == item.Id);
+        if (idx >= 0) Items[idx] = item; else Items.Add(item);
+        Items.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+        // keep log name snapshots in sync after a rename
+        var renamed = Logs.Where(l => l.ItemId == item.Id && l.ItemName != item.Name).ToList();
+        foreach (var l in renamed) l.ItemName = item.Name;
+        await Put("items", item);
+        if (renamed.Count > 0) await PutMany("logs", renamed);
+        Changed?.Invoke();
+    }
+
+    public async Task DeleteItemAsync(PracticeItem item, bool deleteLogs)
+    {
+        Items.RemoveAll(i => i.Id == item.Id);
+        await Remove("items", item.Id);
+        var logs = Logs.Where(l => l.ItemId == item.Id).ToList();
+        foreach (var l in logs)
+        {
+            if (deleteLogs) { Logs.Remove(l); await Remove("logs", l.Id); }
+            else l.ItemId = null;
+        }
+        if (!deleteLogs && logs.Count > 0) await PutMany("logs", logs);
+        Changed?.Invoke();
+    }
+
+    // ---------- Logs ----------
+    public IEnumerable<PracticeLog> LogsFor(string itemId) => Logs.Where(l => l.ItemId == itemId);
+
+    public async Task SaveLogAsync(PracticeLog log)
+    {
+        var idx = Logs.FindIndex(l => l.Id == log.Id);
+        if (idx >= 0) Logs[idx] = log; else Logs.Add(log);
+        await Put("logs", log);
+        Changed?.Invoke();
+    }
+
+    public async Task DeleteLogAsync(PracticeLog log)
+    {
+        Logs.RemoveAll(l => l.Id == log.Id);
+        await Remove("logs", log.Id);
+        Changed?.Invoke();
+    }
+
+    // ---------- Presets ----------
+    public async Task SavePresetAsync(MetronomePreset p)
+    {
+        var idx = Presets.FindIndex(x => x.Id == p.Id);
+        if (idx >= 0) Presets[idx] = p; else Presets.Add(p);
+        await Put("presets", p);
+        Changed?.Invoke();
+    }
+
+    public async Task DeletePresetAsync(MetronomePreset p)
+    {
+        Presets.RemoveAll(x => x.Id == p.Id);
+        await Remove("presets", p.Id);
+        Changed?.Invoke();
+    }
+
+    // ---------- Settings ----------
+    public async Task SaveSettingsAsync()
+    {
+        await Put("settings", Settings);
+        Changed?.Invoke();
+    }
+
+    // ---------- Bulk ----------
+    public async Task ImportAsync(IEnumerable<PracticeItem> items, IEnumerable<PracticeLog> logs, IEnumerable<MetronomePreset>? presets = null)
+    {
+        var il = items.ToList(); var ll = logs.ToList(); var pl = presets?.ToList() ?? new();
+        foreach (var i in il) { Items.RemoveAll(x => x.Id == i.Id); Items.Add(i); }
+        foreach (var l in ll) { Logs.RemoveAll(x => x.Id == l.Id); Logs.Add(l); }
+        foreach (var p in pl) { Presets.RemoveAll(x => x.Id == p.Id); Presets.Add(p); }
+        Items.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+        if (il.Count > 0) await PutMany("items", il);
+        if (ll.Count > 0) await PutMany("logs", ll);
+        if (pl.Count > 0) await PutMany("presets", pl);
+        Changed?.Invoke();
+    }
+
+    public async Task ClearAllAsync()
+    {
+        foreach (var s in new[] { "items", "logs", "presets" }) await _db!.InvokeVoidAsync("clear", s);
+        Items.Clear(); Logs.Clear(); Presets.Clear();
+        Changed?.Invoke();
+    }
+
+    public ValueTask DownloadAsync(string filename, string text, string mime) =>
+        _db!.InvokeVoidAsync("downloadText", filename, text, mime);
+}

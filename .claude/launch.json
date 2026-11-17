@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "songler",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/Songler/Songler.csproj", "--launch-profile", "http"],
+      "port": 5075
+    }
+  ]
+}

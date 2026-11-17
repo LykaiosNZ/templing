@@ -1,0 +1,84 @@
+@* GitHub-style practice calendar. Sequential single-hue ramp by minutes; practiced-but-untimed days use the first step. *@
+
+<div class="viz heatmap" role="img" aria-label="@AriaLabel">
+    <svg viewBox="0 0 @F(_w) @F(_h)" class="viz-svg" style="max-width:@(F(_w * 1.25))px" @onmouseleave="() => _hover = null">
+        @foreach (var (label, x) in _months)
+        {
+            <SvgText x="@F(x)" y="10" class="viz-axis">@label</SvgText>
+        }
+        @foreach (var (label, row) in new[] { ("Mon", 0), ("Wed", 2), ("Fri", 4) })
+        {
+            <SvgText x="0" y="@F(Top + row * Step + Cell - 2)" class="viz-axis">@label</SvgText>
+        }
+        @foreach (var c in _cells)
+        {
+            var cell = c;
+            <rect x="@F(cell.X)" y="@F(cell.Y)" width="@Cell" height="@Cell" rx="2.5" class="hm-cell hm-@cell.Level @(cell.Date == Today ? "today" : "")"
+                  @onmouseenter="() => _hover = cell" />
+        }
+        @if (_hover is { } h)
+        {
+            var tw = 150.0; var th = 40.0;
+            var tx = Math.Clamp(h.X - tw / 2, 0, _w - tw);
+            var ty = h.Y > th + 8 ? h.Y - th - 6 : h.Y + Cell + 6;
+            <g class="viz-tip" pointer-events="none">
+                <rect x="@F(tx)" y="@F(ty)" width="@tw" height="@th" rx="7" />
+                <SvgText x="@F(tx + 9)" y="@F(ty + 16)" class="viz-tip-muted">@h.Date.ToString("ddd d MMM yyyy")</SvgText>
+                <SvgText x="@F(tx + 9)" y="@F(ty + 32)" class="viz-tip-strong">@Describe(h)</SvgText>
+            </g>
+        }
+    </svg>
+    <div class="hm-legend" aria-hidden="true">
+        <span class="muted">Less</span>
+        @for (int i = 0; i <= 4; i++) { <span class="hm-swatch hm-@i"></span> }
+        <span class="muted">More</span>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Dictionary<DateTime, int> SecondsByDay { get; set; } = new();
+    [Parameter] public HashSet<DateTime> Practiced { get; set; } = new();
+    [Parameter] public int Weeks { get; set; } = 26;
+    [Parameter] public DateTime Today { get; set; } = DateTime.Today;
+    [Parameter] public string AriaLabel { get; set; } = "Practice calendar";
+
+    const double Cell = 12, Gap = 3, Step = Cell + Gap, Left = 30, Top = 16;
+    record HCell(DateTime Date, double X, double Y, int Level, int Sec, bool Did);
+    List<HCell> _cells = new();
+    List<(string, double)> _months = new();
+    double _w, _h;
+    HCell? _hover;
+
+    static string F(double v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+
+    static string Describe(HCell c) => c.Sec > 0 ? $"{Stats.Duration(c.Sec)} practised" : c.Did ? "Practised (no time logged)" : "No practice";
+
+    protected override void OnParametersSet()
+    {
+        _cells = new(); _months = new();
+        var start = Stats.WeekStart(Today).AddDays(-7 * (Weeks - 1));
+        int lastMonth = -1;
+        for (int w = 0; w < Weeks; w++)
+        {
+            for (int d = 0; d < 7; d++)
+            {
+                var date = start.AddDays(w * 7 + d);
+                if (date > Today) break;
+                var sec = SecondsByDay.GetValueOrDefault(date);
+                var did = sec > 0 || Practiced.Contains(date);
+                var min = sec / 60.0;
+                int level = !did ? 0 : min <= 0 ? 1 : min < 20 ? 1 : min < 45 ? 2 : min < 75 ? 3 : 4;
+                _cells.Add(new HCell(date, Left + w * Step, Top + d * Step, level, sec, did));
+            }
+            var first = start.AddDays(w * 7);
+            if (first.Month != lastMonth && first.Day <= 7 || w == 0)
+            {
+                if (w == 0 && first.Day > 21) { lastMonth = first.Month; continue; }
+                _months.Add((first.ToString("MMM"), Left + w * Step));
+                lastMonth = first.Month;
+            }
+        }
+        _w = Left + Weeks * Step;
+        _h = Top + 7 * Step;
+    }
+}

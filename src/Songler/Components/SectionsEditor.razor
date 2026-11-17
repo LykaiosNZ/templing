@@ -1,0 +1,78 @@
+@* Edits a tempo map: sections with their own tempo, meter, subdivision and length. *@
+
+<div class="sections-editor" role="list" aria-label="Sections">
+    @for (int i = 0; i < Sections.Count; i++)
+    {
+        var idx = i;
+        var s = Sections[i];
+        <div class="section-row @(idx == Current ? "current" : "")" role="listitem" @key="s.Id">
+            @if (OnSelect.HasDelegate)
+            {
+                <MudIconButton Size="Size.Small" Icon="@(idx == Current ? Icons.Material.Rounded.RadioButtonChecked : Icons.Material.Rounded.RadioButtonUnchecked)"
+                               Color="@(idx == Current ? Color.Primary : Color.Default)" aria-label="@($"Select section {s.Name}")"
+                               aria-pressed="@(idx == Current ? "true" : "false")" OnClick="() => OnSelect.InvokeAsync(idx)" />
+            }
+            <MudTextField @bind-Value="s.Name" @bind-Value:after="Changed" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-name" />
+            <MudNumericField T="double" @bind-Value="s.Bpm" @bind-Value:after="Changed" Label="@BpmLabel" Min="20" Max="400" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num" />
+            <MudNumericField T="int" @bind-Value="s.BeatsPerBar" @bind-Value:after="Changed" Label="Beats" Min="1" Max="32" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num-s" />
+            <MudSelect T="int" @bind-Value="s.BeatUnit" @bind-Value:after="Changed" Label="Unit" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num-s">
+                @foreach (var u in new[] { 2, 4, 8, 16 }) { <MudSelectItem T="int" Value="u">/@u</MudSelectItem> }
+            </MudSelect>
+            <MudSelect T="int" @bind-Value="s.Subdivision" @bind-Value:after="Changed" Label="Clicks" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-sub">
+                <MudSelectItem T="int" Value="1">Beats</MudSelectItem>
+                <MudSelectItem T="int" Value="2">8ths</MudSelectItem>
+                <MudSelectItem T="int" Value="3">Triplets</MudSelectItem>
+                <MudSelectItem T="int" Value="4">16ths</MudSelectItem>
+                <MudSelectItem T="int" Value="6">Sextuplets</MudSelectItem>
+            </MudSelect>
+            <MudNumericField T="int" @bind-Value="s.Bars" @bind-Value:after="Changed" Label="Bars" HelperText="@(s.Bars == 0 ? "loop" : null)" Min="0" Max="999" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num-s" />
+            <div class="sec-actions">
+                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowUpward" Disabled="idx == 0" aria-label="@($"Move {s.Name} up")" OnClick="() => Move(idx, -1)" />
+                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowDownward" Disabled="idx == Sections.Count - 1" aria-label="@($"Move {s.Name} down")" OnClick="() => Move(idx, 1)" />
+                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ContentCopy" aria-label="@($"Duplicate {s.Name}")" OnClick="() => Duplicate(idx)" />
+                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Close" Disabled="Sections.Count == 1" aria-label="@($"Remove {s.Name}")" OnClick="() => Remove(idx)" />
+            </div>
+        </div>
+    }
+    <MudButton StartIcon="@Icons.Material.Rounded.Add" Variant="Variant.Text" Color="Color.Primary" OnClick="Add" Class="mt-1">Add section / tempo change</MudButton>
+</div>
+
+@code {
+    [Parameter] public List<Section> Sections { get; set; } = new();
+    [Parameter] public EventCallback OnChanged { get; set; }
+    [Parameter] public int Current { get; set; } = -1;
+    [Parameter] public EventCallback<int> OnSelect { get; set; }
+    [Parameter] public string BpmLabel { get; set; } = "BPM";
+
+    Task Changed() => OnChanged.InvokeAsync();
+
+    Task Add()
+    {
+        var last = Sections.LastOrDefault();
+        Sections.Add(last is null ? new Section() : new Section
+        {
+            Name = $"Section {Sections.Count + 1}", Bpm = last.Bpm, BeatsPerBar = last.BeatsPerBar, BeatUnit = last.BeatUnit,
+            Subdivision = last.Subdivision, Bars = last.Bars
+        });
+        return Changed();
+    }
+
+    Task Duplicate(int i)
+    {
+        var c = Sections[i].Clone();
+        c.Id = Guid.NewGuid().ToString("N")[..8];
+        c.Name += " (copy)";
+        Sections.Insert(i + 1, c);
+        return Changed();
+    }
+
+    Task Remove(int i) { Sections.RemoveAt(i); return Changed(); }
+
+    Task Move(int i, int d)
+    {
+        var j = i + d;
+        if (j < 0 || j >= Sections.Count) return Task.CompletedTask;
+        (Sections[i], Sections[j]) = (Sections[j], Sections[i]);
+        return Changed();
+    }
+}

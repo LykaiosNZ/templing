@@ -1,0 +1,28 @@
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="_value" Label="@Label" AutoFocus="true" Immediate="true" OnKeyDown="KeyDown" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="string.IsNullOrWhiteSpace(_value)" OnClick="Ok">@OkText</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public string Label { get; set; } = "Name";
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public string OkText { get; set; } = "Save";
+    string? _value;
+    protected override void OnInitialized() => _value = Value;
+    void Ok() => Dialog.Close(DialogResult.Ok(_value!.Trim()));
+    void KeyDown(KeyboardEventArgs e) { if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_value)) Ok(); }
+
+    public static async Task<string?> ShowAsync(IDialogService d, string title, string label, string? value = null, string ok = "Save")
+    {
+        var p = new DialogParameters<PromptDialog> { { x => x.Label, label }, { x => x.Value, value }, { x => x.OkText, ok } };
+        var r = await d.ShowAsync<PromptDialog>(title, p, new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        var res = await r.Result;
+        return res is { Canceled: false } ? res.Data as string : null;
+    }
+}

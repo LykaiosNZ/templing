@@ -1,0 +1,165 @@
+@page "/library/{Id}"
+@implements IDisposable
+@inject DataStore Store
+@inject IDialogService Dialogs
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+@if (_item is null)
+{
+    <MudAlert Severity="Severity.Warning">Item not found. <a href="library">Back to library</a></MudAlert>
+}
+else
+{
+    <PageTitle>@_item.Name · Songler</PageTitle>
+    <nav aria-label="Breadcrumb" class="crumbs"><a href="library">Library</a> <span aria-hidden="true">›</span> <span>@_item.Name</span></nav>
+    <div class="page-head">
+        <div>
+            <span class="type-pill type-@_item.Type"><MudIcon Icon="@_item.Type.Icon()" Size="Size.Small" />@_item.Type.Label()</span>
+            <h1 class="page-title" tabindex="-1">@_item.Name</h1>
+            @if (!string.IsNullOrWhiteSpace(_item.Link))
+            {
+                <a href="@_item.Link" target="_blank" rel="noopener" class="small">@_item.Link</a>
+            }
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.PlayArrow" Href="@($"metronome/item/{_item.Id}")">Practise</MudButton>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.AddTask" OnClick="AddLog">Log</MudButton>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Edit" OnClick="Edit">Edit</MudButton>
+            <MudIconButton Variant="Variant.Outlined" Icon="@Icons.Material.Rounded.Delete" aria-label="Delete item" OnClick="Delete" />
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_item.Notes))
+    {
+        <MudText Class="muted mb-4" Style="white-space:pre-wrap">@_item.Notes</MudText>
+    }
+
+    <div class="tiles">
+        <StatTile Label="Progress" Value="@(_st.Progress is { } p ? p.ToString("P0") : "—")" Icon="@Icons.Material.Rounded.Flag"
+                  Sub="@(_item.Goal is { } g ? $"Goal {g:0}{_item.Unit.Suffix()}" : "No goal set")">
+            <div class="progress-track mt-2"><div class="progress-fill @(_st.Progress >= 1 ? "done" : "")" style="width:@Pct(_st.Progress)%"></div></div>
+        </StatTile>
+        <StatTile Label="Latest" Value="@(_st.Last?.ToString("0") ?? "—")" Unit="@(_st.Last.HasValue ? _item.Unit.Suffix() : null)" Icon="@Icons.Material.Rounded.Speed"
+                  Sub="@(_st.Best is { } b ? $"Best {b:0}{_item.Unit.Suffix()}" : null)" />
+        <StatTile Label="Improvement" Value="@Improvement" Icon="@Icons.Material.Rounded.TrendingUp" Sub="@(_st.FirstDate is { } fd ? $"since {fd:d MMM}" : null)" />
+        <StatTile Label="Days practised" Value="@_st.DaysPracticed.ToString()" Icon="@Icons.Material.Rounded.CalendarMonth" Sub="@($"Last {Stats.Ago(_st.LastDate, DateTime.Today)}")" />
+        <StatTile Label="Total time" Value="@Stats.Duration(_st.TotalSec)" Icon="@Icons.Material.Rounded.Timer" Sub="@($"{_st.Sessions} sessions")" />
+    </div>
+
+    <MudGrid Spacing="4" Class="mt-1">
+        <MudItem xs="12" lg="8">
+            <section class="card">
+                <div class="card-head">
+                    <h2 class="card-title">Tempo over time</h2>
+                    @if (_item.Sections.Count > 1)
+                    {
+                        <MudSelect T="string" @bind-Value="_section" @bind-Value:after="Refresh" Label="Section" Clearable="true" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Style="max-width:220px">
+                            @foreach (var s in _item.Sections) { <MudSelectItem T="string" Value="@s.Id">@s.Name</MudSelectItem> }
+                        </MudSelect>
+                    }
+                </div>
+                <TempoChart Points="_points" Goal="_item.Goal" Unit="_item.Unit" AriaLabel="@($"Tempo progress for {_item.Name}")" />
+                <MudText Typo="Typo.caption" Class="muted">Top tempo per day. Vertical whiskers show ranged sessions (e.g. warm-ups that climb from slow to fast).</MudText>
+            </section>
+        </MudItem>
+        <MudItem xs="12" lg="4">
+            <section class="card">
+                <h2 class="card-title">Weekly practice time</h2>
+                <BarChart Labels="_weekLabels" Values="_weekValues" ValueFormat="@(v => Stats.Duration((int)(v * 60)))" AxisFormat="@(v => $"{v:0}m")"
+                          HighlightLast="true" LabelEvery="3" Height="260" Width="400" AriaLabel="Minutes practised per week" />
+            </section>
+        </MudItem>
+        <MudItem xs="12" lg="5">
+            <section class="card">
+                <div class="card-head">
+                    <h2 class="card-title">Sections</h2>
+                    <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="Edit">Edit</MudButton>
+                </div>
+                <MudSimpleTable Dense="true" Hover="true" Elevation="0">
+                    <thead><tr><th>Section</th><th>Tempo</th><th>Meter</th><th>Bars</th><th><span class="sr-only">Practise</span></th></tr></thead>
+                    <tbody>
+                        @foreach (var s in _item.Sections)
+                        {
+                            <tr>
+                                <td>@s.Name</td>
+                                <td>@s.Bpm.ToString("0") bpm</td>
+                                <td>@s.Meter</td>
+                                <td>@(s.Bars > 0 ? s.Bars.ToString() : "—")</td>
+                                <td><MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.PlayArrow" Href="@($"metronome/item/{_item.Id}/{s.Id}")" aria-label="@($"Practise {s.Name}")" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </section>
+        </MudItem>
+        <MudItem xs="12" lg="7">
+            <section class="card">
+                <h2 class="card-title">Log</h2>
+                <LogTable Logs="_logs" ShowItem="false" />
+            </section>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+    PracticeItem? _item;
+    ItemStats _st = default!;
+    string? _section;
+    List<TempoPoint> _points = new();
+    List<PracticeLog> _logs = new();
+    List<string> _weekLabels = new();
+    List<double> _weekValues = new();
+
+    static string Pct(double? p) => Math.Min(100, (p ?? 0) * 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+
+    string Improvement
+    {
+        get
+        {
+            if (_st.First is not { } f || _st.Best is not { } b) return "—";
+            var d = b - f;
+            return $"{(d >= 0 ? "+" : "")}{d:0}{_item!.Unit.Suffix()}";
+        }
+    }
+
+    protected override void OnInitialized() => Store.Changed += OnChanged;
+    protected override void OnParametersSet() { _section = null; Refresh(); }
+    void OnChanged() { Refresh(); InvokeAsync(StateHasChanged); }
+
+    void Refresh()
+    {
+        _item = Store.GetItem(Id);
+        if (_item == null) return;
+        _st = Stats.ForItem(_item, Store.Logs, _section);
+        _points = Stats.TempoHistory(_item, Store.Logs, _section);
+        _logs = Store.LogsFor(_item.Id).OrderByDescending(l => l.Date).ToList();
+        var weeks = Stats.WeeklySeconds(Store.LogsFor(_item.Id), DateTime.Today, 12);
+        _weekLabels = weeks.Select(w => w.week.ToString("d MMM")).ToList();
+        _weekValues = weeks.Select(w => w.sec / 60.0).ToList();
+    }
+
+    async Task Edit() { if (_item != null) await ItemDialog.ShowAsync(Dialogs, _item); }
+
+    async Task AddLog()
+    {
+        if (_item == null) return;
+        await LogDialog.ShowAsync(Dialogs, new PracticeLog { ItemId = _item.Id, ItemName = _item.Name, Unit = _item.Unit, SectionId = _section }, true);
+    }
+
+    async Task Delete()
+    {
+        if (_item == null) return;
+        var count = Store.LogsFor(_item.Id).Count();
+        var r = await Dialogs.ShowMessageBoxAsync("Delete item?",
+            $"“{_item.Name}” will be removed from your library. {(count > 0 ? $"Its {count} log entries will be deleted too." : "")} This cannot be undone.",
+            "Delete", cancelText: "Cancel");
+        if (r != true) return;
+        await Store.DeleteItemAsync(_item, deleteLogs: true);
+        Snackbar.Add("Item deleted", Severity.Info);
+        Nav.NavigateTo("library");
+    }
+
+    public void Dispose() => Store.Changed -= OnChanged;
+}

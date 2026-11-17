@@ -1,0 +1,32 @@
+<MudDialog>
+    <DialogContent>
+        @foreach (var g in Shortcuts.All.GroupBy(s => s.Group))
+        {
+            <MudText Typo="Typo.overline" Class="muted">@g.Key</MudText>
+            <dl class="shortcut-list">
+                @foreach (var s in g)
+                {
+                    <dt>
+                        @foreach (var part in s.Keys.Split(' '))
+                        {
+                            if (s.Keys != "/" && part is "/" or "then" or "+")
+                            {
+                                <span class="muted sep">@part</span>
+                            }
+                            else
+                            {
+                                <kbd>@part</kbd>
+                            }
+                        }
+                    </dt>
+                    <dd>@s.Description</dd>
+                }
+            </dl>
+        }
+        <MudText Typo="Typo.caption" Class="muted">Shortcuts are ignored while typing in a field. Metronome keys work on every page.</MudText>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
+}
