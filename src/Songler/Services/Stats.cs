@@ -120,6 +120,14 @@ public static class Stats
             .Select(w => (w, byWeek.GetValueOrDefault(w))).ToList();
     }
 
+    /// <summary>Axis labels for <see cref="WeeklySeconds"/>; the last (current) week reads "This week".</summary>
+    public static List<string> WeekLabels(List<(DateTime week, int sec)> weeks) =>
+        weeks.Select((w, i) => i == weeks.Count - 1 && w.week == WeekStart(DateTime.Today) ? "This week" : w.week.ToString("d MMM")).ToList();
+
+    /// <summary>Tooltip labels for <see cref="WeeklySeconds"/>.</summary>
+    public static List<string> WeekTips(List<(DateTime week, int sec)> weeks) =>
+        weeks.Select((w, i) => i == weeks.Count - 1 && w.week == WeekStart(DateTime.Today) ? "This week (so far)" : $"Week of {w.week:d MMM yyyy}").ToList();
+
     public static string Duration(int sec, bool shortForm = false)
     {
         var ts = TimeSpan.FromSeconds(sec);

@@ -100,8 +100,8 @@
         _practicedAll = Stats.DaysPracticed(Store.Logs);
 
         var weeks = Stats.WeeklySeconds(_logs, today, Math.Clamp((int)Math.Ceiling(_spanDays / 7.0), 4, 104));
-        _weekLabels = weeks.Select(w => w.week.ToString("d MMM")).ToList();
-        _weekTips = weeks.Select(w => $"Week of {w.week:d MMM yyyy}").ToList();
+        _weekLabels = Stats.WeekLabels(weeks);
+        _weekTips = Stats.WeekTips(weeks);
         _weekValues = weeks.Select(w => w.sec / 60.0).ToList();
 
         var order = new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday };

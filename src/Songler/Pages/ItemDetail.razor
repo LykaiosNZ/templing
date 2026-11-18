@@ -82,11 +82,11 @@ else
             <section class="card">
                 <h2 class="card-title">Weekly practice time</h2>
                 <div class="hide-phone">
-                    <BarChart Labels="_weekLabels" Values="_weekValues" ValueFormat="@(v => Stats.Duration((int)(v * 60)))" AxisFormat="@(v => $"{v:0}m")"
+                    <BarChart Labels="_weekLabels" TipLabels="_weekTips" Values="_weekValues" ValueFormat="@(v => Stats.Duration((int)(v * 60)))" AxisFormat="@(v => $"{v:0}m")"
                               HighlightLast="true" LabelEvery="3" Height="260" Width="400" AriaLabel="Minutes practised per week" />
                 </div>
                 <div class="show-phone-block">
-                    <BarChart Labels="_weekLabels.TakeLast(8).ToList()" Values="_weekValues.TakeLast(8).ToList()" ValueFormat="@(v => Stats.Duration((int)(v * 60)))" AxisFormat="@(v => $"{v:0}m")"
+                    <BarChart Labels="_weekLabels.TakeLast(8).ToList()" TipLabels="_weekTips.TakeLast(8).ToList()" Values="_weekValues.TakeLast(8).ToList()" ValueFormat="@(v => Stats.Duration((int)(v * 60)))" AxisFormat="@(v => $"{v:0}m")"
                               HighlightLast="true" LabelEvery="2" Height="240" Width="380" AriaLabel="Minutes practised per week, last 8 weeks" />
                 </div>
             </section>
@@ -204,7 +204,7 @@ else
     string? _section;
     List<TempoPoint> _points = new();
     List<PracticeLog> _logs = new();
-    List<string> _weekLabels = new();
+    List<string> _weekLabels = new(), _weekTips = new();
     List<double> _weekValues = new();
     List<SectionStats> _parts = new();
     SectionStats? _weakest;
@@ -275,7 +275,8 @@ else
         if (_rangeMonths > 0) _points = _points.Where(pt => pt.Date >= DateTime.Today.AddMonths(-_rangeMonths)).ToList();
         _logs = Store.LogsFor(_item.Id).OrderByDescending(l => l.Date).ToList();
         var weeks = Stats.WeeklySeconds(Store.LogsFor(_item.Id), DateTime.Today, 12);
-        _weekLabels = weeks.Select(w => w.week.ToString("d MMM")).ToList();
+        _weekLabels = Stats.WeekLabels(weeks);
+        _weekTips = Stats.WeekTips(weeks);
         _weekValues = weeks.Select(w => w.sec / 60.0).ToList();
         _parts = Stats.ForSections(_item, Store.Logs);
         _weakest = _parts.Count > 1 && _parts.Any(p => p.Progress < 1)

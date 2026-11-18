@@ -138,8 +138,8 @@ else
         _last30 = _practiced.Count(d => d > today.AddDays(-30));
         _streak = Stats.Streaks(logs, today);
         var weeks = Stats.WeeklySeconds(logs, today, 16);
-        _weekLabels = weeks.Select((w, i) => i == weeks.Count - 1 ? "This week" : w.week.ToString("d MMM")).ToList();
-        _weekTips = weeks.Select((w, i) => i == weeks.Count - 1 ? "This week (so far)" : $"Week of {w.week:d MMM}").ToList();
+        _weekLabels = Stats.WeekLabels(weeks);
+        _weekTips = Stats.WeekTips(weeks);
         _weekValues = weeks.Select(w => w.sec / 60.0).ToList();
         _goals = Store.Items.Where(i => !i.Archived && i.Goal.HasValue)
             .Select(i => (i, Stats.ForItem(i, logs)))
