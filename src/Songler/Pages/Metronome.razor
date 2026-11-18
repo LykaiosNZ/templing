@@ -150,9 +150,9 @@
                 }
             </div>
 
-            @if (Metro.Settings.Training.Enabled)
+            @if (Metro.Training.Enabled)
             {
-                var tr = Metro.Settings.Training;
+                var tr = Metro.Training;
                 var prog = Metro.IsRunning ? (Metro.State.trainingProgress ?? 0) : 0;
                 <div class="training-bar">
                     <span>@tr.Start.ToString("0")</span>
@@ -182,8 +182,8 @@
             <div class="quick-toggles">
                 <MudChip T="string" Variant="@(Metro.Settings.CountIn ? Variant.Filled : Variant.Outlined)" Color="@(Metro.Settings.CountIn ? Color.Primary : Color.Default)"
                          OnClick="() => Toggle(() => Metro.Settings.CountIn = !Metro.Settings.CountIn)" Icon="@Icons.Material.Rounded.HourglassTop">Count-in (C)</MudChip>
-                <MudChip T="string" Variant="@(Metro.Settings.Training.Enabled ? Variant.Filled : Variant.Outlined)" Color="@(Metro.Settings.Training.Enabled ? Color.Primary : Color.Default)"
-                         OnClick="() => Toggle(() => Metro.Settings.Training.Enabled = !Metro.Settings.Training.Enabled)" Icon="@Icons.Material.Rounded.TrendingUp">Speed trainer (X)</MudChip>
+                <MudChip T="string" Variant="@(Metro.Training.Enabled ? Variant.Filled : Variant.Outlined)" Color="@(Metro.Training.Enabled ? Color.Primary : Color.Default)"
+                         OnClick="() => Toggle(() => Metro.Training.Enabled = !Metro.Training.Enabled)" Icon="@Icons.Material.Rounded.TrendingUp">Speed trainer (X)</MudChip>
                 <MudChip T="string" Variant="@(Metro.Settings.Interval.Enabled ? Variant.Filled : Variant.Outlined)" Color="@(Metro.Settings.Interval.Enabled ? Color.Primary : Color.Default)"
                          OnClick="() => Toggle(() => Metro.Settings.Interval.Enabled = !Metro.Settings.Interval.Enabled)" Icon="@Icons.Material.Rounded.Timelapse">Intervals (I)</MudChip>
                 @if (Metro.Sections.Count > 1)
@@ -214,7 +214,11 @@
         <section class="card" aria-label="Metronome settings">
             <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" TabPanelsClass="pt-4" @bind-ActivePanelIndex="_tab">
                 <MudTabPanel Text="Trainer">
-                    @{ var tr = Metro.Settings.Training; var u = Metro.Unit == TempoUnit.Percent ? "%" : "bpm"; }
+                    @if (Metro.TrainingPinned)
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">Set by your plan for this step. Changes here only affect this step.</MudAlert>
+                    }
+                    @{ var tr = Metro.Training; var u = Metro.Unit == TempoUnit.Percent ? "%" : "bpm"; }
                     <MudSwitch T="bool" @bind-Value="tr.Enabled" @bind-Value:after="Apply" Color="Color.Primary" Label="Gradually change tempo" />
                     <div class="form-grid">
                         <MudNumericField T="double" @bind-Value="tr.Start" @bind-Value:after="Apply" Label="@($"Start ({u})")" Min="Metro.Min" Max="Metro.Max" />
@@ -341,7 +345,7 @@
     {
         get
         {
-            var tr = Metro.Settings.Training; var u = Metro.Unit == TempoUnit.Percent ? "%" : " bpm";
+            var tr = Metro.Training; var u = Metro.Unit == TempoUnit.Percent ? "%" : " bpm";
             if (tr.Mode == RampMode.OverTime)
                 return $"From {tr.Start:0} to {tr.End:0}{u} over {tr.DurationMin:0.#} min of playing, then {(tr.StopAtEnd ? "stop" : "hold")}.";
             var steps = Math.Ceiling(Math.Abs(tr.End - tr.Start) / Math.Max(0.5, tr.Increment));

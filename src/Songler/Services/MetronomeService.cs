@@ -69,6 +69,21 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     private IntervalOverride? _step;
     public bool StepPinned => _step != null;
 
+    /// <summary>Speed trainer used for the next run: a plan step's own settings, or the user's.</summary>
+    public TrainingSettings Training => _stepTraining ?? Settings.Training;
+    private TrainingSettings? _stepTraining;
+    public bool TrainingPinned => _stepTraining != null;
+
+    /// <summary>Applies a plan step's tempo: optional start tempo and a step-only speed trainer (on or off).</summary>
+    public async Task SetStepTempoAsync(double? startValue, TrainingSettings stepTraining)
+    {
+        _stepTraining = stepTraining;
+        if (stepTraining.Enabled) Factor = ToFactor(stepTraining.Start);
+        else if (startValue is { } v) Factor = ToFactor(v);
+        await PushConfig();
+        Changed?.Invoke();
+    }
+
     public async Task SetStepIntervalsAsync(double workMin, double restMin, int rounds)
     {
         _step = new(true, workMin * 60, restMin * 60, Math.Max(1, rounds), 0, false);
@@ -78,8 +93,9 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
 
     public async Task ClearStepIntervalsAsync()
     {
-        if (_step == null) return;
+        if (_step == null && _stepTraining == null) return;
         _step = null;
+        _stepTraining = null;
         await PushConfig();
         Changed?.Invoke();
     }
@@ -188,7 +204,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         var stats = Stats.ForItem(item, store.Logs);
         var start = stats.Last ?? (item.Unit == TempoUnit.Percent ? 80 : RefSection.Bpm);
         Factor = ToFactor(start);
-        var tr = Settings.Training;
+        var tr = Training;
         tr.End = Math.Round(stats.Last ?? item.Goal ?? start);
         tr.Start = Math.Round(tr.End * 0.85);
         ResetSession();
@@ -255,7 +271,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
             if (Source == MetronomeSource.Free) _ = store.SaveSettingsAsync();
         }
         else Factor = ToFactor(value);
-        if (Settings.Training.Enabled && IsRunning) Settings.Training.Enabled = false; // manual override ends ramp
+        if (Training.Enabled && IsRunning) Training.Enabled = false; // manual override ends ramp
         await PushConfig();
         Changed?.Invoke();
     }
@@ -300,7 +316,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     {
         if (_mod == null) return;
         var s = Settings;
-        var tr = s.Training;
+        var tr = Training;
         var iv = s.Interval;
         double quantum = Unit == TempoUnit.Percent ? 0.01 : 1.0 / Math.Max(1, RefSection.Bpm);
         var cfg = new
@@ -368,7 +384,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
             if (_override is { RestOnly: true }) s.active = 0; // rest countdown isn't practice
             _override = null;
             SessionBankedSec += s.active;
-            if (Settings.Training.Enabled)
+            if (Training.Enabled)
             {
                 // keep where the ramp got to
                 if (Source != MetronomeSource.Item && Sections.Count == 1)

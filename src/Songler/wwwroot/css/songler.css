@@ -409,3 +409,6 @@ code { font-family: var(--mono); font-size: .85em; background: var(--card-2); pa
 .ps-mode { flex: 0 1 170px; }
 .ps-num-field { flex: 0 1 100px; max-width: 110px; }
 .ps-actions { display: flex; margin-left: auto; }
+.ps-tempo { flex-basis: 100%; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-left: 30px; }
+.ps-tempo .ps-switch { margin-right: 4px; }
+.ps-start-field { flex: 0 1 170px; max-width: 180px; }

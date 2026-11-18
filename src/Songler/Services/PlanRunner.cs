@@ -121,6 +121,12 @@ public class PlanRunner
         await _metro.LoadItemAsync(item, s.SectionId);
         _metro.ResetSession();
         await _metro.SetStepIntervalsAsync(s.Minutes, s.RestMin, s.Rounds);
+        if (s.Mode == StepMode.Metronome)
+            await _metro.SetStepTempoAsync(s.StartTempo, new TrainingSettings
+            {
+                Enabled = s.Trainer, Start = s.TrainerStart, End = s.TrainerEnd,
+                Mode = RampMode.OverTime, DurationMin = s.WorkMinutes, StopAtEnd = false,
+            });
         var url = s.Mode == StepMode.Timer ? $"timer/item/{item.Id}"
             : s.SectionId != null ? $"metronome/item/{item.Id}/{s.SectionId}" : $"metronome/item/{item.Id}";
         _nav.NavigateTo(url);

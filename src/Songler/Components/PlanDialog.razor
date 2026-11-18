@@ -45,6 +45,25 @@
                             <MudNumericField T="double" @bind-Value="s.Minutes" Label="Work min" Min="0.5" Max="120" Step="1" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
                             <MudNumericField T="int" @bind-Value="s.Rounds" Label="Rounds" Min="1" Max="20" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
                             <MudNumericField T="double" @bind-Value="s.RestMin" Label="Rest min" Min="0" Max="30" Step="0.5" Disabled="s.Rounds < 2" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
+                            @if (s.Mode == StepMode.Metronome)
+                            {
+                                var u = item?.Unit == TempoUnit.Percent ? "%" : "bpm";
+                                <div class="ps-tempo">
+                                    <MudSwitch T="bool" @bind-Value="s.Trainer" Color="Color.Primary" Label="Speed trainer" Class="ps-switch" />
+                                    @if (s.Trainer)
+                                    {
+                                        <MudNumericField T="double" @bind-Value="s.TrainerStart" Label="@($"From ({u})")" Min="10" Max="400" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
+                                        <MudNumericField T="double" @bind-Value="s.TrainerEnd" Label="@($"To ({u})")" Min="10" Max="400" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
+                                        <MudText Typo="Typo.caption" Class="muted">over the step's @Stats.Duration((int)(s.WorkMinutes * 60)) of playing, then holds</MudText>
+                                    }
+                                    else
+                                    {
+                                        <MudNumericField T="double?" @bind-Value="s.StartTempo" Label="@($"Start tempo ({u})")" Min="10" Max="400" Clearable="true"
+                                                         Placeholder="last logged" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-start-field" />
+                                        <MudText Typo="Typo.caption" Class="muted">change it as you go with ↑ / ↓</MudText>
+                                    }
+                                </div>
+                            }
                         }
                         <span class="ps-actions">
                             <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowUpward" Disabled="idx == 0" aria-label="@($"Move step {idx + 1} up")" OnClick="() => Move(idx, -1)" />
@@ -104,7 +123,11 @@
     void Duplicate(int i)
     {
         var s = _m.Steps[i];
-        _m.Steps.Insert(i + 1, new PlanStep { Kind = s.Kind, ItemId = s.ItemId, SectionId = s.SectionId, Mode = s.Mode, Minutes = s.Minutes, Rounds = s.Rounds, RestMin = s.RestMin });
+        _m.Steps.Insert(i + 1, new PlanStep
+        {
+            Kind = s.Kind, ItemId = s.ItemId, SectionId = s.SectionId, Mode = s.Mode, Minutes = s.Minutes, Rounds = s.Rounds, RestMin = s.RestMin,
+            StartTempo = s.StartTempo, Trainer = s.Trainer, TrainerStart = s.TrainerStart, TrainerEnd = s.TrainerEnd
+        });
     }
 
     async Task Save()

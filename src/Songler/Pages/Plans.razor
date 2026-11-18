@@ -48,7 +48,7 @@ else
                         var idx = i;
                         <li class="@(s.Kind == PlanStepKind.Rest ? "rest" : "") @(running && Runner.Index == idx ? "on" : "")">
                             <span class="pl-name">@Runner.Describe(s)</span>
-                            <span class="pl-meta">@s.IntervalText@(s.Kind == PlanStepKind.Item && s.Mode == StepMode.Timer ? " · timer" : "")</span>
+                            <span class="pl-meta">@s.IntervalText@(s.Kind == PlanStepKind.Item && s.Mode == StepMode.Timer ? " · timer" : "")@(StepTempo(s) is { Length: > 0 } t ? $" · {t}" : "")</span>
                         </li>
                     }
                 </ol>
@@ -68,6 +68,8 @@ else
 @code {
     protected override void OnInitialized() { Store.Changed += OnChanged; Runner.Changed += OnChanged; }
     void OnChanged() => InvokeAsync(StateHasChanged);
+
+    string StepTempo(PlanStep s) => s.TempoText(Store.GetItem(s.ItemId)?.Unit ?? TempoUnit.Bpm);
 
     async Task New() => await PlanDialog.ShowAsync(Dialogs);
     async Task Edit(PracticePlan p) => await PlanDialog.ShowAsync(Dialogs, p);

@@ -165,6 +165,24 @@ public class PlanStep
     /// <summary>Rest between rounds, in minutes.</summary>
     public double RestMin { get; set; }
 
+    // ---- tempo (metronome steps), in the item's unit (bpm or %)
+    /// <summary>Tempo to start at. Null = the last logged tempo.</summary>
+    public double? StartTempo { get; set; }
+    /// <summary>Speed trainer for this step only: ramps from TrainerStart to TrainerEnd over the step's work time.</summary>
+    public bool Trainer { get; set; }
+    public double TrainerStart { get; set; } = 80;
+    public double TrainerEnd { get; set; } = 120;
+
+    public double WorkMinutes => Minutes * Math.Max(1, Rounds);
+
+    public string TempoText(TempoUnit unit)
+    {
+        if (Kind != PlanStepKind.Item || Mode != StepMode.Metronome) return "";
+        var u = unit == TempoUnit.Percent ? "%" : " bpm";
+        if (Trainer) return $"{TrainerStart:0} → {TrainerEnd:0}{u}";
+        return StartTempo is { } t ? $"start {t:0}{u}" : "";
+    }
+
     public double TotalMinutes => Kind == PlanStepKind.Rest ? Minutes : Minutes * Math.Max(1, Rounds) + RestMin * Math.Max(0, Rounds - 1);
     public string IntervalText => Kind == PlanStepKind.Rest ? $"{Dur(Minutes)} rest"
         : Rounds > 1 ? $"{Rounds} × {Dur(Minutes)}{(RestMin > 0 ? $", {Dur(RestMin)} rests" : "")}" : Dur(Minutes);

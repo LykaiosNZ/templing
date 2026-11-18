@@ -16,7 +16,7 @@
                 <span class="plan-step">
                     Step @(Runner.Index + 1) of @plan.Steps.Count:
                     <strong>@Runner.Describe(step)</strong>
-                    <span class="muted">· @step.IntervalText@(step.Kind == PlanStepKind.Item ? $" · {(step.Mode == StepMode.Timer ? "timer" : "metronome")}" : "")</span>
+                    <span class="muted">· @step.IntervalText@(step.Kind == PlanStepKind.Item ? $" · {(step.Mode == StepMode.Timer ? "timer" : "metronome")}" : "")@(step.TempoText(Store.GetItem(step.ItemId)?.Unit ?? TempoUnit.Bpm) is { Length: > 0 } tt ? $" · {tt}" : "")</span>
                 </span>
                 @if (Runner.NextStep is { } next)
                 {

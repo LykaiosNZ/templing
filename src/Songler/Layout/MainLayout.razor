@@ -112,9 +112,9 @@
         }));
         _keys.Add(Keys.Register(this, "x", async () =>
         {
-            Metro.Settings.Training.Enabled = !Metro.Settings.Training.Enabled;
+            Metro.Training.Enabled = !Metro.Training.Enabled;
             await Metro.ApplyAsync();
-            Snackbar.Add($"Speed trainer {(Metro.Settings.Training.Enabled ? "on" : "off")}", Severity.Normal);
+            Snackbar.Add($"Speed trainer {(Metro.Training.Enabled ? "on" : "off")}", Severity.Normal);
         }));
         _keys.Add(Keys.Register(this, "i", async () =>
         {
