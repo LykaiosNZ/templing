@@ -230,8 +230,8 @@
                     </MudToggleGroup>
                     @if (tr.Mode == RampMode.OverTime)
                     {
-                        <MudNumericField T="double" @bind-Value="tr.DurationMin" @bind-Value:after="Apply" Label="Over (minutes of playing)" Min="0.5" Max="120" Step="0.5"
-                                         HelperText="Tempo climbs smoothly, changing on bar lines" />
+                        <DurationInput Seconds="tr.DurationMin * 60" SecondsChanged="async v => { tr.DurationMin = (v ?? 300) / 60; await Apply(); }" Label="Over (time playing)"
+                                       MinSeconds="15" MaxSeconds="7200" HelperText="Tempo climbs smoothly, changing on bar lines" />
                     }
                     else
                     {
@@ -258,8 +258,8 @@
                         <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="() => SetInterval(0.5, 0.25, 8)">8 × 30 s</MudButton>
                     </div>
                     <div class="form-grid three">
-                        <MudNumericField T="double" @bind-Value="iv.WorkMin" @bind-Value:after="Apply" Label="Work (min)" Min="0.25" Max="120" Step="0.5" />
-                        <MudNumericField T="double" @bind-Value="iv.RestMin" @bind-Value:after="Apply" Label="Rest (min)" Min="0" Max="60" Step="0.5" />
+                        <DurationInput Seconds="iv.WorkMin * 60" SecondsChanged="async v => { iv.WorkMin = (v ?? 15) / 60; await Apply(); }" Label="Work" MinSeconds="15" MaxSeconds="7200" />
+                        <DurationInput Seconds="iv.RestMin * 60" SecondsChanged="async v => { iv.RestMin = (v ?? 0) / 60; await Apply(); }" Label="Rest" MaxSeconds="3600" />
                         <MudNumericField T="int" @bind-Value="iv.Rounds" @bind-Value:after="Apply" Label="Rounds" Min="0" Max="99" HelperText="0 = endless" />
                     </div>
                     <MudCheckBox T="bool" @bind-Value="iv.VoiceCues" @bind-Value:after="Apply" Color="Color.Primary" Label="Audio cues (3-2-1 pips before each change)" />

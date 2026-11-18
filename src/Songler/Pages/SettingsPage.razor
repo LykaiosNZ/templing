@@ -31,7 +31,8 @@
     <MudItem xs="12" lg="6">
         <section class="card">
             <h2 class="card-title">Goals</h2>
-            <MudNumericField T="int" @bind-Value="Store.Settings.WeeklyGoalMin" @bind-Value:after="Save" Label="Weekly practice goal (minutes)" Min="0" Max="5000" Style="max-width:260px" />
+            <DurationInput Seconds="Store.Settings.WeeklyGoalMin * 60.0" SecondsChanged="async v => { Store.Settings.WeeklyGoalMin = (int)Math.Round((v ?? 0) / 60); await Save(); }"
+                           Label="Weekly practice goal" StepSeconds="900" MaxSeconds="100 * 3600" Style="max-width:260px" />
         </section>
 
         <section class="card mt-4">

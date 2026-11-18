@@ -417,3 +417,6 @@ code { font-family: var(--mono); font-size: .85em; background: var(--card-2); pa
 .restore-option { border: 1px solid var(--mud-palette-lines-default); border-radius: 10px; padding: 8px 12px 10px; margin-bottom: 8px; }
 .restore-option.on { border-color: var(--mud-palette-primary); }
 .restore-desc { margin-left: 42px; margin-top: -6px; }
+
+.duration-input input { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.ps-dur-field { flex: 0 1 120px; max-width: 130px; }

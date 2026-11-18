@@ -25,7 +25,7 @@
                         @if (s.Kind == PlanStepKind.Rest)
                         {
                             <span class="ps-rest"><MudIcon Icon="@Icons.Material.Rounded.SelfImprovement" Size="Size.Small" /> Rest</span>
-                            <MudNumericField T="double" @bind-Value="s.Minutes" Label="Minutes" Min="0.5" Max="60" Step="0.5" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
+                            <DurationInput Seconds="s.Minutes * 60" SecondsChanged="v => s.Minutes = (v ?? 120) / 60" Label="Length" MinSeconds="15" MaxSeconds="3600" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-dur-field" />
                         }
                         else
                         {
@@ -42,9 +42,9 @@
                                 <MudSelectItem T="StepMode" Value="StepMode.Metronome">Metronome</MudSelectItem>
                                 <MudSelectItem T="StepMode" Value="StepMode.Timer">Timer (no click)</MudSelectItem>
                             </MudSelect>
-                            <MudNumericField T="double" @bind-Value="s.Minutes" Label="Work min" Min="0.5" Max="120" Step="1" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
+                            <DurationInput Seconds="s.Minutes * 60" SecondsChanged="v => s.Minutes = (v ?? 600) / 60" Label="Work" MinSeconds="15" MaxSeconds="7200" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-dur-field" />
                             <MudNumericField T="int" @bind-Value="s.Rounds" Label="Rounds" Min="1" Max="20" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
-                            <MudNumericField T="double" @bind-Value="s.RestMin" Label="Rest min" Min="0" Max="30" Step="0.5" Disabled="s.Rounds < 2" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
+                            <DurationInput Seconds="s.RestMin * 60" SecondsChanged="v => s.RestMin = (v ?? 0) / 60" Label="Rest" MaxSeconds="1800" Disabled="s.Rounds < 2" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-dur-field" />
                             @if (s.Mode == StepMode.Metronome)
                             {
                                 var u = item?.Unit == TempoUnit.Percent ? "%" : "bpm";

@@ -1,0 +1,96 @@
+@* Duration entry as h:mm:ss. Accepts "1:02:03", "5:30" (m:ss) or a bare number (minutes).
+   Commits on Enter / leaving the field; ↑ / ↓ step the value. Value is in seconds. *@
+
+<MudTextField T="string" @bind-Value="_text" @bind-Value:after="Commit" Label="@Label" Placeholder="h:mm:ss"
+              HelperText="@HelperText" Error="@(_error != null)" ErrorText="@_error" Disabled="Disabled" Variant="Variant" Margin="Margin"
+              Class="@($"duration-input {Class}")" Style="@Style" InputMode="InputMode.text" Clearable="Nullable"
+              OnKeyDown="KeyDown" OnClearButtonClick="Cleared" aria-label="@($"{Label} (hours:minutes:seconds)")" />
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    /// <summary>Duration in seconds; null = empty (only when <see cref="Nullable"/>).</summary>
+    [Parameter] public double? Seconds { get; set; }
+    [Parameter] public EventCallback<double?> SecondsChanged { get; set; }
+    [Parameter] public bool Nullable { get; set; }
+    [Parameter] public double MinSeconds { get; set; }
+    [Parameter] public double MaxSeconds { get; set; } = 24 * 3600;
+    /// <summary>Arrow-key step in seconds (default: 1 minute, or 15 s under 2 minutes).</summary>
+    [Parameter] public double? StepSeconds { get; set; }
+    [Parameter] public string? HelperText { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public Variant Variant { get; set; } = Variant.Text;
+    [Parameter] public Margin Margin { get; set; } = Margin.None;
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Style { get; set; }
+
+    string? _text, _error;
+    double? _shown = double.NaN;
+
+    public static string Format(double seconds)
+    {
+        var ts = TimeSpan.FromSeconds(Math.Max(0, Math.Round(seconds)));
+        return $"{(int)ts.TotalHours}:{ts.Minutes:00}:{ts.Seconds:00}";
+    }
+
+    /// <summary>Parses h:mm:ss, m:ss or minutes. Returns null for empty, throws on garbage.</summary>
+    public static double? Parse(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        var style = System.Globalization.NumberStyles.Float;
+        var t = text.Trim();
+        if (!t.Contains(':'))
+            return double.TryParse(t, style, inv, out var mins) && mins >= 0 ? mins * 60 : throw new FormatException();
+        var parts = t.Split(':');
+        if (parts.Length > 3) throw new FormatException();
+        var n = new double[parts.Length];
+        for (int i = 0; i < parts.Length; i++)
+        {
+            var p = parts[i].Trim();
+            if (p.Length == 0) p = "0";
+            if (!double.TryParse(p, style, inv, out n[i]) || n[i] < 0) throw new FormatException();
+        }
+        return n.Length == 3 ? n[0] * 3600 + n[1] * 60 + n[2] : n[0] * 60 + n[1];
+    }
+
+    protected override void OnParametersSet()
+    {
+        // reflect external changes (presets, plan steps) unless the user is mid-error
+        if (Seconds != _shown && _error == null)
+        {
+            _text = Seconds is { } s ? Format(s) : null;
+            _shown = Seconds;
+        }
+    }
+
+    async Task Commit()
+    {
+        double? v;
+        try { v = Parse(_text); }
+        catch (FormatException) { _error = "Use h:mm:ss, e.g. 0:05:00"; return; }
+        _error = null;
+        if (v == null && !Nullable) { _text = Seconds is { } s ? Format(s) : Format(MinSeconds); return; }
+        if (v is { } x) v = Math.Clamp(Math.Round(x), MinSeconds, MaxSeconds);
+        await Set(v);
+    }
+
+    async Task Set(double? v)
+    {
+        _shown = v;
+        _text = v is { } s ? Format(s) : null;
+        await SecondsChanged.InvokeAsync(v);
+    }
+
+    async Task KeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is not ("ArrowUp" or "ArrowDown") || Disabled) return;
+        double cur;
+        try { cur = Parse(_text) ?? Seconds ?? 0; } catch (FormatException) { cur = Seconds ?? 0; }
+        var step = StepSeconds ?? (cur < 120 ? 15 : 60);
+        if (e.ShiftKey) step *= 5;
+        _error = null;
+        await Set(Math.Clamp(cur + (e.Key == "ArrowUp" ? step : -step), MinSeconds, MaxSeconds));
+    }
+
+    async Task Cleared() { _error = null; if (Nullable) await Set(null); }
+}

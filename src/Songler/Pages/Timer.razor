@@ -110,8 +110,8 @@
             @if (iv.Enabled)
             {
                 <div class="form-grid three">
-                    <MudNumericField T="double" @bind-Value="iv.WorkMin" @bind-Value:after="Apply" Label="Work (min)" Min="0.25" Max="120" Step="0.5" Disabled="Metro.IsRunning" />
-                    <MudNumericField T="double" @bind-Value="iv.RestMin" @bind-Value:after="Apply" Label="Rest (min)" Min="0" Max="60" Step="0.5" Disabled="Metro.IsRunning" />
+                    <DurationInput Seconds="iv.WorkMin * 60" SecondsChanged="async v => { iv.WorkMin = (v ?? 15) / 60; await Apply(); }" Label="Work" MinSeconds="15" MaxSeconds="7200" Disabled="Metro.IsRunning" />
+                    <DurationInput Seconds="iv.RestMin * 60" SecondsChanged="async v => { iv.RestMin = (v ?? 0) / 60; await Apply(); }" Label="Rest" MaxSeconds="3600" Disabled="Metro.IsRunning" />
                     <MudNumericField T="int" @bind-Value="iv.Rounds" @bind-Value:after="Apply" Label="Rounds" Min="0" Max="99" HelperText="0 = endless" Disabled="Metro.IsRunning" />
                 </div>
             }
@@ -131,10 +131,10 @@
                 }
             </div>
             <div class="form-grid mt-4">
-                <MudNumericField T="double" @bind-Value="_extendMin" Label="Extend by (min)" Min="0.5" Max="60" Step="1" />
-                <MudNumericField T="double" @bind-Value="_extendRestMin" Label="…after a rest of (min)" Min="0" Max="30" Step="0.5" />
+                <DurationInput Seconds="_extendMin * 60" SecondsChanged="v => _extendMin = (v ?? 300) / 60" Label="Extend by" MinSeconds="15" MaxSeconds="3600" />
+                <DurationInput Seconds="_extendRestMin * 60" SecondsChanged="v => _extendRestMin = (v ?? 0) / 60" Label="…after a rest of" MaxSeconds="1800" />
             </div>
-            <MudNumericField T="double" @bind-Value="_restMin" Label="Rest button length (min)" Min="0.5" Max="30" Step="0.5" Class="mt-2" Style="max-width:240px" />
+            <DurationInput Seconds="_restMin * 60" SecondsChanged="v => _restMin = (v ?? 120) / 60" Label="Rest button length" MinSeconds="15" MaxSeconds="1800" Class="mt-2" Style="max-width:240px" />
         </section>
     </MudItem>
 </MudGrid>

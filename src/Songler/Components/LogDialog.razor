@@ -30,7 +30,7 @@
             <div class="d-flex gap-3">
                 <MudTextField @bind-Value="_tempo" Label="@($"Tempo reached{(_item != null ? $" ({(_item.Unit == TempoUnit.Percent ? "%" : "bpm")})" : "")}")"
                               HelperText="e.g. 120, 65 - 145 or 85%" Class="flex-1" Immediate="true" AutoFocus="true" />
-                <MudNumericField T="double?" @bind-Value="_minutes" Label="Active minutes" HelperText="Excluding rests" Min="0" Step="1" Class="flex-1" />
+                <DurationInput Seconds="_seconds" SecondsChanged="v => _seconds = v" Nullable="true" Label="Active time" HelperText="Excluding rests" Class="flex-1" />
             </div>
             <EffortSlider @bind-Value="_effort" />
             <MudTextField @bind-Value="_notes" Label="Notes" Lines="2" Sizing="InputSizing.Auto" MaxLines="6" />
@@ -55,7 +55,7 @@
     MudForm? _form;
     DateTime? _date;
     string? _itemId, _sectionId, _name, _tempo, _notes;
-    double? _minutes;
+    double? _seconds;
     int? _effort;
     PracticeItem? _item;
 
@@ -77,7 +77,7 @@
         _name = Log.ItemName;
         _notes = Log.Notes;
         _effort = Log.Effort;
-        _minutes = Log.DurationSec is { } s ? Math.Round(s / 60.0, 1) : null;
+        _seconds = Log.DurationSec;
         if (Log.Value is { } v)
         {
             var suf = Log.Unit == TempoUnit.Percent ? "%" : "";
@@ -104,7 +104,7 @@
         Log.Unit = unit;
         Log.Value = max;
         Log.ValueMin = min;
-        Log.DurationSec = _minutes is { } m ? (int)Math.Round(m * 60) : null;
+        Log.DurationSec = _seconds is { } sec ? (int)Math.Round(sec) : null;
         Log.Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim();
         Log.Effort = _effort;
         await Store.SaveLogAsync(Log);
