@@ -34,13 +34,13 @@ Every new piece of user data has to be wired through **storage, backup/restore a
 1. `wwwroot/js/db.js`: add the store name to `STORES` **and bump `DB_VERSION`** (the upgrade handler creates missing stores).
 2. `DataStore.cs`: add the list, load it in `LoadAsync`, add save/delete methods that call `Changed`, include it in `ImportAsync` and in `ClearAllAsync` (both the store-name array and the in-memory `.Clear()`).
 3. `Backup.cs`: add a **nullable field with a default** to `BackupFile` (old backups must still load), fill it in `Export`, restore it in `RestoreAsync`, add it to the summary text, **bump `Backup.Version`** and extend the format-history comment.
-4. `SettingsPage.razor`: add it to the counts in the Danger zone and the "Delete all data" wording.
+4. `SettingsPage.razor`: add it to the counts in the Danger zone and the "Delete all data" wording. `RestoreDialog.razor`: mention it in the "Songs & data only" description if it's data, or in the settings line if it's a preference.
 5. If other entities reference it by id (e.g. plan steps → items), decide what happens on delete (see `DataStore.DeleteItemAsync`) and handle missing references in the UI.
 
 **Adding a field to an existing persisted type:**
 - Give it a sensible default in the model, because old IndexedDB rows and old backups won't have it. Nullable is fine.
 - Nothing else is needed for backup (whole objects are serialised), **unless** the field references something that isn't backed up (see score files below).
-- If it's a user preference on `AppSettings`, note that **settings are exported but intentionally not restored** (see `Backup.RestoreAsync`).
+- If it's a user preference on `AppSettings`: settings are backed up as one object, and restoring them is the user's choice in `RestoreDialog` ("Songs & data only" or "Everything, including settings"). If the new setting changes what that choice means, update the dialog's description. Restoring settings reloads the app, because services hold references into the settings object.
 
 **Deliberately not in the backup:**
 - Score files (Guitar Pro) are binary blobs in the `files` store, too large for a JSON backup. Items keep `ScoreFileId`, and the tab view shows a "re-import" message if the file is missing. If you change this, update the Settings > Backup text.

@@ -1,0 +1,54 @@
+@* Shown after a backup file is read: what's in it, and whether to restore settings too. *@
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Restore backup</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-1"><strong>@FileName</strong></MudText>
+        <MudText Typo="Typo.body2" Class="muted mb-4">Contains @Backup.Describe(File)@(File.Settings != null ? ", settings" : "").</MudText>
+
+        <MudRadioGroup T="bool" @bind-Value="_includeSettings" aria-label="What to restore">
+            <div class="restore-option @(!_includeSettings ? "on" : "")">
+                <MudRadio T="bool" Value="false" Color="Color.Primary">
+                    <strong>Songs &amp; data only</strong>
+                </MudRadio>
+                <MudText Typo="Typo.caption" Class="muted d-block restore-desc">Library, practice log, plans and custom metronomes. This device keeps its current settings.</MudText>
+            </div>
+            <div class="restore-option @(_includeSettings ? "on" : "")">
+                <MudRadio T="bool" Value="true" Color="Color.Primary" Disabled="File.Settings == null">
+                    <strong>Everything, including settings</strong>
+                </MudRadio>
+                <MudText Typo="Typo.caption" Class="muted d-block restore-desc">
+                    @(File.Settings == null
+                        ? "This backup has no settings."
+                        : "Also replaces theme, metronome sound and count-in, trainer and interval defaults, free-metronome tempo map, weekly goal and plan logging.")
+                </MudText>
+            </div>
+        </MudRadioGroup>
+
+        <MudText Typo="Typo.caption" Class="muted d-block mt-3">
+            Entries already here are kept; anything in the backup with the same id is replaced. Guitar Pro files aren't in backups, so re-import them if needed.
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="() => Dialog.Close(DialogResult.Ok(_includeSettings))">Restore</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public Backup.BackupFile File { get; set; } = default!;
+    [Parameter] public string FileName { get; set; } = "";
+    bool _includeSettings;
+
+    /// <summary>Returns true = include settings, false = data only, null = cancelled.</summary>
+    public static async Task<bool?> ShowAsync(IDialogService dialogs, Backup.BackupFile file, string fileName)
+    {
+        var p = new DialogParameters<RestoreDialog> { { x => x.File, file }, { x => x.FileName, fileName } };
+        var r = await dialogs.ShowAsync<RestoreDialog>("Restore backup", p, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
+        var res = await r.Result;
+        return res is { Canceled: false, Data: bool b } ? b : null;
+    }
+}

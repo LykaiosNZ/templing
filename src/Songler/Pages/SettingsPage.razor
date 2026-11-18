@@ -2,6 +2,8 @@
 @inject DataStore Store
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
+@inject MetronomeService Metro
+@inject NavigationManager Nav
 
 <PageTitle>Settings · Songler</PageTitle>
 
@@ -50,6 +52,17 @@
 </MudGrid>
 
 @code {
+    [SupplyParameterFromQuery(Name = "restored")] public int? Restored { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (Restored == 1)
+        {
+            Snackbar.Add($"Backup restored, including settings. You now have {Store.Items.Count} items and {Store.Logs.Count} log entries.", Severity.Success);
+            Nav.NavigateTo("settings", replace: true);
+        }
+    }
+
     Task Save() => Store.SaveSettingsAsync();
 
     async Task ExportJson() =>
@@ -63,7 +76,18 @@
         try
         {
             using var reader = new StreamReader(e.File.OpenReadStream(20_000_000));
-            Snackbar.Add(await Backup.RestoreAsync(Store, await reader.ReadToEndAsync()), Severity.Success);
+            var file = Backup.Parse(await reader.ReadToEndAsync());
+            var includeSettings = await RestoreDialog.ShowAsync(Dialogs, file, e.File.Name);
+            if (includeSettings == null) return;
+            if (includeSettings == true) await Metro.StopAsync();
+            var summary = await Backup.RestoreAsync(Store, file, includeSettings.Value);
+            if (includeSettings == true)
+            {
+                // services hold references into the old settings; reload so everything picks up the restored ones
+                Nav.NavigateTo("settings?restored=1", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(summary, Severity.Success);
         }
         catch (Exception ex)
         {

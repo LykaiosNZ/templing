@@ -136,6 +136,15 @@ public class DataStore(IJSRuntime js)
     }
 
     // ---------- Settings ----------
+    /// <summary>Replaces all settings (backup restore). Reload the app afterwards.</summary>
+    public async Task ReplaceSettingsAsync(AppSettings settings)
+    {
+        settings.Id = "app";
+        Settings = settings;
+        await Put("settings", Settings);
+        Changed?.Invoke();
+    }
+
     public async Task SaveSettingsAsync()
     {
         await Put("settings", Settings);
