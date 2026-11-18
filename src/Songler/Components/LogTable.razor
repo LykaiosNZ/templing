@@ -7,7 +7,7 @@
 }
 else
 {
-    <div class="log-table-wrap">
+    <div class="log-table-wrap hide-phone">
         <table class="log-table">
             <thead>
                 <tr>
@@ -56,6 +56,36 @@ else
                 }
             </tbody>
         </table>
+    </div>
+    @* phones: compact rows instead of a wide table *@
+    <div class="log-cards show-phone-block">
+        @foreach (var day in Logs.Take(_shown).GroupBy(l => l.Date.Date))
+        {
+            <div class="log-day">
+                <div class="log-day-head">@day.Key.ToString("ddd d MMM yy")</div>
+                @foreach (var l in day)
+                {
+                    var item = Store.GetItem(l.ItemId);
+                    var section = item?.Sections.Count > 1 ? item.Sections.FirstOrDefault(s => s.Id == l.SectionId)?.Name : null;
+                    var what = ShowItem ? l.ItemName + (section != null ? $" · {section}" : "") : _hasParts ? section ?? "Full run-through" : null;
+                    <div class="log-row">
+                        <div class="log-row-main">
+                            @if (what != null) { <span class="log-what">@what</span> }
+                            <span class="mono">@l.ValueText</span>
+                            <span class="mono muted">@(l.DurationSec is { } d ? Stats.Duration(d) : "—")</span>
+                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" Class="log-edit" aria-label="@($"Edit entry {l.ItemName} {l.Date:d MMM}")" OnClick="() => Edit(l)" />
+                        </div>
+                        @if (Effort.Get(l.Effort) is { } feel || !string.IsNullOrWhiteSpace(l.Notes))
+                        {
+                            <div class="log-row-sub">
+                                @if (Effort.Get(l.Effort) is { } f2) { <span class="feel-pill" style="--feel:@f2.Color">@f2.Label</span> }
+                                @if (!string.IsNullOrWhiteSpace(l.Notes)) { <span class="muted">@l.Notes</span> }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
     </div>
     @if (Logs.Count > _shown)
     {

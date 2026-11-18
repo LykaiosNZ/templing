@@ -494,3 +494,24 @@ code { font-family: var(--mono); font-size: .85em; background: var(--card-2); pa
 .sort-select .mud-input { min-width: 0; }
 .sort-select div.mud-input-slot { display: block !important; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 700px) { .toolbar-end > .mud-select .sort-select, .sort-select { width: auto; } }
+
+/* item detail polish */
+.collapse-toggle { display: flex; align-items: center; gap: 6px; background: none; border: none; padding: 0; color: inherit; font: inherit; cursor: pointer; text-align: left; min-width: 0; }
+.collapse-toggle .card-title { margin: 0; }
+.collapse-chevron { transition: transform .15s; transform: rotate(-90deg); color: var(--muted); }
+.collapsible.open .collapse-chevron { transform: none; }
+.collapse-summary { font-size: .85rem; margin-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.collapsible:not(.open) .card-head { margin-bottom: 0; }
+@media (max-width: 700px) {
+    .tiles-lead > .stat-tile:first-child { grid-column: 1 / -1; }
+}
+
+/* log table, phone layout */
+.log-cards { display: none; }
+@media (max-width: 700px) { .log-cards { display: flex; flex-direction: column; gap: 10px; } }
+.log-day-head { font-size: .78rem; font-weight: 700; color: var(--ink-2); text-transform: uppercase; letter-spacing: .04em; padding: 4px 0; border-bottom: 1px solid var(--grid); }
+.log-row { padding: 6px 0; border-bottom: 1px solid color-mix(in srgb, var(--grid) 60%, transparent); }
+.log-row-main { display: flex; align-items: center; gap: 10px; font-size: .9rem; }
+.log-row-main .log-what { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-row-main .log-edit { margin-left: auto; }
+.log-row-sub { display: flex; gap: 8px; align-items: baseline; font-size: .8rem; margin-top: 2px; flex-wrap: wrap; }

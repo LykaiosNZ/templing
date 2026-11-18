@@ -77,7 +77,11 @@
     [Parameter] public TempoUnit Unit { get; set; }
     [Parameter] public string AriaLabel { get; set; } = "Tempo progress chart";
 
-    const double W = 760, H = 260, L = 48, R = 16, T = 16, B = 30;
+    [Parameter] public int Width { get; set; } = 760;
+    [Parameter] public int Height { get; set; } = 260;
+    double W => Width;
+    double H => Height;
+    const double L = 48, R = 16, T = 16, B = 30;
     double _min, _max;
     DateTime _d0, _d1;
     List<double> _ticks = new();
@@ -113,7 +117,7 @@
         _d0 = Points[0].Date; _d1 = Points[^1].Date;
         if (_d1 == _d0) { _d0 = _d0.AddDays(-1); _d1 = _d1.AddDays(1); }
         var days = (_d1 - _d0).TotalDays;
-        int n = 5;
+        int n = Width < 500 ? 3 : 5;
         _xTicks = Enumerable.Range(0, n).Select(i => _d0.AddDays(Math.Round(days * i / (n - 1)))).Distinct().Select(d => (d, X(d))).ToList();
         var sb = new System.Text.StringBuilder();
         for (int i = 0; i < Points.Count; i++)

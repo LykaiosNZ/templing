@@ -23,11 +23,14 @@ else
             }
         </div>
         <div class="d-flex gap-2 flex-wrap">
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.PlayArrow" Href="@($"metronome/item/{_item.Id}")">Practise</MudButton>
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.HourglassBottom" Href="@($"timer/item/{_item.Id}")">Timer</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Mdi.Metronome" Href="@($"metronome/item/{_item.Id}")">Metronome</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.HourglassBottom" Href="@($"timer/item/{_item.Id}")">Timer</MudButton>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.AddTask" OnClick="AddLog">Log</MudButton>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Edit" OnClick="Edit">Edit</MudButton>
-            <MudIconButton Variant="Variant.Outlined" Icon="@Icons.Material.Rounded.Delete" aria-label="Delete item" OnClick="Delete" />
+            <MudMenu Icon="@Icons.Material.Rounded.MoreHoriz" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" aria-label="More actions">
+                <MudMenuItem Icon="@(_item.Archived ? Icons.Material.Rounded.Unarchive : Icons.Material.Rounded.Archive)" OnClick="ToggleArchive">@(_item.Archived ? "Unarchive" : "Archive")</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Rounded.Delete" IconColor="Color.Error" OnClick="Delete">Delete…</MudMenuItem>
+            </MudMenu>
         </div>
     </div>
 
@@ -37,7 +40,7 @@ else
         <MudText Class="muted mb-4" Style="white-space:pre-wrap">@_item.Notes</MudText>
     }
 
-    <div class="tiles">
+    <div class="tiles tiles-lead">
         <StatTile Label="Progress" Value="@(_st.Progress is { } p ? p.ToString("P0") : "—")" Icon="@Icons.Material.Rounded.Flag"
                   Sub="@ProgressSub">
             <div class="progress-track mt-2"><div class="progress-fill @(_st.Progress >= 1 ? "done" : "")" style="width:@Pct(_st.Progress)%"></div></div>
@@ -45,8 +48,8 @@ else
         <StatTile Label="Latest" Value="@(_st.Last?.ToString("0") ?? "—")" Unit="@(_st.Last.HasValue ? _item.Unit.Suffix() : null)" Icon="@Icons.Material.Rounded.Speed"
                   Sub="@(_st.Best is { } b ? $"Best {b:0}{_item.Unit.Suffix()}" : null)" />
         <StatTile Label="Improvement" Value="@Improvement" Icon="@Icons.Material.Rounded.TrendingUp" Sub="@(_st.FirstDate is { } fd ? $"since {fd:d MMM}" : null)" />
-        <StatTile Label="Days practised" Value="@_st.DaysPracticed.ToString()" Icon="@Icons.Material.Rounded.CalendarMonth" Sub="@($"Last {Stats.Ago(_st.LastDate, DateTime.Today)}")" />
-        <StatTile Label="Total time" Value="@Stats.Duration(_st.TotalSec)" Icon="@Icons.Material.Rounded.Timer" Sub="@($"{_st.Sessions} sessions")" />
+        <StatTile Label="Sessions" Value="@_st.Sessions.ToString()" Icon="@Icons.Material.Rounded.CalendarMonth" Sub="@($"Last {Stats.Ago(_st.LastDate, DateTime.Today)}")" />
+        <StatTile Label="Total time" Value="@Stats.Duration(_st.TotalSec)" Icon="@Icons.Material.Rounded.Timer" Sub="@AvgSub" />
     </div>
 
     <MudGrid Spacing="4" Class="mt-1">
@@ -54,6 +57,11 @@ else
             <section class="card">
                 <div class="card-head">
                     <h2 class="card-title">Tempo over time</h2>
+                    <MudSpacer />
+                    <MudToggleGroup T="int" Value="_rangeMonths" ValueChanged="RangeChanged" Size="Size.Small" Outlined="true" Color="Color.Primary" aria-label="Chart range">
+                        <MudToggleItem Value="3" Text="3 months" />
+                        <MudToggleItem Value="0" Text="All" />
+                    </MudToggleGroup>
                     @if (_item.Sections.Count > 1)
                     {
                         <MudSelect T="string" @bind-Value="_section" @bind-Value:after="Refresh" Label="@(_item.Type == ItemType.Song ? "Part" : "Section")" Clearable="true" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Style="max-width:220px">
@@ -61,23 +69,42 @@ else
                         </MudSelect>
                     }
                 </div>
-                <TempoChart Points="_points" Goal="_item.Goal" Unit="_item.Unit" AriaLabel="@($"Tempo progress for {_item.Name}")" />
+                <div class="hide-phone">
+                    <TempoChart Points="_points" Goal="_item.Goal" Unit="_item.Unit" AriaLabel="@($"Tempo progress for {_item.Name}")" />
+                </div>
+                <div class="show-phone-block">
+                    <TempoChart Points="_points" Goal="_item.Goal" Unit="_item.Unit" Width="380" Height="280" AriaLabel="@($"Tempo progress for {_item.Name}")" />
+                </div>
                 <MudText Typo="Typo.caption" Class="muted">Top tempo per day. Vertical whiskers show ranged sessions (e.g. warm-ups that climb from slow to fast).</MudText>
             </section>
         </MudItem>
         <MudItem xs="12" lg="4">
             <section class="card">
                 <h2 class="card-title">Weekly practice time</h2>
-                <BarChart Labels="_weekLabels" Values="_weekValues" ValueFormat="@(v => Stats.Duration((int)(v * 60)))" AxisFormat="@(v => $"{v:0}m")"
-                          HighlightLast="true" LabelEvery="3" Height="260" Width="400" AriaLabel="Minutes practised per week" />
+                <div class="hide-phone">
+                    <BarChart Labels="_weekLabels" Values="_weekValues" ValueFormat="@(v => Stats.Duration((int)(v * 60)))" AxisFormat="@(v => $"{v:0}m")"
+                              HighlightLast="true" LabelEvery="3" Height="260" Width="400" AriaLabel="Minutes practised per week" />
+                </div>
+                <div class="show-phone-block">
+                    <BarChart Labels="_weekLabels.TakeLast(8).ToList()" Values="_weekValues.TakeLast(8).ToList()" ValueFormat="@(v => Stats.Duration((int)(v * 60)))" AxisFormat="@(v => $"{v:0}m")"
+                              HighlightLast="true" LabelEvery="2" Height="240" Width="380" AriaLabel="Minutes practised per week, last 8 weeks" />
+                </div>
             </section>
         </MudItem>
-        <MudItem xs="12" lg="@(_item.HasParts() ? 12 : 5)">
-            <section class="card">
+        <MudItem xs="12">
+            <section class="card collapsible @(SectionsOpen ? "open" : "")">
                 <div class="card-head">
-                    <h2 class="card-title">@(_item.Type == ItemType.Song ? "Song parts" : "Sections")</h2>
+                    <button type="button" class="collapse-toggle" aria-expanded="@(SectionsOpen ? "true" : "false")" aria-controls="sections-body" @onclick="() => _sectionsOpen = !SectionsOpen">
+                        <MudIcon Icon="@Icons.Material.Rounded.ExpandMore" Class="collapse-chevron" Size="Size.Small" />
+                        <h2 class="card-title">@(_item.Type == ItemType.Song ? "Song parts" : "Sections")</h2>
+                        @if (!SectionsOpen)
+                        {
+                            <span class="collapse-summary muted">@SectionsSummary</span>
+                        }
+                    </button>
                     <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Rounded.Edit" OnClick="Edit">@(_item.Type == ItemType.Song ? "Edit parts" : "Edit")</MudButton>
                 </div>
+                <div id="sections-body" hidden="@(!SectionsOpen)">
                 @if (_item.HasParts())
                 {
                     <div class="log-table-wrap">
@@ -125,7 +152,7 @@ else
                                         <td class="small muted">@(ps.LastDate is null ? "not yet" : Stats.Ago(ps.LastDate, DateTime.Today))@(ps.TotalSec > 0 ? $" · {Stats.Duration(ps.TotalSec, true)}" : "")</td>
                                         <td class="act" style="white-space:nowrap">
                                             <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.AddTask" aria-label="@($"Log {s.Name}")" OnClick="() => AddLogFor(s.Id)" />
-                                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.PlayArrow" Color="Color.Primary" Href="@($"metronome/item/{_item.Id}/{s.Id}")" aria-label="@($"Practise {s.Name}")" />
+                                            <MudIconButton Size="Size.Small" Icon="@Mdi.Metronome" Color="Color.Primary" Href="@($"metronome/item/{_item.Id}/{s.Id}")" aria-label="@($"Practise {s.Name} with the metronome")" />
                                         </td>
                                     </tr>
                                 }
@@ -151,9 +178,10 @@ else
                         <MudText Typo="Typo.caption" Class="muted d-block mt-2">Tip: split this song into parts (intro, verse, solo…) to track each one separately.</MudText>
                     }
                 }
+                </div>
             </section>
         </MudItem>
-        <MudItem xs="12" lg="@(_item.HasParts() ? 12 : 7)">
+        <MudItem xs="12">
             <section class="card">
                 <h2 class="card-title">Log</h2>
                 <LogTable Logs="_logs" ShowItem="false" />
@@ -180,6 +208,35 @@ else
     List<double> _weekValues = new();
     List<SectionStats> _parts = new();
     SectionStats? _weakest;
+    int _rangeMonths;          // 0 = all time
+    bool? _sectionsOpen;       // null = default (open for multi-part items)
+
+    bool SectionsOpen => _sectionsOpen ?? _item!.HasParts();
+
+    string SectionsSummary
+    {
+        get
+        {
+            if (_item!.HasParts())
+                return $"{_parts.Count} parts" + (_weakest is { } w ? $" · weakest {w.Section.Name}" : "");
+            var s0 = _item.Sections[0];
+            return $"{s0.Bpm:0} bpm · {s0.Meter} · {SubName(s0.Subdivision).ToLowerInvariant()}";
+        }
+    }
+
+    string AvgSub => _st.Sessions > 0 && _st.TotalSec > 0
+        ? $"avg {Stats.Duration(_st.TotalSec / Math.Max(1, _logs.Count(l => l.DurationSec > 0)), true)} per session"
+        : "no time logged";
+
+    void RangeChanged(int months) { _rangeMonths = months; Refresh(); }
+
+    async Task ToggleArchive()
+    {
+        if (_item == null) return;
+        _item.Archived = !_item.Archived;
+        await Store.SaveItemAsync(_item);
+        Snackbar.Add(_item.Archived ? "Archived: hidden from the library unless \"Show archived\" is on" : "Unarchived", Severity.Info);
+    }
 
     static string SubName(int s) => s switch { 1 => "Beats", 2 => "8ths", 3 => "Triplets", 4 => "16ths", 6 => "Sextuplets", _ => s.ToString() };
 
@@ -206,7 +263,7 @@ else
     }
 
     protected override void OnInitialized() => Store.Changed += OnChanged;
-    protected override void OnParametersSet() { _section = null; Refresh(); }
+    protected override void OnParametersSet() { _section = null; _sectionsOpen = null; Refresh(); }
     void OnChanged() { Refresh(); InvokeAsync(StateHasChanged); }
 
     void Refresh()
@@ -215,6 +272,7 @@ else
         if (_item == null) return;
         _st = Stats.ForItem(_item, Store.Logs, _section);
         _points = Stats.TempoHistory(_item, Store.Logs, _section);
+        if (_rangeMonths > 0) _points = _points.Where(pt => pt.Date >= DateTime.Today.AddMonths(-_rangeMonths)).ToList();
         _logs = Store.LogsFor(_item.Id).OrderByDescending(l => l.Date).ToList();
         var weeks = Stats.WeeklySeconds(Store.LogsFor(_item.Id), DateTime.Today, 12);
         _weekLabels = weeks.Select(w => w.week.ToString("d MMM")).ToList();
