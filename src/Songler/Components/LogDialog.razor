@@ -94,7 +94,7 @@
 
     async Task Save()
     {
-        var (min, max, unit) = CsvImport.ParseSpeed(_tempo);
+        var (min, max, unit) = LogCsv.ParseSpeed(_tempo);
         if (_item != null && !(_tempo ?? "").Contains('%') && !(_tempo ?? "").Contains("bpm", StringComparison.OrdinalIgnoreCase))
             unit = _item.Unit;
         Log.Date = (_date ?? DateTime.Today).Date;
