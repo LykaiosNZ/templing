@@ -29,7 +29,7 @@
     </MudChipSet>
     <MudSpacer />
     <div class="toolbar-end">
-    <MudSelect T="string" @bind-Value="_sort" @bind-Value:after="Refresh" Label="Sort" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width:200px" Dense="true">
+    <MudSelect T="string" @bind-Value="_sort" @bind-Value:after="Refresh" Label="Sort" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sort-select" Dense="true">
         <MudSelectItem T="string" Value="@("recent")">Recently practised</MudSelectItem>
         <MudSelectItem T="string" Value="@("name")">Name</MudSelectItem>
         <MudSelectItem T="string" Value="@("progress")">Progress</MudSelectItem>

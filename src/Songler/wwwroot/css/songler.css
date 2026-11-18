@@ -488,3 +488,9 @@ code { font-family: var(--mono); font-size: .85em; background: var(--card-2); pa
 }
 .split-button .mud-menu-icon-button-activator:hover { background: var(--mud-palette-primary-darken); }
 .split-button > .mud-button-root { border-top-right-radius: 0 !important; border-bottom-right-radius: 0 !important; border-right: none !important; }
+
+/* fixed-width select whose text truncates instead of resizing the control */
+.sort-select { width: 200px; flex: none; }
+.sort-select .mud-input { min-width: 0; }
+.sort-select div.mud-input-slot { display: block !important; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 700px) { .toolbar-end > .mud-select .sort-select, .sort-select { width: auto; } }
