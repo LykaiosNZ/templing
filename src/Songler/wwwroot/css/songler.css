@@ -476,3 +476,15 @@ code { font-family: var(--mono); font-size: .85em; background: var(--card-2); pa
     .toolbar-end > .mud-input-control-boolean-input { flex: none; margin: 0; }
     .toolbar-end .mud-switch .mud-typography { white-space: nowrap; }
 }
+
+/* split button: MudButtonGroup + MudMenu. The group only restyles direct MudButton children,
+   so make the menu's arrow match the main button (height, width, colour, divider, corners). */
+.split-button { align-items: stretch; }
+.split-button > .mud-menu { display: flex; align-self: stretch; }
+.split-button .mud-menu-icon-button-activator {
+    height: auto; align-self: stretch; width: 34px; padding: 0; border-radius: 0 var(--mud-default-borderradius) var(--mud-default-borderradius) 0;
+    background: var(--mud-palette-primary); color: var(--mud-palette-primary-text);
+    border-left: 1px solid color-mix(in srgb, var(--mud-palette-primary-text) 35%, transparent);
+}
+.split-button .mud-menu-icon-button-activator:hover { background: var(--mud-palette-primary-darken); }
+.split-button > .mud-button-root { border-top-right-radius: 0 !important; border-bottom-right-radius: 0 !important; border-right: none !important; }
