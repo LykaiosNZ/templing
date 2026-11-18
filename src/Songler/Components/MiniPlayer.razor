@@ -2,37 +2,17 @@
 @inject MetronomeService Metro
 @inject NavigationManager Nav
 
-<div class="mini-player @(Metro.IsRunning ? "running" : "")" role="group" aria-label="Metronome">
+<div class="mini-player @(Metro.IsRunning ? "running" : "") @(Idle ? "idle" : "")" role="group" aria-label="Metronome">
     <MudIconButton Size="Size.Small" Icon="@(Metro.IsRunning ? Icons.Material.Rounded.Stop : Icons.Material.Rounded.PlayArrow)"
                    Color="Color.Primary" Variant="Variant.Filled" aria-label="@(Metro.IsRunning ? "Stop" : "Start")"
                    OnClick="() => Metro.ToggleAsync()" />
-    <a href="@Href" class="mini-info" aria-label="Open metronome">
+    <a href="@Href" class="mini-info" aria-label="@($"Open {(Metro.Silent ? "timer" : "metronome")}: {Metro.Title}, {Main}")">
         <span class="mini-title">@Metro.Title</span>
         <span class="mini-tempo">
-            @if (Metro.Silent)
+            <span class="@(RestShowing ? "phase rest" : "")">@Main</span>
+            @if (Extra != null)
             {
-                <span>@(Metro.RestOnlyRunning ? "rest" : "timer")</span>
-                @if (Metro.IsRunning && Metro.State.remaining is { } rem)
-                {
-                    <span class="muted">· @Stats.Clock(Math.Ceiling(rem))</span>
-                }
-                else if (Metro.SessionActiveSec > 1)
-                {
-                    <span class="muted">· @Stats.Clock(Metro.SessionActiveSec)</span>
-                }
-            }
-            else
-            {
-            @Metro.Value.ToString("0")@(Metro.Unit == TempoUnit.Percent ? "%" : "")
-            <span class="muted">@(Metro.Unit == TempoUnit.Percent ? $"· {Metro.PlayingBpm:0} bpm" : "bpm")</span>
-            @if (Metro.IsRunning && Metro.State.phase == "rest")
-            {
-                <span class="phase rest">rest @Stats.Clock(Metro.State.remaining ?? 0)</span>
-            }
-            else if (Metro.SessionActiveSec > 1)
-            {
-                <span class="muted">· @Stats.Clock(Metro.SessionActiveSec)</span>
-            }
+                <span class="muted mini-extra"> · @Extra</span>
             }
         </span>
     </a>
@@ -45,6 +25,35 @@
         MetronomeSource.Preset => $"metronome/preset/{Metro.Preset?.Id}",
         _ => "metronome"
     };
+
+    /// <summary>Nothing loaded or running: hidden on phones, where space is tight.</summary>
+    bool Idle => !Metro.IsRunning && Metro.Source == MetronomeSource.Free && Metro.SessionActiveSec < 1;
+
+    bool RestShowing => Metro.IsRunning && Metro.State.phase == "rest";
+
+    /// <summary>The headline: tempo, or timer/rest with its countdown.</summary>
+    string Main
+    {
+        get
+        {
+            if (RestShowing) return $"rest {Stats.Clock(Math.Ceiling(Metro.State.remaining ?? 0))}";
+            if (Metro.Silent)
+                return Metro.IsRunning && Metro.State.remaining is { } rem ? $"timer {Stats.Clock(Math.Ceiling(rem))}" : "timer";
+            return Metro.Unit == TempoUnit.Percent ? $"{Metro.Value:0}%" : $"{Metro.Value:0} bpm";
+        }
+    }
+
+    /// <summary>Secondary detail (hidden on phones): real bpm for % items, session time.</summary>
+    string? Extra
+    {
+        get
+        {
+            var parts = new List<string>();
+            if (!Metro.Silent && Metro.Unit == TempoUnit.Percent) parts.Add($"{Metro.PlayingBpm:0} bpm");
+            if (Metro.SessionActiveSec > 1 && !RestShowing) parts.Add(Stats.Clock(Metro.SessionActiveSec));
+            return parts.Count > 0 ? string.Join(" · ", parts) : null;
+        }
+    }
 
     protected override void OnInitialized() => Metro.Changed += OnChanged;
     void OnChanged() => InvokeAsync(StateHasChanged);

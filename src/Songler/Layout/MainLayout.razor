@@ -26,7 +26,9 @@
         <MudSpacer />
         <MiniPlayer />
         <MudTooltip Text="Log practice (N)">
-            <MudIconButton Icon="@Icons.Material.Rounded.AddTask" Color="Color.Inherit" aria-label="Log practice" OnClick="QuickLog" />
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Rounded.AddTask" Color="Color.Inherit"
+                       Class="hide-phone appbar-log" OnClick="QuickLog">Log</MudButton>
+            <MudIconButton Icon="@Icons.Material.Rounded.AddTask" Color="Color.Inherit" aria-label="Log practice" Class="show-phone" OnClick="QuickLog" />
         </MudTooltip>
         <MudTooltip Text="Keyboard shortcuts (?)">
             <MudIconButton Icon="@Icons.Material.Rounded.Keyboard" Color="Color.Inherit" aria-label="Keyboard shortcuts" OnClick="ShowShortcuts" />
@@ -48,9 +50,6 @@
             <MudDivider Class="my-2" />
             <MudNavLink Href="settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.Settings">Settings &amp; data</MudNavLink>
         </MudNavMenu>
-        <div class="drawer-foot">
-            <MudText Typo="Typo.caption" Class="muted">Press <kbd>?</kbd> for shortcuts</MudText>
-        </div>
     </MudDrawer>
     <MudMainContent>
         <main id="main" tabindex="-1">
