@@ -175,8 +175,9 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     private void LoadFreeInternal()
     {
         Source = MetronomeSource.Free; Item = null; Preset = null;
-        Sections = store.Settings.FreeSections.Count > 0 ? store.Settings.FreeSections : [new Section { Name = "Click", Bpm = 100 }];
-        PlayThrough = store.Settings.FreePlayThrough;
+        // the free metronome is a single click: tempo maps belong to custom metronomes and items
+        Sections = [store.Settings.FreeSections.FirstOrDefault() ?? new Section { Name = "Click", Bpm = 100 }];
+        PlayThrough = false;
         CurrentStep = 0; Factor = 1;
     }
 
@@ -221,6 +222,17 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         CurrentStep = 0; Factor = 1;
         ResetSession();
         await PushConfig();
+    }
+
+    /// <summary>Replace the tempo map of a custom metronome (persisted by saving the preset).</summary>
+    public async Task ReplaceSectionsAsync(List<Section> sections, bool playThrough, bool loop)
+    {
+        await StopAsync();
+        Sections = sections.Count > 0 ? sections : [new Section()];
+        PlayThrough = playThrough && Sections.Count > 1; Loop = loop;
+        if (CurrentStep >= Sections.Count) CurrentStep = Sections.Count - 1;
+        await PushConfig();
+        Changed?.Invoke();
     }
 
     /// <summary>Copy the current tempo map into a new free/custom metronome.</summary>

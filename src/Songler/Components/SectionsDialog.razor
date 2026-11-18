@@ -1,0 +1,52 @@
+@* Edits the tempo map of the free metronome or a custom metronome (library items use the item editor). *@
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Sections &amp; tempo changes</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="muted mb-3">
+            Each section has its own tempo and time signature. Give sections a bar count and turn on <em>Play through</em> to step through them automatically.
+        </MudText>
+        <SectionsEditor Sections="_sections" OnChanged="StateHasChanged" />
+        @if (_sections.Count > 1)
+        {
+            <div class="d-flex gap-4 mt-3 flex-wrap">
+                <MudSwitch T="bool" @bind-Value="_playThrough" Color="Color.Primary" Label="Play through in order" />
+                <MudSwitch T="bool" @bind-Value="_loop" Color="Color.Primary" Label="Loop at the end" Disabled="!_playThrough" />
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Done">Done</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public List<Section> Sections { get; set; } = new();
+    [Parameter] public bool PlayThrough { get; set; }
+    [Parameter] public bool Loop { get; set; } = true;
+
+    public record Result(List<Section> Sections, bool PlayThrough, bool Loop);
+
+    List<Section> _sections = new();
+    bool _playThrough, _loop;
+
+    protected override void OnInitialized()
+    {
+        _sections = Sections.Select(s => s.Clone()).ToList();
+        _playThrough = PlayThrough; _loop = Loop;
+    }
+
+    void Done() => Dialog.Close(DialogResult.Ok(new Result(_sections, _playThrough, _loop)));
+
+    public static async Task<Result?> ShowAsync(IDialogService dialogs, List<Section> sections, bool playThrough, bool loop)
+    {
+        var p = new DialogParameters<SectionsDialog> { { x => x.Sections, sections }, { x => x.PlayThrough, playThrough }, { x => x.Loop, loop } };
+        var r = await dialogs.ShowAsync<SectionsDialog>("Sections", p, new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true });
+        var res = await r.Result;
+        return res is { Canceled: false } ? res.Data as Result : null;
+    }
+}
