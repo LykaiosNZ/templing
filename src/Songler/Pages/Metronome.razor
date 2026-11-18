@@ -224,8 +224,8 @@
     <MudItem xs="12" lg="5">
         <section class="card" aria-label="Metronome settings">
             <MudToggleGroup T="string" @bind-Value="_panel" Color="Color.Primary" Size="Size.Small" Outlined="true" CheckMark="false" Class="settings-switcher" aria-label="Settings">
-                <MudToggleItem Value="@("trainer")"><span class="seg-label">Trainer@(Metro.Training.Enabled ? (MarkupString)"<span class=\"seg-dot\" aria-label=\"on\"></span>" : default)</span></MudToggleItem>
-                <MudToggleItem Value="@("intervals")"><span class="seg-label">Intervals@(Metro.Settings.Interval.Enabled ? (MarkupString)"<span class=\"seg-dot\" aria-label=\"on\"></span>" : default)</span></MudToggleItem>
+                <MudToggleItem Value="@("trainer")"><span class="seg-label">Trainer<span class="@DotClass(Metro.Training.Enabled)" title="@OnOff(Metro.Training.Enabled)" aria-label="@OnOff(Metro.Training.Enabled)"></span></span></MudToggleItem>
+                <MudToggleItem Value="@("intervals")"><span class="seg-label">Intervals<span class="@DotClass(Metro.Settings.Interval.Enabled)" title="@OnOff(Metro.Settings.Interval.Enabled)" aria-label="@OnOff(Metro.Settings.Interval.Enabled)"></span></span></MudToggleItem>
                 <MudToggleItem Value="@("sound")"><span class="seg-label">Sound</span></MudToggleItem>
             </MudToggleGroup>
             <div class="settings-panel">
@@ -236,7 +236,6 @@
                         <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">Set by your plan for this step. Changes here only affect this step.</MudAlert>
                     }
                     var tr = Metro.Training; var u = Metro.Unit == TempoUnit.Percent ? "%" : "bpm";
-                    <MudText Typo="Typo.caption" Class="muted d-block mb-2">@(tr.Enabled ? "On" : "Off") · toggle with the trend icon under the play button.</MudText>
                     <div class="form-grid">
                         <MudNumericField T="double" @bind-Value="tr.Start" @bind-Value:after="Apply" Label="@($"Start ({u})")" Min="Metro.Min" Max="Metro.Max" />
                         <MudNumericField T="double" @bind-Value="tr.End" @bind-Value:after="Apply" Label="@($"End ({u})")" Min="Metro.Min" Max="Metro.Max" />
@@ -248,7 +247,7 @@
                     @if (tr.Mode == RampMode.OverTime)
                     {
                         <DurationInput Seconds="tr.DurationMin * 60" SecondsChanged="async v => { tr.DurationMin = (v ?? 300) / 60; await Apply(); }" Label="Over (time playing)"
-                                       MinSeconds="15" MaxSeconds="7200" HelperText="Tempo climbs smoothly, changing on bar lines" />
+                                       MinSeconds="15" MaxSeconds="7200" />
                     }
                     else
                     {
@@ -267,8 +266,7 @@
                         <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">Your plan sets the intervals for this step. Changes here apply after the plan.</MudAlert>
                     }
                     var iv = Metro.Settings.Interval;
-                    <MudText Typo="Typo.caption" Class="muted d-block">@(iv.Enabled ? "On" : "Off") · toggle with the interval icon under the play button. Presets turn it on.</MudText>
-                    <div class="d-flex gap-2 flex-wrap my-2">
+                    <div class="d-flex gap-2 flex-wrap mb-2">
                         <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="() => SetInterval(5, 1, 2)">5 · 1 · 5</MudButton>
                         <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="() => SetInterval(10, 0, 1)">10 min</MudButton>
                         <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="() => SetInterval(2, 0.5, 4)">4 × 2 min</MudButton>
@@ -281,8 +279,7 @@
                     </div>
                     <MudCheckBox T="bool" @bind-Value="iv.VoiceCues" @bind-Value:after="Apply" Color="Color.Primary" Label="Audio cues (3-2-1 pips before each change)" />
                     <MudText Typo="Typo.caption" Class="muted d-block mt-2">
-                        Total active time: @Stats.Duration((int)(iv.WorkMin * 60 * Math.Max(1, iv.Rounds)))@(iv.Rounds == 0 ? " per round" : "").
-                        The click stops during rests and rest time isn't logged. Count-in plays at the start of every round.
+                        Total active time: @Stats.Duration((int)(iv.WorkMin * 60 * Math.Max(1, iv.Rounds)))@(iv.Rounds == 0 ? " per round" : "")
                     </MudText>
             }
             else
@@ -305,7 +302,8 @@
                             </MudSelect>
                         </div>
                     }
-                    <MudSelect T="int" @bind-Value="s.CountInBars" @bind-Value:after="Apply" Label="Count-in length" Style="max-width:200px" HelperText="@(s.CountIn ? "Count-in is on" : "Count-in is off (hourglass icon)")">
+                    <MudSelect T="int" @bind-Value="s.CountInBars" @bind-Value:after="Apply" Label="Count-in length" Style="max-width:200px" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.HourglassTop"
+                               AdornmentColor="@(s.CountIn ? Color.Primary : Color.Default)" AdornmentAriaLabel="@($"Count-in {OnOff(s.CountIn).ToLower()}")">
                         <MudSelectItem T="int" Value="1">1 bar</MudSelectItem>
                         <MudSelectItem T="int" Value="2">2 bars</MudSelectItem>
                     </MudSelect>
@@ -341,6 +339,8 @@
     string SectionLabel(int i) => i >= 0 && i < Metro.Sections.Count ? $"{i + 1}. {Metro.Sections[i].Name}" : "";
     static string ToggleClass(bool on) => on ? "opt-toggle on" : "opt-toggle";
     static string Pressed(bool on) => on ? "true" : "false";
+    static string DotClass(bool on) => on ? "seg-dot on" : "seg-dot";
+    static string OnOff(bool on) => on ? "On" : "Off";
 
     double Factor => Metro.IsRunning ? Metro.State.factor : Metro.Factor;
 

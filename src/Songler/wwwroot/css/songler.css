@@ -233,7 +233,9 @@ kbd {
 .settings-switcher { width: 100%; }
 .settings-switcher .mud-toggle-item { flex: 1; }
 .seg-label { display: inline-flex; align-items: center; gap: 6px; }
-.seg-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: inline-block; }
+.seg-dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid currentColor; opacity: .5; display: inline-block; box-sizing: border-box; }
+.seg-dot.on { background: var(--accent); border-color: var(--accent); opacity: 1; }
+.mud-toggle-item-selected .seg-dot.on { background: currentColor; border-color: currentColor; }
 .settings-panel { padding-top: 16px; }
 .session-log { display: flex; align-items: center; min-width: 170px; }
 .session-stats { display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px; }
