@@ -1,7 +1,7 @@
 @* GitHub-style practice calendar. Sequential single-hue ramp by minutes; practiced-but-untimed days use the first step. *@
 
 <div class="viz heatmap" role="img" aria-label="@AriaLabel">
-    <svg viewBox="0 0 @F(_w) @F(_h)" class="viz-svg" style="max-width:@(F(_w * 1.25))px" @onmouseleave="() => _hover = null">
+    <svg viewBox="0 0 @F(_w) @F(_h)" class="viz-svg" @onmouseleave="() => _hover = null">
         @foreach (var (label, x) in _months)
         {
             <SvgText x="@F(x)" y="10" class="viz-axis">@label</SvgText>

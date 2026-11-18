@@ -19,7 +19,9 @@
             {
                 var targetText = TargetLabel;
                 <line x1="@L" x2="@(W - R)" y1="@F(Y(tg))" y2="@F(Y(tg))" class="viz-goal" />
-                <SvgText x="@(W - R)" y="@F(Y(tg) - 6)" text-anchor="end" class="viz-goal-label">@targetText</SvgText>
+                @* legend sits above the plot so it never covers bars *@
+                <line x1="@L" x2="@(L + 18)" y1="9" y2="9" class="viz-goal" />
+                <SvgText x="@(L + 24)" y="13" class="viz-goal-label">@targetText</SvgText>
             }
             @for (int i = 0; i < Values.Count; i++)
             {
@@ -78,14 +80,21 @@
 
     [Parameter] public int Width { get; set; } = 760;
     double W => Width;
-    const double L = 44, R = 12, T = 12, B = 28;
+    const double L = 44, R = 12, B = 28;
+    double T => Target.HasValue ? 26 : 12;
     double _max, _slot;
     List<double> _ticks = new();
     int _hover = -1;
 
     static string F(double v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
     double Y(double v) => T + (1 - v / _max) * (Height - T - B);
-    bool ShowLabel(int i) => LabelEvery <= 1 || i % LabelEvery == 0 || i == Values.Count - 1 && (Values.Count - 1) % LabelEvery > LabelEvery / 2;
+    // every Nth label, always the last one, and skip a label that would crowd the last
+    bool ShowLabel(int i)
+    {
+        if (LabelEvery <= 1) return true;
+        var last = Values.Count - 1;
+        return i == last || (i % LabelEvery == 0 && last - i >= LabelEvery);
+    }
 
     static string BarPath(double x, double y, double w, double h)
     {

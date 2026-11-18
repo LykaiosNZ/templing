@@ -1,7 +1,6 @@
 ﻿@page "/"
 @implements IDisposable
 @inject DataStore Store
-@inject IDialogService Dialogs
 
 <PageTitle>Dashboard · Songler</PageTitle>
 
@@ -9,10 +8,6 @@
     <div>
         <MudText Typo="Typo.overline" Class="muted">@DateTime.Today.ToString("dddd d MMMM")</MudText>
         <h1 class="page-title" tabindex="-1">@Greeting</h1>
-    </div>
-    <div class="d-flex gap-2 flex-wrap">
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.Timer" Href="metronome">Open metronome</MudButton>
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.AddTask" OnClick="QuickLog">Log practice</MudButton>
     </div>
 </div>
 
@@ -33,7 +28,7 @@ else
             </div>
         </StatTile>
         <StatTile Label="Current streak" Value="@_streak.current.ToString()" Unit="@(_streak.current == 1 ? " day" : " days")" Icon="@Icons.Material.Rounded.LocalFireDepartment"
-                  Sub="@($"Longest {_streak.longest} days")" />
+                  Sub="@(_streak.current == 0 && _lastDay is { } ld ? $"Last practised {Stats.Ago(ld, DateTime.Today)} · best {_streak.longest}" : $"Longest {_streak.longest} days")" />
         <StatTile Label="Days practised" Value="@_days.ToString()" Icon="@Icons.Material.Rounded.CalendarMonth" Sub="@($"{_last30} of the last 30")" />
         <StatTile Label="Total logged" Value="@Stats.Duration(_totalSec)" Icon="@Icons.Material.Rounded.Timer" Sub="@($"{Store.Logs.Count} entries")" />
     </div>
@@ -49,8 +44,15 @@ else
             </section>
             <section class="card mt-4">
                 <h2 class="card-title">Weekly practice time</h2>
-                <BarChart Labels="_weekLabels" TipLabels="_weekTips" Values="_weekValues" ValueFormat="@(v => Stats.Duration((int)(v * 60)))" AxisFormat="@(v => $"{v:0}m")"
-                          HighlightLast="true" Target="Store.Settings.WeeklyGoalMin" TargetLabel="Weekly goal" LabelEvery="2" AriaLabel="Minutes practised per week, last 16 weeks" />
+                <div class="hide-phone">
+                    <BarChart Labels="_weekLabels" TipLabels="_weekTips" Values="_weekValues" ValueFormat="@(v => Stats.Duration((int)(v * 60)))" AxisFormat="@(v => $"{v:0}m")"
+                              HighlightLast="true" Target="Store.Settings.WeeklyGoalMin" TargetLabel="@GoalLabel" LabelEvery="3" AriaLabel="Minutes practised per week, last 16 weeks" />
+                </div>
+                <div class="show-phone-block">
+                    <BarChart Labels="_weekLabels.TakeLast(8).ToList()" TipLabels="_weekTips.TakeLast(8).ToList()" Values="_weekValues.TakeLast(8).ToList()"
+                              ValueFormat="@(v => Stats.Duration((int)(v * 60)))" AxisFormat="@(v => $"{v:0}m")" Width="380" Height="240"
+                              HighlightLast="true" Target="Store.Settings.WeeklyGoalMin" TargetLabel="@GoalLabel" LabelEvery="2" AriaLabel="Minutes practised per week, last 8 weeks" />
+                </div>
             </section>
         </MudItem>
         <MudItem xs="12" lg="4">
@@ -59,6 +61,10 @@ else
                     <h2 class="card-title">Goals in progress</h2>
                     <a href="library" class="small">Library →</a>
                 </div>
+                @if (_goals.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Class="muted">Nothing in progress. Everything you've practised lately is at its goal.</MudText>
+                }
                 <ul class="goal-list">
                     @foreach (var (item, st) in _goals)
                     {
@@ -108,6 +114,9 @@ else
     List<double> _weekValues = new();
     List<(PracticeItem, ItemStats)> _goals = new();
     List<IGrouping<DateTime, PracticeLog>> _recent = new();
+    DateTime? _lastDay;
+
+    string GoalLabel => $"Weekly goal {Stats.Duration(Store.Settings.WeeklyGoalMin * 60, true)}";
 
     string Greeting => DateTime.Now.Hour switch { < 12 => "Good morning", < 18 => "Good afternoon", _ => "Good evening" };
     static string Pct(double? p) => Math.Min(100, (p ?? 0) * 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
@@ -129,18 +138,17 @@ else
         _last30 = _practiced.Count(d => d > today.AddDays(-30));
         _streak = Stats.Streaks(logs, today);
         var weeks = Stats.WeeklySeconds(logs, today, 16);
-        _weekLabels = weeks.Select(w => w.week.ToString("d MMM")).ToList();
-        _weekTips = weeks.Select(w => $"Week of {w.week:d MMM}").ToList();
+        _weekLabels = weeks.Select((w, i) => i == weeks.Count - 1 ? "This week" : w.week.ToString("d MMM")).ToList();
+        _weekTips = weeks.Select((w, i) => i == weeks.Count - 1 ? "This week (so far)" : $"Week of {w.week:d MMM}").ToList();
         _weekValues = weeks.Select(w => w.sec / 60.0).ToList();
         _goals = Store.Items.Where(i => !i.Archived && i.Goal.HasValue)
             .Select(i => (i, Stats.ForItem(i, logs)))
-            .Where(x => x.Item2.LastDate >= today.AddDays(-30))
-            .OrderByDescending(x => x.Item2.LastDate)
+            .Where(x => x.Item2.LastDate >= today.AddDays(-30) && x.Item2.Progress is < 1)
+            .OrderByDescending(x => x.Item2.Progress)
             .Take(8).ToList();
-        _recent = logs.Where(l => l.Date >= today.AddDays(-14)).OrderByDescending(l => l.Date).GroupBy(l => l.Date.Date).Take(5).ToList();
+        _lastDay = _practiced.Count > 0 ? _practiced.Max() : null;
+        _recent = logs.Where(l => l.Date >= today.AddDays(-14)).OrderByDescending(l => l.Date).GroupBy(l => l.Date.Date).Take(3).ToList();
     }
-
-    async Task QuickLog() => await LogDialog.ShowAsync(Dialogs, new PracticeLog(), true);
 
     public void Dispose() => Store.Changed -= OnChanged;
 }
