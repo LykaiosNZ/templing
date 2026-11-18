@@ -44,6 +44,7 @@ Every new piece of user data has to be wired through **storage, backup/restore a
 
 **Deliberately not in the backup:**
 - Score files (Guitar Pro) are binary blobs in the `files` store, too large for a JSON backup. Items keep `ScoreFileId`, and the tab view shows a "re-import" message if the file is missing. If you change this, update the Settings > Backup text.
+- The `session` store holds transient state that should survive a refresh but not a device move, e.g. the running plan (`PlanRunner`, key `planrun`). It's cleared by "Delete all data" and never backed up.
 - `localStorage` isn't used for app data. Don't start.
 
 Serialisation uses `DataStore.Json` (PascalCase property names, string enums via attributes). Keep using it for anything written to IndexedDB or backups.

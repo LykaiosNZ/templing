@@ -391,12 +391,29 @@ code { font-family: var(--mono); font-size: .85em; background: var(--card-2); pa
 .plan-step { font-size: .95rem; }
 .plan-next { font-size: .8rem; }
 .plan-bar-actions { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
-.plan-dots { display: flex; gap: 4px; margin-top: 8px; }
-.plan-dot { flex: 1; max-width: 48px; height: 4px; border-radius: 2px; background: var(--grid); }
+.plan-dots { display: flex; gap: 4px; margin-top: 6px; }
+.plan-dot {
+    flex: 1; max-width: 48px; height: 14px; padding: 0; border: none; background: transparent; cursor: pointer;
+    display: flex; align-items: center; border-radius: 4px;
+}
+.plan-dot::before { content: ""; display: block; width: 100%; height: 4px; border-radius: 2px; background: var(--grid); transition: height .1s; }
+.plan-dot:hover::before, .plan-dot:focus-visible::before { height: 7px; }
 .plan-dot.rest { max-width: 18px; }
-.plan-dot.done { background: var(--good); }
-.plan-dot.skipped { background: var(--axis); }
-.plan-dot.on { background: var(--accent); }
+.plan-dot.done::before { background: var(--good); }
+.plan-dot.skipped::before { background: var(--axis); }
+.plan-dot.on::before { background: var(--accent); }
+.plan-bar.rest .plan-dot.on::before { background: var(--series); }
+.plan-left { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--ink-2); }
+.plan-nav { display: inline-flex; }
+.mud-button-root.plan-end { color: var(--muted); }
+.mud-button-root.plan-end:hover { color: var(--mud-palette-error); }
+@media (max-width: 700px) {
+    .plan-bar { padding: 8px 14px 6px; }
+    .plan-next, .plan-step-meta { display: none; }
+    .plan-step { font-size: .9rem; }
+    .plan-bar-actions { gap: 2px; }
+    .plan-dots { margin-top: 8px; }
+}
 .plan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
 .plan-card { display: flex; flex-direction: column; gap: 10px; }
 .plan-card.running { border-color: var(--accent); }

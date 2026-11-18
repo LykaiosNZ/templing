@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Components;
 using Songler.Models;
 
@@ -5,16 +6,24 @@ namespace Songler.Services;
 
 public enum StepState { Ready, Running, Finished }
 
+/// <summary>Shown after the last step: what got done.</summary>
+public record PlanSummary(string Name, int Steps, int Done, int Logs, int LoggedSec);
+
 /// <summary>
 /// Walks through a practice plan one step at a time. Each step loads its item into the metronome
 /// (or the click-free timer) with the step's intervals pinned; rest steps run a rest countdown.
 /// When a step finishes, <see cref="StepFinished"/> fires so the UI can log it (ask or auto) and move on.
+/// The run (plan, step, progress) is saved in the "session" store so a page refresh resumes it.
 /// </summary>
 public class PlanRunner
 {
     private readonly MetronomeService _metro;
     private readonly DataStore _store;
     private readonly NavigationManager _nav;
+    private const string RunKey = "planrun";
+
+    /// <summary>Persisted run state (transient: deliberately not part of backups).</summary>
+    private record RunState(string Id, string PlanId, int Index, List<string> Completed, int Logs, int LoggedSec);
 
     public PlanRunner(MetronomeService metro, DataStore store, NavigationManager nav)
     {
@@ -32,6 +41,14 @@ public class PlanRunner
     public bool IsLast => Plan != null && Index >= Plan.Steps.Count - 1;
     /// <summary>Step ids that were logged (or completed, for rests) in this run.</summary>
     public HashSet<string> Completed { get; } = new();
+    public int Logs { get; private set; }
+    public int LoggedSec { get; private set; }
+    /// <summary>Set when the plan finishes; cleared on dismiss or a new run.</summary>
+    public PlanSummary? Summary { get; private set; }
+
+    /// <summary>Planned minutes left: the current step and every later step not yet done.</summary>
+    public double MinutesLeft => Plan == null ? 0
+        : Plan.Steps.Skip(Index).Where(s => !Completed.Contains(s.Id)).Sum(s => s.TotalMinutes);
 
     public event Action? Changed;
     /// <summary>An item step finished on its own; the handler should log it and then call <see cref="AdvanceAsync"/>.</summary>
@@ -50,10 +67,26 @@ public class PlanRunner
     {
         if (plan.Steps.Count == 0) return;
         await _metro.StopAsync();
-        Plan = plan; Index = 0; Completed.Clear();
+        Plan = plan; Index = 0; Completed.Clear(); Logs = 0; LoggedSec = 0; Summary = null;
         plan.LastRun = DateTime.Now;
         await _store.SavePlanAsync(plan);
-        await LoadStepAsync();
+        await LoadStepAsync(navigate: true, autoStartRest: true);
+    }
+
+    /// <summary>Resume a run saved before a refresh. Stays on the current page; rests wait for Start.</summary>
+    public async Task RestoreAsync()
+    {
+        if (Plan != null) return;
+        RunState? run;
+        try { run = JsonSerializer.Deserialize<RunState>(await _store.GetSessionAsync(RunKey) ?? "null", DataStore.Json); }
+        catch (JsonException) { run = null; }
+        var plan = _store.GetPlan(run?.PlanId);
+        if (run == null || plan == null || plan.Steps.Count == 0) { await _store.RemoveSessionAsync(RunKey); return; }
+        Plan = plan;
+        Index = Math.Clamp(run.Index, 0, plan.Steps.Count - 1);
+        Completed.Clear(); foreach (var id in run.Completed) Completed.Add(id);
+        Logs = run.Logs; LoggedSec = run.LoggedSec;
+        await LoadStepAsync(navigate: false, autoStartRest: false);
     }
 
     public async Task GoToAsync(int index)
@@ -61,11 +94,19 @@ public class PlanRunner
         if (Plan == null) return;
         await _metro.StopAsync();
         Index = Math.Clamp(index, 0, Plan.Steps.Count - 1);
-        await LoadStepAsync();
+        await LoadStepAsync(navigate: true, autoStartRest: true);
     }
 
     public Task SkipAsync() => IsLast ? EndAsync() : GoToAsync(Index + 1);
     public Task BackAsync() => GoToAsync(Math.Max(0, Index - 1));
+
+    /// <summary>Record a log saved for the current step (for the end-of-plan summary).</summary>
+    public async Task RecordLoggedAsync(int? seconds)
+    {
+        Logs++;
+        LoggedSec += seconds ?? 0;
+        await SaveRunAsync();
+    }
 
     /// <summary>Called after the finished step was logged (or not): move to the next step, or end.</summary>
     public async Task AdvanceAsync()
@@ -74,21 +115,22 @@ public class PlanRunner
         if (Current != null) Completed.Add(Current.Id);
         if (IsLast) { await EndAsync(finished: true); return; }
         Index++;
-        await LoadStepAsync();
+        await LoadStepAsync(navigate: true, autoStartRest: true);
     }
 
-    public bool FinishedAll { get; private set; }
+    public bool FinishedAll => Summary != null;
 
     public async Task EndAsync(bool finished = false)
     {
         await _metro.StopAsync();
         await _metro.ClearStepIntervalsAsync();
-        FinishedAll = finished;
+        Summary = finished && Plan != null ? new PlanSummary(Plan.Name, Plan.Steps.Count, Completed.Count, Logs, LoggedSec) : null;
         Plan = null;
+        await _store.RemoveSessionAsync(RunKey);
         Changed?.Invoke();
     }
 
-    public void DismissSummary() { FinishedAll = false; Changed?.Invoke(); }
+    public void DismissSummary() { Summary = null; Changed?.Invoke(); }
 
     /// <summary>Start (or restart) the current step's clock.</summary>
     public async Task StartStepAsync()
@@ -102,18 +144,22 @@ public class PlanRunner
         Changed?.Invoke();
     }
 
-    private async Task LoadStepAsync()
+    private Task SaveRunAsync() => Plan == null ? Task.CompletedTask
+        : _store.PutSessionAsync(new RunState(RunKey, Plan.Id, Index, Completed.ToList(), Logs, LoggedSec));
+
+    private async Task LoadStepAsync(bool navigate, bool autoStartRest)
     {
         var s = Current;
         if (s == null) { await EndAsync(true); return; }
         State = StepState.Ready;
-        FinishedAll = false;
+        Summary = null;
+        await SaveRunAsync();
         if (s.Kind == PlanStepKind.Rest)
         {
             await _metro.ClearStepIntervalsAsync();
-            _nav.NavigateTo("timer");
+            if (navigate) _nav.NavigateTo("timer");
             Changed?.Invoke();
-            await StartStepAsync(); // rests start straight away
+            if (autoStartRest) await StartStepAsync(); // rests start straight away
             return;
         }
         var item = _store.GetItem(s.ItemId);
@@ -127,9 +173,12 @@ public class PlanRunner
                 Enabled = s.Trainer, Start = s.TrainerStart, End = s.TrainerEnd,
                 Mode = RampMode.OverTime, DurationMin = s.WorkMinutes, StopAtEnd = false,
             });
-        var url = s.Mode == StepMode.Timer ? $"timer/item/{item.Id}"
-            : s.SectionId != null ? $"metronome/item/{item.Id}/{s.SectionId}" : $"metronome/item/{item.Id}";
-        _nav.NavigateTo(url);
+        if (navigate)
+        {
+            var url = s.Mode == StepMode.Timer ? $"timer/item/{item.Id}"
+                : s.SectionId != null ? $"metronome/item/{item.Id}/{s.SectionId}" : $"metronome/item/{item.Id}";
+            _nav.NavigateTo(url);
+        }
         Changed?.Invoke();
     }
 

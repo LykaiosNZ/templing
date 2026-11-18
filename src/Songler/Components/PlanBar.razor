@@ -12,53 +12,59 @@
     <section class="plan-bar @(step.Kind == PlanStepKind.Rest ? "rest" : "")" aria-label="Practice plan">
         <div class="plan-bar-main">
             <div class="plan-bar-info">
-                <span class="plan-name">@plan.Name</span>
+                <span class="plan-name">@plan.Name <span class="plan-left">· step @(Runner.Index + 1) of @plan.Steps.Count · about @Stats.Duration((int)(Runner.MinutesLeft * 60), true) left</span></span>
                 <span class="plan-step">
-                    Step @(Runner.Index + 1) of @plan.Steps.Count:
                     <strong>@Runner.Describe(step)</strong>
-                    <span class="muted">· @step.IntervalText@(step.Kind == PlanStepKind.Item ? $" · {(step.Mode == StepMode.Timer ? "timer" : "metronome")}" : "")@(step.TempoText(Store.GetItem(step.ItemId)?.Unit ?? TempoUnit.Bpm) is { Length: > 0 } tt ? $" · {tt}" : "")</span>
+                    <span class="muted plan-step-meta"> · @step.IntervalText@(step.Kind == PlanStepKind.Item ? $" · {(step.Mode == StepMode.Timer ? "timer" : "metronome")}" : "")@(step.TempoText(Store.GetItem(step.ItemId)?.Unit ?? TempoUnit.Bpm) is { Length: > 0 } tt ? $" · {tt}" : "")</span>
                 </span>
-                @if (Runner.NextStep is { } next)
-                {
-                    <span class="plan-next muted">Next: @Runner.Describe(next) · @next.IntervalText</span>
-                }
-                else
-                {
-                    <span class="plan-next muted">Last step</span>
-                }
+                <span class="plan-next muted">@(Runner.NextStep is { } next ? $"Next: {Runner.Describe(next)} · {next.IntervalText}" : "Last step")</span>
             </div>
             <div class="plan-bar-actions">
-                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.SkipPrevious" aria-label="Previous step" Disabled="Runner.Index == 0" OnClick="() => Runner.BackAsync()" />
-                @if (Runner.State == StepState.Ready && step.Kind == PlanStepKind.Item)
+                @if (Runner.State == StepState.Ready)
                 {
                     <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.PlayArrow" OnClick="() => Runner.StartStepAsync()">
-                        @(Metro.SessionActiveSec >= 1 ? "Resume" : "Start step")
+                        @(step.Kind == PlanStepKind.Rest ? "Start rest" : Metro.SessionActiveSec >= 1 ? "Resume" : "Start step")
                     </MudButton>
-                    @if (Metro.SessionActiveSec >= 1)
+                    @if (step.Kind == PlanStepKind.Item && Metro.SessionActiveSec >= 1)
                     {
                         <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Done" OnClick="FinishEarly">Finish step</MudButton>
                     }
                 }
-                <MudButton Size="Size.Small" Variant="Variant.Text" EndIcon="@Icons.Material.Rounded.SkipNext" OnClick="() => Runner.SkipAsync()">Skip</MudButton>
-                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" OnClick="End">End plan</MudButton>
+                <span class="plan-nav" role="group" aria-label="Step navigation">
+                    <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Rounded.SkipPrevious" Disabled="Runner.Index == 0" OnClick="() => JumpTo(Runner.Index - 1)">Back</MudButton>
+                    <MudButton Size="Size.Small" Variant="Variant.Text" EndIcon="@Icons.Material.Rounded.SkipNext" OnClick="Skip">@(Runner.IsLast ? "Finish" : "Skip")</MudButton>
+                </span>
+                <MudButton Size="Size.Small" Variant="Variant.Text" Class="plan-end" OnClick="End">End plan</MudButton>
             </div>
         </div>
-        <div class="plan-dots" aria-hidden="true">
+        <div class="plan-dots" role="group" aria-label="Steps">
             @for (int i = 0; i < plan.Steps.Count; i++)
             {
+                var idx = i;
                 var s = plan.Steps[i];
-                var cls = i == Runner.Index ? "on" : Runner.Completed.Contains(s.Id) ? "done" : i < Runner.Index ? "skipped" : "";
-                <span class="plan-dot @cls @(s.Kind == PlanStepKind.Rest ? "rest" : "")" title="@($"{i + 1}. {Runner.Describe(s)} · {s.IntervalText}")"></span>
+                var state = i == Runner.Index ? "on" : Runner.Completed.Contains(s.Id) ? "done" : i < Runner.Index ? "skipped" : "";
+                var label = $"Step {i + 1}: {Runner.Describe(s)} · {s.IntervalText}{(state == "done" ? " (done)" : state == "skipped" ? " (skipped)" : state == "on" ? " (current)" : "")}";
+                <button type="button" class="plan-dot @state @(s.Kind == PlanStepKind.Rest ? "rest" : "")" title="@label" aria-label="@label"
+                        aria-current="@(state == "on" ? "step" : null)" @onclick="() => JumpTo(idx)"></button>
             }
         </div>
     </section>
 }
-else if (Runner.FinishedAll)
+else if (Runner.Summary is { } sum)
 {
     <section class="plan-bar done" aria-label="Plan finished" role="status">
         <div class="plan-bar-main">
-            <div class="plan-bar-info"><span class="plan-step"><strong>Plan complete.</strong> Nice work!</span></div>
-            <div class="plan-bar-actions"><MudButton Size="Size.Small" Variant="Variant.Text" OnClick="() => Runner.DismissSummary()">Dismiss</MudButton></div>
+            <div class="plan-bar-info">
+                <span class="plan-name">@sum.Name</span>
+                <span class="plan-step">
+                    <strong>@(sum.Logs > 0 || sum.Done > 0 ? "Plan complete. Nice work!" : "Plan ended.")</strong>
+                    <span class="muted"> @sum.Done of @sum.Steps steps · @(sum.Logs == 1 ? "1 log" : $"{sum.Logs} logs") · @Stats.Duration(sum.LoggedSec) practised</span>
+                </span>
+            </div>
+            <div class="plan-bar-actions">
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" Href="history" StartIcon="@Icons.Material.Rounded.History" OnClick="() => Runner.DismissSummary()">View history</MudButton>
+                <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="() => Runner.DismissSummary()">Dismiss</MudButton>
+            </div>
         </div>
     </section>
 }
@@ -75,24 +81,30 @@ else if (Runner.FinishedAll)
 
     async Task OnStepFinished(PlanStep step) => await InvokeAsync(() => LogAndAdvance(step));
 
+    bool HasUnlogged => Metro.SessionActiveSec >= 1 && Runner.Current is { Kind: PlanStepKind.Item };
+
+    /// <summary>Logs the current step's session (auto or via the dialog). Returns false if the user backed out of the dialog.</summary>
+    async Task<bool> LogCurrent(PlanStep step, bool ask)
+    {
+        var log = Metro.BuildSessionLog();
+        log.Source = "plan";
+        if (step.SectionId != null) log.SectionId = step.SectionId;
+        bool saved;
+        if (!ask)
+        {
+            await Store.SaveLogAsync(log);
+            Snackbar.Add($"Logged {Stats.Clock(Metro.SessionActiveSec)} of {Runner.Describe(step)}", Severity.Success);
+            saved = true;
+        }
+        else saved = await LogDialog.ShowAsync(Dialogs, log, isNew: true);
+        if (saved) await Runner.RecordLoggedAsync(log.DurationSec);
+        Metro.ResetSession();
+        return saved;
+    }
+
     async Task LogAndAdvance(PlanStep step)
     {
-        if (Metro.SessionActiveSec >= 1)
-        {
-            var log = Metro.BuildSessionLog();
-            log.Source = "plan";
-            if (step.SectionId != null) log.SectionId = step.SectionId;
-            if (Store.Settings.AutoLogPlanSteps)
-            {
-                await Store.SaveLogAsync(log);
-                Snackbar.Add($"Logged {Stats.Clock(Metro.SessionActiveSec)} of {Runner.Describe(step)}", Severity.Success);
-            }
-            else
-            {
-                await LogDialog.ShowAsync(Dialogs, log, isNew: true);
-            }
-            Metro.ResetSession();
-        }
+        if (Metro.SessionActiveSec >= 1) await LogCurrent(step, ask: !Store.Settings.AutoLogPlanSteps);
         await Runner.AdvanceAsync();
     }
 
@@ -101,19 +113,45 @@ else if (Runner.FinishedAll)
         if (Runner.Current is { } s) await LogAndAdvance(s);
     }
 
+    /// <summary>Before leaving a step with practice time on it: log it, discard it, or stay. Returns false to stay.</summary>
+    async Task<bool> ConfirmLeave(string verb)
+    {
+        if (!HasUnlogged || Runner.Current is not { } step) return true;
+        var r = await Dialogs.ShowMessageBoxAsync($"{verb}?",
+            $"You have {Stats.Clock(Metro.SessionActiveSec)} on {Runner.Describe(step)} that hasn't been logged.",
+            yesText: "Log it", noText: "Discard", cancelText: "Cancel");
+        if (r == null) return false;
+        if (r == true) await LogCurrent(step, ask: true);
+        else Metro.ResetSession();
+        return true;
+    }
+
+    async Task JumpTo(int index)
+    {
+        if (index == Runner.Index || index < 0) return;
+        if (!await ConfirmLeave("Leave this step")) return;
+        await Runner.GoToAsync(index);
+    }
+
+    async Task Skip()
+    {
+        if (!await ConfirmLeave(Runner.IsLast ? "Finish the plan" : "Skip this step")) return;
+        if (Runner.IsLast) await Runner.EndAsync(finished: true);
+        else await Runner.SkipAsync();
+    }
+
     async Task End()
     {
-        if (Metro.SessionActiveSec >= 1 && Runner.Current is { Kind: PlanStepKind.Item })
+        if (HasUnlogged)
         {
-            var r = await Dialogs.ShowMessageBoxAsync("End plan?", $"You have {Stats.Clock(Metro.SessionActiveSec)} on this step that hasn't been logged.",
-                yesText: "Log and end", noText: "End without logging", cancelText: "Keep going");
-            if (r == null) return;
-            if (r == true)
-            {
-                var log = Metro.BuildSessionLog(); log.Source = "plan";
-                await LogDialog.ShowAsync(Dialogs, log, isNew: true);
-            }
-            Metro.ResetSession();
+            if (!await ConfirmLeave("End plan")) return;
+        }
+        else
+        {
+            var ok = await Dialogs.ShowMessageBoxAsync("End plan?",
+                $"You're on step {Runner.Index + 1} of {Runner.Plan?.Steps.Count}. Logs already saved are kept.",
+                yesText: "End plan", cancelText: "Keep going");
+            if (ok != true) return;
         }
         await Runner.EndAsync();
     }

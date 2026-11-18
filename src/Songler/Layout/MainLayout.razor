@@ -80,6 +80,7 @@
         _dark = Store.Settings.DarkMode;
         await Keys.InitAsync();
         await Metro.InitAsync();
+        await Runner.RestoreAsync(); // resume a plan that was running before a refresh
         Metro.Finished += OnFinished;
         RegisterGlobalKeys();
         _ready = true;

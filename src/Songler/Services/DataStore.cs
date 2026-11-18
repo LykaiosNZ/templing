@@ -135,6 +135,11 @@ public class DataStore(IJSRuntime js)
         Changed?.Invoke();
     }
 
+    // ---------- Session (transient state that survives a refresh; deliberately not backed up) ----------
+    public async Task<string?> GetSessionAsync(string id) => await _db!.InvokeAsync<string?>("get", "session", id);
+    public Task PutSessionAsync<T>(T value) => Put("session", value);
+    public Task RemoveSessionAsync(string id) => Remove("session", id);
+
     // ---------- Settings ----------
     /// <summary>Replaces all settings (backup restore). Reload the app afterwards.</summary>
     public async Task ReplaceSettingsAsync(AppSettings settings)
@@ -171,7 +176,7 @@ public class DataStore(IJSRuntime js)
 
     public async Task ClearAllAsync()
     {
-        foreach (var s in new[] { "items", "logs", "presets", "files", "plans" }) await _db!.InvokeVoidAsync("clear", s);
+        foreach (var s in new[] { "items", "logs", "presets", "files", "plans", "session" }) await _db!.InvokeVoidAsync("clear", s);
         Items.Clear(); Logs.Clear(); Presets.Clear(); Plans.Clear();
         Changed?.Invoke();
     }
