@@ -50,17 +50,10 @@
 </MudGrid>
 
 @code {
-    // Plans were added in version 2; older backups simply have none.
-    record Backup(int Version, List<PracticeItem> Items, List<PracticeLog> Logs, List<MetronomePreset> Presets, AppSettings? Settings, List<PracticePlan>? Plans = null);
-
     Task Save() => Store.SaveSettingsAsync();
 
-    async Task ExportJson()
-    {
-        var b = new Backup(2, Store.Items, Store.Logs, Store.Presets, Store.Settings, Store.Plans);
-        var json = System.Text.Json.JsonSerializer.Serialize(b, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-        await Store.DownloadAsync($"songler-backup-{DateTime.Today:yyyy-MM-dd}.json", json, "application/json");
-    }
+    async Task ExportJson() =>
+        await Store.DownloadAsync($"songler-backup-{DateTime.Today:yyyy-MM-dd}.json", Backup.Export(Store), "application/json");
 
     async Task ExportCsv() =>
         await Store.DownloadAsync($"songler-log-{DateTime.Today:yyyy-MM-dd}.csv", LogCsv.ExportLogCsv(Store), "text/csv");
@@ -70,11 +63,7 @@
         try
         {
             using var reader = new StreamReader(e.File.OpenReadStream(20_000_000));
-            var b = System.Text.Json.JsonSerializer.Deserialize<Backup>(await reader.ReadToEndAsync());
-            if (b == null) throw new FormatException("Empty backup");
-            await Store.ImportAsync(b.Items ?? [], b.Logs ?? [], b.Presets ?? []);
-            foreach (var plan in b.Plans ?? []) await Store.SavePlanAsync(plan);
-            Snackbar.Add($"Restored {b.Items?.Count ?? 0} items, {b.Logs?.Count ?? 0} log entries{(b.Plans is { Count: > 0 } pl ? $" and {pl.Count} plans" : "")}", Severity.Success);
+            Snackbar.Add(await Backup.RestoreAsync(Store, await reader.ReadToEndAsync()), Severity.Success);
         }
         catch (Exception ex)
         {

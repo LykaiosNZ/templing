@@ -143,16 +143,20 @@ public class DataStore(IJSRuntime js)
     }
 
     // ---------- Bulk ----------
-    public async Task ImportAsync(IEnumerable<PracticeItem> items, IEnumerable<PracticeLog> logs, IEnumerable<MetronomePreset>? presets = null)
+    /// <summary>Bulk upsert used by backup restore. New persisted entity? Add it here and in Backup.cs (see CLAUDE.md).</summary>
+    public async Task ImportAsync(IEnumerable<PracticeItem> items, IEnumerable<PracticeLog> logs,
+        IEnumerable<MetronomePreset>? presets = null, IEnumerable<PracticePlan>? plans = null)
     {
-        var il = items.ToList(); var ll = logs.ToList(); var pl = presets?.ToList() ?? new();
+        var il = items.ToList(); var ll = logs.ToList(); var pl = presets?.ToList() ?? new(); var pp = plans?.ToList() ?? new();
         foreach (var i in il) { Items.RemoveAll(x => x.Id == i.Id); Items.Add(i); }
         foreach (var l in ll) { Logs.RemoveAll(x => x.Id == l.Id); Logs.Add(l); }
         foreach (var p in pl) { Presets.RemoveAll(x => x.Id == p.Id); Presets.Add(p); }
+        foreach (var p in pp) { Plans.RemoveAll(x => x.Id == p.Id); Plans.Add(p); }
         Items.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
         if (il.Count > 0) await PutMany("items", il);
         if (ll.Count > 0) await PutMany("logs", ll);
         if (pl.Count > 0) await PutMany("presets", pl);
+        if (pp.Count > 0) await PutMany("plans", pp);
         Changed?.Invoke();
     }
 

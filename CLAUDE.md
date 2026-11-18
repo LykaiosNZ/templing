@@ -1,0 +1,64 @@
+# Songler: notes for agents
+
+Practice tracker for guitar: Blazor WebAssembly (.NET 11) + MudBlazor 9, Web Audio metronome in JS, all data in the browser (IndexedDB). No server, no accounts.
+
+## Run / build
+
+```bash
+dotnet build src/Songler/Songler.csproj
+dotnet run --project src/Songler/Songler.csproj --launch-profile http   # http://localhost:5075
+```
+
+- The dev server does **not** hot-reload: restart it after C# / Razor / JS changes (`.claude/launch.json` has the `songler` preview config).
+- There is no test project. Verify changes in the browser, and use clearly named throwaway fixtures (e.g. ids prefixed `zztest-`). Remove them afterwards and never touch the user's real data in the browser.
+
+## Layout
+
+| Path | What |
+| --- | --- |
+| `Models/Models.cs` | All persisted types: `PracticeItem`/`Section`, `PracticeLog`, `MetronomePreset`, `PracticePlan`/`PlanStep`, `AppSettings` |
+| `Services/DataStore.cs` | In-memory cache over IndexedDB: load once, write-through, `Changed` event |
+| `Services/Backup.cs` | JSON backup export/restore (**single source of truth for what's backed up**) |
+| `Services/MetronomeService.cs` | App-wide metronome/timer state, session tracking, interval/trainer overrides |
+| `Services/PlanRunner.cs` | Runs practice plans step by step |
+| `Services/ScoreImport.cs` + `wwwroot/js/score.js` | Guitar Pro/MusicXML via alphaTab (vendored in `wwwroot/lib/alphatab`, MPL-2.0) |
+| `Services/Stats.cs`, `Services/LogCsv.cs`, `Services/Shortcuts.cs` | Stats maths, tempo parsing + CSV log export, global keyboard shortcuts |
+| `wwwroot/js/metronome.js` | Audio engine (look-ahead scheduler, intervals, trainer, per-bar meters) |
+| `wwwroot/js/db.js` | IndexedDB wrapper (JSON stores + binary `files` store) |
+
+## Persisted data: checklist (don't skip)
+
+Every new piece of user data has to be wired through **storage, backup/restore and delete-all**, or it's silently lost when the user moves devices.
+
+**Adding a new entity (a new IndexedDB store):**
+1. `wwwroot/js/db.js`: add the store name to `STORES` **and bump `DB_VERSION`** (the upgrade handler creates missing stores).
+2. `DataStore.cs`: add the list, load it in `LoadAsync`, add save/delete methods that call `Changed`, include it in `ImportAsync` and in `ClearAllAsync` (both the store-name array and the in-memory `.Clear()`).
+3. `Backup.cs`: add a **nullable field with a default** to `BackupFile` (old backups must still load), fill it in `Export`, restore it in `RestoreAsync`, add it to the summary text, **bump `Backup.Version`** and extend the format-history comment.
+4. `SettingsPage.razor`: add it to the counts in the Danger zone and the "Delete all data" wording.
+5. If other entities reference it by id (e.g. plan steps → items), decide what happens on delete (see `DataStore.DeleteItemAsync`) and handle missing references in the UI.
+
+**Adding a field to an existing persisted type:**
+- Give it a sensible default in the model, because old IndexedDB rows and old backups won't have it. Nullable is fine.
+- Nothing else is needed for backup (whole objects are serialised), **unless** the field references something that isn't backed up (see score files below).
+- If it's a user preference on `AppSettings`, note that **settings are exported but intentionally not restored** (see `Backup.RestoreAsync`).
+
+**Deliberately not in the backup:**
+- Score files (Guitar Pro) are binary blobs in the `files` store, too large for a JSON backup. Items keep `ScoreFileId`, and the tab view shows a "re-import" message if the file is missing. If you change this, update the Settings > Backup text.
+- `localStorage` isn't used for app data. Don't start.
+
+Serialisation uses `DataStore.Json` (PascalCase property names, string enums via attributes). Keep using it for anything written to IndexedDB or backups.
+
+## Gotchas learned the hard way
+
+- **SVG `<text>` in Razor:** Razor reserves `<text>`, so use the `<SvgText>` component (`Components/Charts/SvgText.cs`).
+- **Render fragments capture lazily:** inside `@for` loops, child content (e.g. `<SvgText>@x</SvgText>`) is evaluated later. Copy values to locals in the loop body (`var label = Labels[i];`) instead of indexing parameters or loop variables inside the fragment.
+- **JS interop with arrays:** `InvokeVoidAsync("fn", array)` spreads a `string[]` as `params`. Pass `(object)array`.
+- **MudBlazor 9** renamed things (e.g. `AutoGrow` → `Sizing`, tabs `PanelClass` → `TabPanelsClass`). The analyzer warnings (MUD0002) tell you the replacement, so treat them as errors.
+- **Tempo is quarter-note based** (as in Guitar Pro): an x/8 bar clicks eighths. Score-linked sections carry `ScoreBars` ([masterBar, num, den] per bar); don't edit their meter/bars by hand.
+- **Practice time = active time only:** only work-phase time while running counts. Count-ins, rests, pauses and rest-only countdowns don't.
+- **Metronome overrides** (`MetronomeService`):
+  - `_override` is one-off (timer extend / rest countdown) and is cleared when a run ends.
+  - `_step` / `_stepTraining` are pinned by a plan step and cleared by `PlanRunner.EndAsync`.
+  - UI should read `Metro.Training` / `Metro.EffectiveIntervals`, not `Settings.*`, while a plan runs.
+- **Engine events:** the engine reports `running=false` just before `finished`. Only `event == "stopped"` means a manual stop.
+- **Files are CRLF on Windows checkouts.** Multi-line string replacements in scripts should normalise line endings.

@@ -1,6 +1,8 @@
 // Minimal IndexedDB wrapper. Values are passed as JSON strings so .NET controls serialization.
 const DB_NAME = 'songler';
 const DB_VERSION = 3;
+// Adding a store? Bump DB_VERSION and follow the "Persisted data" checklist in CLAUDE.md
+// (DataStore load/import/clear, Backup.cs export/restore).
 // 'files' holds raw score files (Guitar Pro etc.) as {Id, Name, Data: Uint8Array}
 const STORES = ['items', 'logs', 'presets', 'settings', 'files', 'plans'];
 let dbPromise = null;
