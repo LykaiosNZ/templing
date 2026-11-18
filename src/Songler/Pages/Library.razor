@@ -8,18 +8,17 @@
 <PageTitle>Library · Songler</PageTitle>
 
 <div class="page-head">
-    <div>
-        <h1 class="page-title" tabindex="-1">Library</h1>
-        <MudText Typo="Typo.body2" Class="muted">@_rows.Count of @Store.Items.Count(i => _showArchived || !i.Archived) songs, exercises &amp; riffs</MudText>
-    </div>
-    <div class="d-flex gap-2 flex-wrap">
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.QueueMusic" OnClick="ImportScore">Import Guitar Pro</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.Add" OnClick="Add">Add item</MudButton>
-    </div>
+    <h1 class="page-title" tabindex="-1">Library</h1>
+    <MudButtonGroup Color="Color.Primary" Variant="Variant.Filled" OverrideStyles="true" aria-label="Add to library">
+        <MudButton StartIcon="@Icons.Material.Rounded.Add" OnClick="Add">Add item</MudButton>
+        <MudMenu Icon="@Icons.Material.Rounded.ArrowDropDown" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" aria-label="More ways to add">
+            <MudMenuItem Icon="@Icons.Material.Rounded.QueueMusic" OnClick="ImportScore">Import from Guitar Pro…</MudMenuItem>
+        </MudMenu>
+    </MudButtonGroup>
 </div>
 
 <div class="toolbar">
-    <MudTextField @bind-Value="_search" @bind-Value:after="Refresh" Placeholder="Search (/)" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.Search"
+    <MudTextField @bind-Value="_search" @bind-Value:after="Refresh" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.Search"
                   Immediate="true" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="search-box" InputId="library-search" aria-label="Search library" />
     <MudChipSet T="string" @bind-SelectedValue="_type" @bind-SelectedValue:after="Refresh" SelectionMode="SelectionMode.SingleSelection" CheckMark="false" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" aria-label="Filter by type">
         <MudChip T="string" Value="@("all")" Default="true">All</MudChip>
@@ -29,13 +28,15 @@
         }
     </MudChipSet>
     <MudSpacer />
+    <div class="toolbar-end">
     <MudSelect T="string" @bind-Value="_sort" @bind-Value:after="Refresh" Label="Sort" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width:200px" Dense="true">
         <MudSelectItem T="string" Value="@("recent")">Recently practised</MudSelectItem>
         <MudSelectItem T="string" Value="@("name")">Name</MudSelectItem>
         <MudSelectItem T="string" Value="@("progress")">Progress</MudSelectItem>
         <MudSelectItem T="string" Value="@("time")">Total time</MudSelectItem>
     </MudSelect>
-    <MudSwitch T="bool" @bind-Value="_showArchived" @bind-Value:after="Refresh" Label="Archived" Color="Color.Primary" />
+    <MudSwitch T="bool" @bind-Value="_showArchived" @bind-Value:after="Refresh" Label="Show archived" Color="Color.Primary" />
+    </div>
 </div>
 
 @if (Store.Items.Count == 0)
@@ -64,18 +65,32 @@ else
                                 <span class="feel-pill @(stale ? "stale" : "")" style="--feel:@feel.Color"
                                       title="@($"{(stale ? "Last rated" : "Last session")} ({row.Feel.Date:d MMM}): {feel.Label}. {feel.Advice}")">@feel.Label</span>
                             }
-                            <span class="muted small">@Stats.Ago(st.LastDate, DateTime.Today)</span>
+                            @if (st.Sessions > 0)
+                            {
+                                <span class="muted small">@Stats.Ago(st.LastDate, DateTime.Today)</span>
+                            }
                         </span>
                     </div>
                     <h2 class="item-name">@item.Name</h2>
                     <div class="item-tempo">
-                        <span class="big">@(st.Last?.ToString("0") ?? "—")</span><span class="muted">@(st.Last.HasValue ? item.Unit.Suffix() : "")</span>
-                        @if (item.Goal is { } g)
+                        @if (st.Sessions == 0)
                         {
-                            <span class="muted"> / @g.ToString("0")@item.Unit.Suffix()</span>
+                            <span class="not-started">Not started yet</span>
+                            @if (item.Goal is { } g0)
+                            {
+                                <span class="muted"> · goal @g0.ToString("0")@item.Unit.Suffix()</span>
+                            }
+                        }
+                        else
+                        {
+                            <span class="big">@(st.Last?.ToString("0") ?? "—")</span><span class="muted">@(st.Last.HasValue ? item.Unit.Suffix() : "")</span>
+                            @if (item.Goal is { } g)
+                            {
+                                <span class="muted"> / @g.ToString("0")@item.Unit.Suffix()</span>
+                            }
                         }
                     </div>
-                    <div class="progress-track" role="progressbar" aria-valuenow="@((int)((st.Progress ?? 0) * 100))" aria-valuemin="0" aria-valuemax="100" aria-label="Progress to goal">
+                    <div class="progress-track @(st.Sessions == 0 ? "d-none" : "")" role="progressbar" aria-valuenow="@((int)((st.Progress ?? 0) * 100))" aria-valuemin="0" aria-valuemax="100" aria-label="Progress to goal">
                         <div class="progress-fill @(st.Progress >= 1 ? "done" : "")" style="width:@(Math.Min(100, (st.Progress ?? 0) * 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></div>
                     </div>
                     @if (row.Parts is { Count: > 1 } parts)
@@ -90,15 +105,28 @@ else
                             }
                         </div>
                     }
-                    <div class="item-meta">
-                        <span>@(st.Progress is { } p ? $"{p:P0}" : "No goal")@(row.Parts is { Count: > 1 } pc ? $" · {pc.Count} parts" : "")</span>
-                        <span>@st.DaysPracticed days · @Stats.Duration(st.TotalSec, true)</span>
-                    </div>
+                    @if (st.Sessions > 0)
+                    {
+                        <div class="item-meta">
+                            <span>@(st.Progress is { } p ? $"{p:P0}" : "No goal")@(row.Parts is { Count: > 1 } pc ? $" · {pc.Count} parts" : "")</span>
+                            <span>@(st.Sessions == 1 ? "1 session" : $"{st.Sessions} sessions") · @Stats.Duration(st.TotalSec, true)</span>
+                        </div>
+                    }
                 </a>
                 <div class="item-card-actions">
-                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.PlayArrow" Href="@($"metronome/item/{item.Id}")" aria-label="@($"Practise {item.Name}")">Practise</MudButton>
-                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.AddTask" aria-label="@($"Log practice for {item.Name}")" OnClick="() => Log(item)" />
-                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit {item.Name}")" OnClick="() => Edit(item)" />
+                    <MudTooltip Text="Practise with metronome">
+                        <MudIconButton Size="Size.Small" Icon="@Mdi.Metronome" Color="Color.Primary" Href="@($"metronome/item/{item.Id}")" aria-label="@($"Practise {item.Name} with the metronome")" />
+                    </MudTooltip>
+                    <MudTooltip Text="Practise with timer (no click)">
+                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.HourglassBottom" Color="Color.Primary" Href="@($"timer/item/{item.Id}")" aria-label="@($"Practise {item.Name} with the timer")" />
+                    </MudTooltip>
+                    <MudSpacer />
+                    <MudTooltip Text="Log practice">
+                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.AddTask" aria-label="@($"Log practice for {item.Name}")" OnClick="() => Log(item)" />
+                    </MudTooltip>
+                    <MudTooltip Text="Edit">
+                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit {item.Name}")" OnClick="() => Edit(item)" />
+                    </MudTooltip>
                 </div>
             </article>
         }

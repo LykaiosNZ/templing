@@ -1,0 +1,3 @@
+# Pictogrammers Material Design Icons used by the app (https://pictogrammers.com/library/mdi/).
+# One kebab-case name per line, as shown on the site. Run `npm install && npm run generate` after editing.
+metronome

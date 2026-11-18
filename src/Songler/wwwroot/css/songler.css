@@ -457,3 +457,22 @@ code { font-family: var(--mono); font-size: .85em; background: var(--card-2); pa
     .stat-label { font-size: .68rem; }
     .stat-sub { font-size: .76rem; }
 }
+
+/* library polish */
+.toolbar .mud-chip.mud-chip-selected { background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); border-color: var(--mud-palette-primary); }
+.toolbar .mud-chip.mud-chip-selected .mud-icon-root { color: inherit; }
+.toolbar-end { display: flex; align-items: center; gap: 12px; }
+.not-started { font-size: 1rem; font-weight: 600; color: var(--ink-2); }
+.item-card-actions { gap: 0; }
+@media (max-width: 700px) {
+    .toolbar { gap: 8px; }
+    .toolbar .search-box { max-width: none; flex: 1 1 100%; }
+    .toolbar .mud-chipset { flex: 1 1 100%; min-width: 0; }
+    .toolbar .mud-chipset { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+    .toolbar .mud-chipset .mud-chip-container { flex: none; }
+    .toolbar .mud-spacer { display: none; }
+    .toolbar-end { flex: 1 1 100%; justify-content: space-between; flex-wrap: wrap; min-width: 0; row-gap: 4px; }
+    .toolbar-end > .mud-select { max-width: none !important; flex: 1 1 160px; min-width: 0; }
+    .toolbar-end > .mud-input-control-boolean-input { flex: none; margin: 0; }
+    .toolbar-end .mud-switch .mud-typography { white-space: nowrap; }
+}

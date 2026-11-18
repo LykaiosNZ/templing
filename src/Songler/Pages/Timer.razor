@@ -24,7 +24,7 @@
         </MudSelect>
         @if (Metro.Source == MetronomeSource.Item && Metro.Item != null)
         {
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Timer" Href="@($"metronome/item/{Metro.Item.Id}")" Disabled="Metro.IsRunning">Use metronome instead</MudButton>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Mdi.Metronome" Href="@($"metronome/item/{Metro.Item.Id}")" Disabled="Metro.IsRunning">Use metronome instead</MudButton>
         }
     </div>
 </div>
