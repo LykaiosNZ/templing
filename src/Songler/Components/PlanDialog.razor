@@ -26,7 +26,7 @@
                     var open = _open.Contains(s.Id);
                     var missing = PlanStepSummary.IsMissing(s, Store);
                     <div class="plan-step-row @(s.Kind == PlanStepKind.Rest ? "rest" : "") @(open ? "open" : "") @(missing ? "missing" : "") @DropClass(idx)" role="listitem" @key="s.Id"
-                         data-drag-row @ondragover="() => DragOver(idx)" @ondragover:preventDefault="true" @ondrop="() => Drop(idx)" @ondrop:preventDefault="true">
+                         data-drag-row @ondragover:preventDefault="true" @ondragenter="() => DragEnter(idx)" @ondrop="() => Drop(idx)" @ondrop:preventDefault="true">
                         <div class="ps-head">
                             <span class="ps-drag" draggable="true" data-drag-handle aria-hidden="true"
                                   @ondragstart="() => _dragFrom = idx" @ondragend="() => { _dragFrom = null; _dragOver = null; }">
@@ -147,9 +147,23 @@
         }
     }
 
-    // drag to reorder (the up/down buttons stay for keyboard and touch)
+    // drag to reorder (the up/down buttons stay for keyboard and touch).
+    // dragover fires continuously, so it has no handler (each one would re-render the dialog); the drop marker
+    // updates on dragenter, which fires once per row crossed.
     int? _dragFrom, _dragOver;
-    void DragOver(int i) { if (_dragFrom != null) _dragOver = i; }
+    void DragEnter(int i)
+    {
+        // dragenter also fires for every child element crossed; only re-render when the target row changes
+        if (_dragFrom == null || _dragOver == i) { _skipRender = true; return; }
+        _dragOver = i;
+    }
+    bool _skipRender;
+    protected override bool ShouldRender()
+    {
+        if (!_skipRender) return true;
+        _skipRender = false;
+        return false;
+    }
     string? DropClass(int i) => _dragFrom is { } f && _dragOver == i && i != f ? (i < f ? "drop-before" : "drop-after") : _dragFrom == i ? "dragging" : null;
     void Drop(int to)
     {

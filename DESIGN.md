@@ -65,7 +65,7 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 - **Hide controls that don't apply; don't disable them.** A greyed-out field ("Rest" with 1 round) makes you work out why. Show it once it applies. Disable only when the control's presence matters (e.g. Move up on the first row), and then make the reason obvious.
 - **A disabled primary button says why** next to it, phrased as what to do ("Select an item for step 2", "Add a name"), so nothing is blocked silently.
 - **Placeholders, not defaults:** example names ("My routine") are placeholders. Don't pre-fill a value the user has to delete.
-- **Reorderable lists drag** by a grip handle (`DragIndicator`, `data-drag-handle` / `data-drag-row`, see `js/drag.js`), and keep Move up / Move down buttons for keyboard and touch.
+- **Reorderable lists drag** by a grip handle (`DragIndicator`, `data-drag-handle` / `data-drag-row`, see `js/drag.js`), and keep Move up / Move down buttons for keyboard and touch. Never attach a Blazor handler to `dragover` (it fires continuously and re-renders on every call); use `@ondragover:preventDefault` alone and update state on `dragenter` / `drop`.
 - **Long editable lists collapse:** each row is a one-line summary that expands to its fields (plan steps). New rows open expanded; the summary uses the same component as the read-only view (`PlanStepSummary`).
 - **Rows that open something:** the whole row is clickable with a hover highlight. A pencil appears on hover and stays reachable by keyboard. Links inside the row still work.
 
