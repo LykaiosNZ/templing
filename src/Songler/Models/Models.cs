@@ -113,6 +113,8 @@ public class PracticeLog
     public string? Notes { get; set; }
     /// <summary>How the session felt, 1 (too easy, push the tempo) … 5 (too hard, slow down). Null = not rated.</summary>
     public int? Effort { get; set; }
+    /// <summary>When the entry was first saved; orders entries within a day. Null for entries saved before this existed.</summary>
+    public DateTime? Logged { get; set; }
     /// <summary>"manual", "metronome", "import".</summary>
     public string Source { get; set; } = "manual";
 

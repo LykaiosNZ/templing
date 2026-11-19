@@ -89,7 +89,8 @@ public class DataStore(IJSRuntime js)
     public async Task SaveLogAsync(PracticeLog log)
     {
         var idx = Logs.FindIndex(l => l.Id == log.Id);
-        if (idx >= 0) Logs[idx] = log; else Logs.Add(log);
+        if (idx >= 0) { log.Logged ??= Logs[idx].Logged; Logs[idx] = log; }
+        else { log.Logged ??= DateTime.Now; Logs.Add(log); }
         await Put("logs", log);
         Changed?.Invoke();
     }
