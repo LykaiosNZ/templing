@@ -114,6 +114,7 @@ Reuse these instead of rebuilding them. When two screens show the same thing, th
 | `IntervalsEditor` | Work / rest / rounds, a "Load preset" select (an action: it always reads "Load preset") and Audio cues (Metronome intervals, Timer countdown) |
 | `OptionsRail`, `RailSection`, `RailToggle`, `RailVolume` | The Metronome / Timer options rail, its sections, and the hidden rail's strip controls |
 | `VolumeControl` | Sound on/off + volume slider (rail Sound section, strip pop-up) |
+| `SessionPanel` | Practised time on the Metronome and Timer, inside the stage. Hidden until there's time; one line while playing; once stopped, Log + Discard + page extras (Timer: +5 min, +10 min, Rest). Hidden while a plan runs. |
 | `DurationInput` | Any duration field |
 | `PlanStepSummary` | One-line plan step (Plans list, plan editor rows) |
 | `SectionsEditor`, `SectionSummary` | Tempo-map editor (piece editor, custom metronome sections): header with count, quick-add chips, collapsible rows |

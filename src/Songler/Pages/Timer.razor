@@ -52,42 +52,13 @@
             </button>
         </div>
 
-        @if (ShowEndPanel)
-        {
-            <div class="timer-end" role="region" aria-label="Session finished">
-                <div class="timer-end-title">
-                    @if (Metro.LastFinishReason == "rest")
-                    {
-                        <span>Rest's over.</span>
-                    }
-                    else
-                    {
-                        <span>@(Metro.LastFinishReason == "interval" ? "Done!" : "Paused.") <strong>@Stats.Clock(Metro.SessionActiveSec)</strong> practised.</span>
-                    }
-                </div>
-                <div class="timer-end-actions">
-                    @if (Metro.LastFinishReason == "rest")
-                    {
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.PlayArrow" OnClick="() => Metro.StartTimerAsync()">Start next block</MudButton>
-                    }
-                    @if (Metro.SessionActiveSec >= 1)
-                    {
-                        <MudButton Variant="@(Metro.LastFinishReason == "rest" ? Variant.Outlined : Variant.Filled)" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.AddTask" OnClick="Log">Log @Stats.Clock(Metro.SessionActiveSec)</MudButton>
-                    }
-                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.MoreTime" OnClick="() => Metro.ExtendAsync(5, 0)">+5 min</MudButton>
-                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.MoreTime" OnClick="() => Metro.ExtendAsync(10, 0)">+10 min</MudButton>
-                    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Rounded.SelfImprovement" OnClick="() => Metro.StartRestAsync(2)">Rest 2 min</MudButton>
-                    @if (Metro.SessionActiveSec >= 1)
-                    {
-                        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Discard">Discard</MudButton>
-                    }
-                </div>
-            </div>
-        }
-        else if (Metro.SessionActiveSec >= 1)
-        {
-            <div class="timer-session muted">This session: <strong>@Stats.Clock(Metro.SessionActiveSec)</strong> practised</div>
-        }
+        <SessionPanel Ended="ShowEndPanel" Title="AfterRest ? RestTitle : null" Lead="AfterRest ? RestLead : null" OnClosed="() => _dismissed = true">
+            <Extras>
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.MoreTime" OnClick="() => Metro.ExtendAsync(5, 0)">+5 min</MudButton>
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.MoreTime" OnClick="() => Metro.ExtendAsync(10, 0)">+10 min</MudButton>
+                <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Rounded.SelfImprovement" OnClick="() => Metro.StartRestAsync(2)">Rest 2 min</MudButton>
+            </Extras>
+        </SessionPanel>
     </section>
 </div>
 
@@ -134,6 +105,9 @@
     bool _dismissed;
 
     bool Rest => Metro.IsRunning && Metro.State.phase == "rest";
+    bool AfterRest => Metro.LastFinishReason == "rest";
+    RenderFragment RestTitle => @<span>Rest's over.</span>;
+    RenderFragment RestLead => @<MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.PlayArrow" OnClick="() => Metro.StartTimerAsync()">Start next block</MudButton>;
     bool Work => Metro.IsRunning && Metro.State.phase == "work";
     bool ShowEndPanel => !Runner.Active && !Metro.IsRunning && !_dismissed && (Metro.SessionActiveSec >= 1 || Metro.LastFinishReason == "rest");
 
@@ -236,18 +210,6 @@
     OptionsRail? _rail;
     Task ToggleCues() { Metro.Settings.Timer.VoiceCues = !Metro.Settings.Timer.VoiceCues; return Metro.ApplyAsync(); }
 
-    async Task Log()
-    {
-        var log = Metro.BuildSessionLog();
-        if (await LogDialog.ShowAsync(Dialogs, log, isNew: true))
-        {
-            Metro.ResetSession();
-            _dismissed = true;
-            Snackbar.Add("Session logged", Severity.Success);
-        }
-    }
-
-    void Discard() { Metro.ResetSession(); _dismissed = true; }
 
     public void Dispose() => Metro.Changed -= OnChanged;
 }

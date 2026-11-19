@@ -1,0 +1,80 @@
+@* What's been practised this session and what to do with it. Shared by the Metronome and the Timer, inside their stage.
+   Nothing shows until there's practice time. While playing it's one line; once stopped (Ended) it offers Log and Discard,
+   plus the page's own extras. Hidden while a plan runs, because the plan bar handles logging then. *@
+@implements IDisposable
+@inject MetronomeService Metro
+@inject PlanRunner Runner
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+@if (Ended)
+{
+    <div class="session-end" role="region" aria-label="Session">
+        <div class="session-end-title">
+            @if (Title != null)
+            {
+                @Title
+            }
+            else
+            {
+                <span>@(Metro.LastFinishReason == "interval" ? "Done!" : "Paused.") <strong>@Stats.Clock(Metro.SessionActiveSec)</strong> practised@(Detail is { } d ? $" · {d}" : "").</span>
+            }
+        </div>
+        <div class="session-end-actions">
+            @Lead
+            @if (HasTime)
+            {
+                <MudButton Variant="@(Lead == null ? Variant.Filled : Variant.Outlined)" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.AddTask" OnClick="Log">Log @Stats.Clock(Metro.SessionActiveSec)</MudButton>
+            }
+            @Extras
+            @if (HasTime)
+            {
+                <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Discard">Discard</MudButton>
+            }
+        </div>
+    </div>
+}
+else if (HasTime && !Runner.Active)
+{
+    <div class="session-line muted">This session: <strong>@Stats.Clock(Metro.SessionActiveSec)</strong> practised@(Detail is { } d ? $" · {d}" : "")</div>
+}
+
+@code {
+    /// <summary>Show the end panel (stopped, with time to log). The page decides, since the Timer also shows it after a rest.</summary>
+    [Parameter] public bool Ended { get; set; }
+    /// <summary>Extra detail after the time, e.g. the tempo range "120–132 bpm".</summary>
+    [Parameter] public string? Detail { get; set; }
+    /// <summary>Replaces the "Paused. 4:12 practised." heading (e.g. "Rest's over.").</summary>
+    [Parameter] public RenderFragment? Title { get; set; }
+    /// <summary>Actions before Log; when set, they're the main action and Log is outlined (e.g. "Start next block").</summary>
+    [Parameter] public RenderFragment? Lead { get; set; }
+    /// <summary>Actions between Log and Discard (e.g. the Timer's +5 min).</summary>
+    [Parameter] public RenderFragment? Extras { get; set; }
+    /// <summary>After the session was logged or discarded.</summary>
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    bool HasTime => Metro.SessionActiveSec >= 1;
+
+    // the practised time ticks while playing, without any parameter changing
+    protected override void OnInitialized() => Metro.Changed += OnChanged;
+    void OnChanged() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Metro.Changed -= OnChanged;
+
+    async Task Log()
+    {
+        await Metro.StopAsync();
+        var log = Metro.BuildSessionLog();
+        if (await LogDialog.ShowAsync(Dialogs, log, isNew: true))
+        {
+            Metro.ResetSession();
+            Snackbar.Add("Session logged", Severity.Success);
+            await OnClosed.InvokeAsync();
+        }
+    }
+
+    async Task Discard()
+    {
+        Metro.ResetSession();
+        await OnClosed.InvokeAsync();
+    }
+}

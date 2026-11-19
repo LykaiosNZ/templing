@@ -256,12 +256,7 @@ kbd {
 .rail-strip-divider.mud-divider { width: 24px; margin: 2px 0; }
 .rail-vol-pop { padding: 10px 14px; width: 220px; }
 .options-sheet.mud-drawer { max-height: 80vh; height: auto !important; border-radius: 18px 18px 0 0; }
-.session-log { display: flex; align-items: center; min-width: 170px; }
-.session-stats { display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px; }
-.session-stats .stat-tile { background: var(--card-2); }
 @media (max-width: 600px) {
-    .session-stats { grid-template-columns: 1fr 1fr; }
-    .session-log { grid-column: 1 / -1; }
     .tempo-value { font-size: 4.5rem; }
     .tempo-display { min-width: 160px; }
     .tempo-row { gap: 10px; }
@@ -414,10 +409,10 @@ code { font-family: var(--mono); font-size: .85em; background: var(--card-2); pa
 .timer-phase { font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: .85rem; color: var(--phase); }
 .timer-clock { font-family: var(--mono); font-size: clamp(3.2rem, 11vw, 5.4rem); font-weight: 700; letter-spacing: -.04em; line-height: 1.05; color: var(--ink); font-variant-numeric: tabular-nums; }
 .timer-sub { color: var(--ink-2); font-size: .9rem; }
-.timer-session { font-size: .9rem; }
-.timer-end { width: 100%; max-width: 560px; border-radius: 14px; padding: 14px 16px; background: var(--card-2); border: 1px solid var(--ring); display: flex; flex-direction: column; gap: 10px; align-items: center; }
-.timer-end-title { font-size: 1.05rem; }
-.timer-end-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.session-line { font-size: .9rem; }
+.session-end { width: 100%; max-width: 560px; border-radius: 14px; padding: 14px 16px; background: var(--card-2); border: 1px solid var(--ring); display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.session-end-title { font-size: 1.05rem; }
+.session-end-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 
 /* plans */
 .plan-bar { position: sticky; top: 64px; z-index: 5; margin: 0; padding: 10px 24px 8px; background: color-mix(in srgb, var(--accent) 10%, var(--mud-palette-background)); border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); backdrop-filter: blur(8px); }

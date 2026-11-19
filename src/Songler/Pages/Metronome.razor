@@ -9,6 +9,7 @@
 @inject NavigationManager Nav
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
+@inject PlanRunner Runner
 
 <PageTitle>@(Metro.Source == MetronomeSource.Free ? "Free metronome" : $"{Metro.Title} · Metronome") · Songler</PageTitle>
 
@@ -158,26 +159,10 @@
             </MudTooltip>
         </div>
 
+        <SessionPanel Ended="SessionEnded" Detail="@SessionDetail" />
+
     </section>
 
-    <section class="card session-card" aria-label="Session">
-        <div class="card-head">
-            <div class="d-flex align-center gap-1">
-                <h2 class="card-title">This session</h2>
-                <MudTooltip Text="Only time the click is playing counts. Count-ins, rests and pauses are excluded.">
-                    <MudIcon Icon="@Icons.Material.Rounded.Info" Size="Size.Small" Class="muted" aria-label="How active time is counted" />
-                </MudTooltip>
-            </div>
-            <MudButton Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Rounded.RestartAlt" OnClick="() => Metro.ResetSession()" Disabled="Metro.SessionActiveSec < 1">Reset</MudButton>
-        </div>
-        <div class="session-stats">
-            <StatTile Label="Active time" Value="@Stats.Clock(Metro.SessionActiveSec)" Icon="@Icons.Material.Rounded.Timer" />
-            <StatTile Label="Tempo" Value="@SessionRange" Icon="@Icons.Material.Rounded.Speed" />
-            <div class="session-log">
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.AddTask" OnClick="LogSession" FullWidth="true">Log session</MudButton>
-            </div>
-        </div>
-    </section>
 </div>
 
 <OptionsRail @ref="_rail">
@@ -326,6 +311,9 @@
         _ => "Free"
     };
 
+    bool SessionEnded => !Runner.Active && !Metro.IsRunning && Metro.SessionActiveSec >= 1;
+    string? SessionDetail => Metro.SessionMax is null ? null : SessionRange + (Metro.Unit == TempoUnit.Percent ? "" : " bpm");
+
     string SessionRange
     {
         get
@@ -391,17 +379,6 @@
     Task SetCountIn(bool on) => Toggle(() => Metro.Settings.CountIn = on);
     Task SetPlayThrough(bool on) => Toggle(() => Metro.PlayThrough = on);
 
-
-    async Task LogSession()
-    {
-        await Metro.StopAsync();
-        var log = Metro.BuildSessionLog();
-        if (await LogDialog.ShowAsync(Dialogs, log, isNew: true))
-        {
-            Metro.ResetSession();
-            Snackbar.Add("Session logged", Severity.Success);
-        }
-    }
 
     async Task SavePreset()
     {
