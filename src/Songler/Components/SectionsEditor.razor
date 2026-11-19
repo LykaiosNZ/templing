@@ -27,7 +27,10 @@
                 <MudSelectItem T="int" Value="4">16ths</MudSelectItem>
                 <MudSelectItem T="int" Value="6">Sextuplets</MudSelectItem>
             </MudSelect>
-            <MudNumericField T="int" @bind-Value="s.Bars" @bind-Value:after="Changed" Label="Bars" Disabled="s.FromScore" HelperText="@(s.FromScore ? (s.MixedMeter ? "from score · mixed meter" : "from score") : s.Bars == 0 ? "loop" : null)" Min="0" Max="999" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num-s" />
+            @* the note lives in the label, not helper text, so the row stays level *@
+            <MudTooltip Text="@(s.FromScore ? (s.MixedMeter ? "From the score · mixed meter" : "From the score") : null)" Disabled="!s.FromScore">
+                <MudNumericField T="int" @bind-Value="s.Bars" @bind-Value:after="Changed" Label="@(s.FromScore ? "Bars (score)" : s.Bars == 0 ? "Bars (loop)" : "Bars")" Disabled="s.FromScore" Min="0" Max="999" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num-s" />
+            </MudTooltip>
             <div class="sec-actions">
                 <MudTooltip Text="Move up">
                     <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowUpward" Disabled="idx == 0" aria-label="@($"Move {s.Name} up")" OnClick="() => Move(idx, -1)" />
