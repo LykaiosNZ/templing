@@ -74,7 +74,7 @@
     /// <summary>Values are minutes: ticks in compact minutes, or whole hours once the scale is large (see DESIGN.md). Overrides <see cref="AxisFormat"/>.</summary>
     [Parameter] public bool Minutes { get; set; }
     bool _hours;
-    string Tick(double v) => !Minutes ? AxisFormat(v) : _hours ? $"{v / 60:0.#}h" : $"{v:0}m";
+    string Tick(double v) => !Minutes ? AxisFormat(v) : _hours ? $"{v / 60:0.#} hr" : $"{v:0} min";
     [Parameter] public bool HighlightLast { get; set; }
     [Parameter] public double? Target { get; set; }
     [Parameter] public string TargetLabel { get; set; } = "Goal";

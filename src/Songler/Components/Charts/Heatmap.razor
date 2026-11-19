@@ -1,7 +1,7 @@
 @* GitHub-style practice calendar. Sequential single-hue ramp by minutes; practiced-but-untimed days use the first step. *@
 
 <div class="viz heatmap" role="img" aria-label="@AriaLabel">
-    <svg viewBox="0 0 @F(_w) @F(_h)" class="viz-svg" style="max-width:@F(_w * 1.6)px" @onmouseleave="() => _hover = null">
+    <svg viewBox="0 0 @F(_w) @F(_h)" class="viz-svg" @onmouseleave="() => _hover = null">
         @foreach (var (label, x) in _months)
         {
             <SvgText x="@F(x)" y="10" class="viz-axis">@label</SvgText>
@@ -13,7 +13,7 @@
         @foreach (var c in _cells)
         {
             var cell = c;
-            <rect x="@F(cell.X)" y="@F(cell.Y)" width="@Cell" height="@Cell" rx="2.5" class="hm-cell hm-@cell.Level @(cell.Date == Today ? "today" : "")"
+            <rect x="@F(cell.X)" y="@F(cell.Y)" width="@Cell" height="@Cell" rx="2.5" class="hm-cell hm-@cell.Level @(cell.Date == Today ? "today" : "") @(From is { } f && cell.Date < f.Date ? "out" : "")"
                   @onmouseenter="() => _hover = cell" />
         }
         @if (_hover is { } h)
@@ -39,7 +39,7 @@
     [Parameter] public Dictionary<DateTime, int> SecondsByDay { get; set; } = new();
     [Parameter] public HashSet<DateTime> Practiced { get; set; } = new();
     [Parameter] public int Weeks { get; set; } = 26;
-    /// <summary>First day to draw; earlier days in the first week are left blank.</summary>
+    /// <summary>Start of the selected period; earlier days are drawn faded.</summary>
     [Parameter] public DateTime? From { get; set; }
     [Parameter] public DateTime Today { get; set; } = DateTime.Today;
     [Parameter] public string AriaLabel { get; set; } = "Practice calendar";
@@ -66,7 +66,6 @@
             {
                 var date = start.AddDays(w * 7 + d);
                 if (date > Today) break;
-                if (From is { } from && date < from.Date) continue;
                 var sec = SecondsByDay.GetValueOrDefault(date);
                 var did = sec > 0 || Practiced.Contains(date);
                 var min = sec / 60.0;

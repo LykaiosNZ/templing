@@ -48,7 +48,7 @@
 
     static string Label(Preset p)
     {
-        var work = p.Work < 1 ? $"{p.Work * 60:0} s" : $"{p.Work:0.#} min";
+        var work = p.Work < 1 ? $"{p.Work * 60:0} sec" : $"{p.Work:0.#} min";
         return p.Rounds == 1 ? work : $"{p.Rounds} × {work}";
     }
 

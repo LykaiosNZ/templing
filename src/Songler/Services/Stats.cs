@@ -128,13 +128,13 @@ public static class Stats
     public static List<string> WeekTips(List<(DateTime week, int sec)> weeks) =>
         weeks.Select((w, i) => i == weeks.Count - 1 && w.week == WeekStart(DateTime.Today) ? "This week (so far)" : $"Week of {w.week:d MMM yyyy}").ToList();
 
-    /// <summary>Durations in text: "45 s", "10 min", "1 h", "1 h 5 min" (see DESIGN.md).</summary>
+    /// <summary>Durations in text: "45 sec", "10 min", "1 hr", "1 hr 5 min" (see DESIGN.md).</summary>
     public static string Duration(int sec)
     {
         var ts = TimeSpan.FromSeconds(Math.Max(0, sec));
-        if (ts.TotalHours >= 1) return ts.Minutes == 0 ? $"{(int)ts.TotalHours} h" : $"{(int)ts.TotalHours} h {ts.Minutes} min";
+        if (ts.TotalHours >= 1) return ts.Minutes == 0 ? $"{(int)ts.TotalHours} hr" : $"{(int)ts.TotalHours} hr {ts.Minutes} min";
         if (ts.TotalMinutes >= 1) return $"{(int)ts.TotalMinutes} min";
-        return sec <= 0 ? "0 min" : $"{sec} s";
+        return sec <= 0 ? "0 min" : $"{sec} sec";
     }
 
     public static string DurationMin(double min) => Duration((int)Math.Round(min * 60));

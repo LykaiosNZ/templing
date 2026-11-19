@@ -139,6 +139,10 @@ kbd {
 .viz-tip-strong { fill: var(--tip-ink); font-size: 13px; font-weight: 700; font-family: var(--mono); }
 .hm-cell { stroke: var(--ring); stroke-width: .5; }
 .hm-cell.today { stroke: var(--accent); stroke-width: 1.5; }
+.hm-cell.out { opacity: .28; }
+/* cards in a grid row share the row's height; in a stacked column the last card fills the rest */
+.equal-cards > .mud-grid-item { display: flex; flex-direction: column; }
+.equal-cards > .mud-grid-item > .card:last-child { flex: 1; }
 .hm-0 { fill: var(--hm-0); background: var(--hm-0); }
 .hm-1 { fill: var(--hm-1); background: var(--hm-1); }
 .hm-2 { fill: var(--hm-2); background: var(--hm-2); }

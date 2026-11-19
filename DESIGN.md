@@ -15,10 +15,10 @@ The house rules for how screens look and read. Follow them when building or chan
 
 | What | Format | Helper |
 | --- | --- | --- |
-| Durations in text | `45 s`, `10 min`, `1 h`, `1 h 5 min` | `Stats.Duration(sec)` |
+| Durations in text | `45 sec`, `10 min`, `1 hr`, `1 hr 5 min`: always `hr`, `min`, `sec` | `Stats.Duration(sec)` |
 | Running clocks / countdowns | `m:ss`, `h:mm:ss` | `Stats.Clock(sec)` |
 | Duration inputs | h:mm:ss text field | `<DurationInput>` (never number fields or `MudTimePicker`) |
-| Chart axis ticks | compact (`100m`) is fine; tooltips use the full format | |
+| Chart axis ticks | `100 min`, or whole hours (`2 hr`) once the scale is large | `BarChart Minutes` |
 | Dates | `Sat 14 Nov`; add the year (`14 Nov 2025`) only outside the current year | |
 | Relative dates | `today`, `yesterday`, `3 days ago`, `2w ago`, then a date | `Stats.Ago` |
 | Tempo | `120 bpm`, `90%`, ranges `65–145` | |
@@ -28,7 +28,8 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 ## Charts
 
 - A chart's title says what's measured ("Days practised by weekday", "Weekly practice time"), not just how it's split ("By day of week").
-- Everything on a page with a period picker follows that period, the calendar included.
+- Everything on a page with a period picker follows that period. The practice calendar keeps a fixed 12 months so it doesn't change size; days outside the period are faded.
+- Cards side by side in a grid end level at the bottom (`equal-cards` on the `MudGrid`).
 - Long ranked lists show their top 8 with "Show all".
 
 ## Layout
@@ -73,4 +74,4 @@ Reuse these instead of rebuilding them. When two screens show the same thing, th
 | `LogTable` | Practice log lists (History, Item detail) |
 | `StatTile` | Headline numbers (pass `Seconds` for durations so the unit words render small) |
 | `FeelHint`, `EffortSlider` | Feel / effort display and input |
-| `Charts/*` | Tempo line, bar chart, heatmap, ranked bars (`HBars Limit` for long lists with "Show all"; `BarChart Minutes` for minute values: compact minute ticks, whole hours once the scale is large) |
+| `Charts/*` | Tempo line, bar chart, heatmap, ranked bars (`HBars Limit` for long lists with "Show all"; `BarChart Minutes` for minute values: ticks in min, whole hr once the scale is large) |

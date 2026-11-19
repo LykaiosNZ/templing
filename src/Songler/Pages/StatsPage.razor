@@ -19,16 +19,16 @@
 <div class="tiles">
     <StatTile Label="Practice time" Seconds="_totalSec" Icon="@Icons.Material.Rounded.Timer" Sub="@($"avg {Stats.Duration((int)(_totalSec / Math.Max(1, _spanDays / 7.0)))} a week")" />
     <StatTile Label="Days practised" Value="@_days.ToString()" Icon="@Icons.Material.Rounded.CalendarMonth" Sub="@(_spanDays > 0 ? $"{(double)_days / _spanDays:P0} of days" : null)" />
-    <StatTile Label="Avg per day" Seconds="_timedDays > 0 ? _totalSec / _timedDays : 0" Icon="@Icons.Material.Rounded.AvTimer" />
+    <StatTile Label="Avg per day" Seconds="_timedDays > 0 ? _totalSec / _timedDays : 0" Icon="@Icons.Material.Rounded.AvTimer" Sub="@(_days > 0 ? $"{_itemsPerDay:0.#} item{(Math.Round(_itemsPerDay, 1) == 1 ? "" : "s")} a day" : null)" />
     <StatTile Label="Items practised" Value="@_itemCount.ToString()" Icon="@Icons.Material.Rounded.LibraryMusic" Sub="@($"{_logs.Count} entries")" />
     <StatTile Label="Longest streak" Value="@_streak.longest.ToString()" Unit=" days" Icon="@Icons.Material.Rounded.LocalFireDepartment" Sub="@($"Current {_streak.current} day{(_streak.current == 1 ? "" : "s")}")" />
 </div>
 
-<MudGrid Spacing="4" Class="mt-1">
+<MudGrid Spacing="4" Class="mt-1 equal-cards">
     <MudItem xs="12">
         <section class="card">
             <h2 class="card-title">Practice calendar</h2>
-            <Heatmap SecondsByDay="_byDay" Practiced="_practiced" Weeks="_heatWeeks" From="_from" />
+            <Heatmap SecondsByDay="_byDayAll" Practiced="_practicedAll" Weeks="53" From="_from" />
         </section>
     </MudItem>
     <MudItem xs="12" lg="8">
@@ -75,11 +75,12 @@
 @code {
     int _period = 90;
     List<PracticeLog> _logs = new();
-    int _totalSec, _days, _timedDays, _itemCount, _spanDays, _heatWeeks = 13, _goalsReached;
+    int _totalSec, _days, _timedDays, _itemCount, _spanDays, _goalsReached;
     DateTime _from = DateTime.Today;
     (int current, int longest) _streak;
-    Dictionary<DateTime, int> _byDay = new();
-    HashSet<DateTime> _practiced = new();
+    Dictionary<DateTime, int> _byDayAll = new();
+    HashSet<DateTime> _practicedAll = new();
+    double _itemsPerDay;
     List<string> _weekLabels = new(), _weekTips = new(), _dowLabels = new();
     List<double> _weekValues = new(), _dowValues = new();
     List<HBars.Row> _byItem = new(), _gains = new(), _progress = new(), _byType = new();
@@ -100,9 +101,9 @@
         _itemCount = _logs.Select(l => l.ItemName).Distinct().Count();
         _streak = Stats.Streaks(Store.Logs, today);
         _from = from.Date;
-        _byDay = Stats.SecondsByDay(_logs);
-        _practiced = days;
-        _heatWeeks = (int)((Stats.WeekStart(today) - Stats.WeekStart(_from)).TotalDays / 7) + 1;
+        _byDayAll = Stats.SecondsByDay(Store.Logs);
+        _practicedAll = Stats.DaysPracticed(Store.Logs);
+        _itemsPerDay = _logs.GroupBy(l => l.Date.Date).Select(g => g.Select(l => l.ItemName).Distinct().Count()).DefaultIfEmpty(0).Average();
 
         var weeks = Stats.WeeklySeconds(_logs, today, Math.Clamp((int)Math.Ceiling(_spanDays / 7.0), 4, 104));
         _weekLabels = Stats.WeekLabels(weeks);
