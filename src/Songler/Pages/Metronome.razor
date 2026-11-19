@@ -83,7 +83,7 @@
                     {
                         <span>bpm</span>
                     }
-                    <span> · @Metro.PlayingSection.Meter</span>
+                    <span> · @Meter</span>
                     <span> · @SubName(Metro.PlayingSection.Subdivision)</span>
                     @if (Metro.Source != MetronomeSource.Piece && Metro.Sections.Count > 1 && Math.Abs(Metro.Factor - 1) > 0.001 && !Metro.IsRunning)
                     {
@@ -121,7 +121,7 @@
                         break;
                     default:
                         <span class="phase work">Playing</span>
-                        <span class="muted">Bar @(Metro.State.barInPart + 1)@(Metro.PlayingSection.Length > 0 ? $"/{Metro.PlayingSection.Length}" : "") · @Metro.State.beats/@Metro.State.unit</span>
+                        <span class="muted">Bar @(Metro.State.barInPart + 1)@(Metro.PlayingSection.Length > 0 ? $"/{Metro.PlayingSection.Length}" : "")</span>
                         @if (Metro.State.remaining is { } rem)
                         {
                             <span class="muted">· @Stats.Clock(rem) left</span>
@@ -231,18 +231,19 @@
                 <MudToggleItem Value="RampMode.OverTime" Text="Over time" />
                 <MudToggleItem Value="RampMode.EveryNBars" Text="Every N bars" />
             </MudToggleGroup>
-            @if (tr.Mode == RampMode.OverTime)
-            {
-                <DurationInput Seconds="tr.DurationMin * 60" SecondsChanged="async v => { tr.DurationMin = (v ?? 300) / 60; await Apply(); }" Label="Over (time playing)"
-                               MinSeconds="15" MaxSeconds="7200" Variant="Variant.Outlined" Margin="Margin.Dense" />
-            }
-            else
-            {
-                <div class="form-grid">
-                    <MudNumericField T="double" @bind-Value="tr.Increment" @bind-Value:after="Apply" Label="@($"Change by ({u})")" Min="0.5" Max="50" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            <div class="form-grid">
+                <MudNumericField T="int" Value="tr.StepCount" ValueChanged="async v => { tr.Steps = v; await Apply(); }" Label="Steps" Min="1" Max="100"
+                                 Variant="Variant.Outlined" Margin="Margin.Dense" />
+                @if (tr.Mode == RampMode.OverTime)
+                {
+                    <DurationInput Seconds="tr.DurationMin * 60" SecondsChanged="async v => { tr.DurationMin = (v ?? 300) / 60; await Apply(); }" Label="Over"
+                                   MinSeconds="15" MaxSeconds="7200" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                }
+                else
+                {
                     <MudNumericField T="int" @bind-Value="tr.EveryBars" @bind-Value:after="Apply" Label="Every (bars)" Min="1" Max="64" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                </div>
-            }
+                }
+            </div>
             <MudCheckBox T="bool" @bind-Value="tr.StopAtEnd" @bind-Value:after="Apply" Color="Color.Primary" Label="Stop at end" Dense="true" />
         </RailSection>
 
@@ -336,13 +337,16 @@
             if (n is null) return null;
             var tr = Metro.Training; var u = Metro.Unit == TempoUnit.Percent ? "%" : "";
             var dir = tr.End >= tr.Start ? "+" : "−";
-            var step = tr.Mode == RampMode.EveryNBars ? $"{dir}{Math.Abs(tr.Increment):0.#}{u}" : $"{dir}1{u}";
+            var step = $"{dir}{Math.Abs(tr.End - tr.Start) / tr.StepCount:0.#}{u}";
             string when = n.bars is int b && b > 1 ? $"{b} bars"
                         : n.beats is int bt ? $"{bt} beat{(bt == 1 ? "" : "s")}"
                         : Stats.Clock(Math.Ceiling(n.sec ?? 0));
             return $"Next {step} in {when}";
         }
     }
+
+    /// <summary>The meter under the tempo: the bar that's playing (score bars can change meter mid-section), else the section's.</summary>
+    string Meter => Metro.IsRunning && Metro.State.beats > 0 ? $"{Metro.State.beats}/{Metro.State.unit}" : Metro.PlayingSection.Meter;
 
     static string SubName(int s) => Section.ClickName(s).ToLowerInvariant();
 

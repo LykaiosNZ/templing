@@ -223,7 +223,18 @@ public class TrainingSettings
     public RampMode Mode { get; set; } = RampMode.OverTime;
     public double DurationMin { get; set; } = 5;
     public int EveryBars { get; set; } = 4;
+    /// <summary>Before Steps existed: "Change by" for Every N bars. Only used to derive <see cref="StepCount"/> for old settings.</summary>
     public double Increment { get; set; } = 2;
+    /// <summary>How many equal jumps from Start to End. Null (old settings): derived, see <see cref="StepCount"/>.</summary>
+    public int? Steps { get; set; }
+
+    /// <summary>
+    /// The number of jumps from Start to End. Unset, it's what the trainer did before Steps existed:
+    /// Start–End ÷ Change by every N bars, or one bpm (or %) at a time over time.
+    /// </summary>
+    public int StepCount => Math.Max(1, Steps ?? (Mode == RampMode.EveryNBars
+        ? (int)Math.Ceiling(Math.Abs(End - Start) / Math.Max(0.5, Increment))
+        : (int)Math.Round(Math.Abs(End - Start))));
     public bool StopAtEnd { get; set; }
 }
 
@@ -234,6 +245,14 @@ public class IntervalSettings
     public double RestMin { get; set; } = 1;
     public int Rounds { get; set; } = 2;
     public bool VoiceCues { get; set; } = true;
+}
+
+/// <summary>A "Load preset" choice for intervals (Settings > Interval presets): work / rest minutes, rounds (0 = endless).</summary>
+public class IntervalPreset
+{
+    public double WorkMin { get; set; } = 5;
+    public double RestMin { get; set; }
+    public int Rounds { get; set; } = 1;
 }
 
 public class MetronomeSettings
@@ -258,6 +277,10 @@ public class AppSettings
     public List<Section> FreeSections { get; set; } = new() { new Section { Name = "Click", Bpm = 100 } };
     public bool FreePlayThrough { get; set; }
     public int WeeklyGoalMin { get; set; } = 150;
+    /// <summary>The Metronome's interval presets; null = the built-in ones (IntervalsEditor.MetronomeDefaults).</summary>
+    public List<IntervalPreset>? MetronomeIntervalPresets { get; set; }
+    /// <summary>The Timer's countdown presets; null = the built-in ones (IntervalsEditor.TimerDefaults).</summary>
+    public List<IntervalPreset>? TimerIntervalPresets { get; set; }
     /// <summary>Plans: save each step's log automatically when it finishes instead of asking.</summary>
     public bool AutoLogPlanSteps { get; set; }
 }

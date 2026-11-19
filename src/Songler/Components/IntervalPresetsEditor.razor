@@ -1,0 +1,65 @@
+@* Settings > Interval presets: the "Load preset" choices for the Metronome's intervals or the Timer's countdown.
+   Rows of Work / Rest / Rounds, plus Add preset and Reset to defaults. A null list means the built-in defaults; the
+   first edit saves a copy, so the shared defaults are never changed. *@
+
+<div class="preset-list" role="list" aria-label="@Name">
+    @for (int i = 0; i < Items.Count; i++)
+    {
+        var idx = i;
+        var p = Items[i];
+        var n = i + 1;
+        <div class="preset-row" role="listitem">
+            <DurationInput Seconds="p.WorkMin * 60" SecondsChanged="v => Edit(idx, x => x.WorkMin = (v ?? 15) / 60)" Label="Work" AriaLabel="@($"Preset {n} work")"
+                           MinSeconds="15" MaxSeconds="7200" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            <DurationInput Seconds="p.RestMin * 60" SecondsChanged="v => Edit(idx, x => x.RestMin = (v ?? 0) / 60)" Label="Rest" AriaLabel="@($"Preset {n} rest")"
+                           MaxSeconds="3600" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            <MudNumericField T="int" Value="p.Rounds" ValueChanged="v => Edit(idx, x => x.Rounds = v)" Label="Rounds" Placeholder="0 = endless" Min="0" Max="99"
+                             Variant="Variant.Outlined" Margin="Margin.Dense" aria-label="@($"Preset {n} rounds")" />
+            <MudTooltip Text="Remove">
+                <MudIconButton Icon="@Icons.Material.Rounded.Close" Size="Size.Small" aria-label="@($"Remove preset {n}")" OnClick="() => Remove(idx)" />
+            </MudTooltip>
+        </div>
+    }
+    <div class="preset-actions">
+        <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Rounded.Add" OnClick="Add">Add preset</MudButton>
+        @if (List != null)
+        {
+            <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Rounded.RestartAlt" OnClick="() => ListChanged.InvokeAsync(null)">Reset to defaults</MudButton>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>The saved presets, or null for <see cref="Defaults"/>.</summary>
+    [Parameter] public List<IntervalPreset>? List { get; set; }
+    [Parameter] public EventCallback<List<IntervalPreset>?> ListChanged { get; set; }
+    [Parameter, EditorRequired] public IReadOnlyList<IntervalPreset> Defaults { get; set; } = Array.Empty<IntervalPreset>();
+    /// <summary>Accessible name of the list, e.g. "Metronome interval presets".</summary>
+    [Parameter] public string Name { get; set; } = "Interval presets";
+
+    IReadOnlyList<IntervalPreset> Items => List ?? Defaults;
+
+    // the saved list, copying the defaults on the first edit
+    List<IntervalPreset> Own() => List ?? Defaults.Select(d => new IntervalPreset { WorkMin = d.WorkMin, RestMin = d.RestMin, Rounds = d.Rounds }).ToList();
+
+    Task Edit(int i, Action<IntervalPreset> change)
+    {
+        var list = Own();
+        change(list[i]);
+        return ListChanged.InvokeAsync(list);
+    }
+
+    Task Remove(int i)
+    {
+        var list = Own();
+        list.RemoveAt(i);
+        return ListChanged.InvokeAsync(list);
+    }
+
+    Task Add()
+    {
+        var list = Own();
+        list.Add(new IntervalPreset { WorkMin = list.LastOrDefault()?.WorkMin ?? 5 });
+        return ListChanged.InvokeAsync(list);
+    }
+}

@@ -113,7 +113,7 @@ Reuse these instead of rebuilding them. When two screens show the same thing, th
 | Component | Used for |
 | --- | --- |
 | `ScoreImportDialog` (`ScoreImportDialog.Title`) | Guitar Pro / MusicXML import; every entry point uses `Title` for its label |
-| `IntervalsEditor` | Work / rest / rounds, a "Load preset" select (an action: it always reads "Load preset") and Audio cues (Metronome intervals, Timer countdown) |
+| `IntervalsEditor` | Work / rest / rounds, a "Load preset" select (an action: it always reads "Load preset"; choices from Settings > Interval presets, `IntervalPresetsEditor`) and Audio cues (Metronome intervals, Timer countdown) |
 | `OptionsRail`, `RailSection`, `RailToggle`, `RailVolume` | The Metronome / Timer options rail, its sections, and the hidden rail's strip controls |
 | `VolumeControl` | Sound on/off + volume slider (rail Sound section, strip pop-up) |
 | `PracticeGuard`, `PracticeKeys` | On the Metronome and Timer pages: ask before leaving while running; the practice shortcuts |

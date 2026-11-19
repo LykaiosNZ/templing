@@ -14,8 +14,8 @@ Then open http://localhost:5075. You need the .NET 11 SDK.
 
 - **Library**: songs, exercises and riffs. Each piece measures progress in **BPM** or **% of song tempo**, and has a goal and a tempo map of **sections**. Each section has its own tempo, time signature, subdivision and bar count.
 - **Metronome**: a Web Audio look-ahead scheduler, so timing is sample-accurate. You can open it on its own (free mode), from a piece, or as a saved **custom metronome** with its own tempo changes. Practice stays on its page: leaving the Metronome or Timer while it runs asks first, and stops it.
-  - **Speed trainer**: goes from a start tempo to an end tempo, either over N minutes of playing or in steps every N bars. Tempo changes land on bar lines. It can hold at the end tempo or stop.
-  - **Interval trainer**: work/rest/rounds (presets include 5·1·5). The click stops during rests, and audio cues sound before each change.
+  - **Speed trainer**: goes from a start tempo to an end tempo in a set number of steps, spread over N minutes of playing or one every N bars. Tempo changes land on bar lines. It can hold at the end tempo or stop.
+  - **Interval trainer**: work/rest/rounds, with presets you can edit in Settings. The click stops during rests, and audio cues sound before each change.
   - **Count-in**: optional, any number of bars (1 by default), and it plays at every restart and every interval round.
   - **Play-through**: steps through the sections in order using their bar counts, with optional looping.
 - **Practice timer** (`/timer`, `g` then `t`): the interval trainer with no click, for playing along to Guitar Pro or a backing track. Intervals are optional (off = stopwatch). Audio cues and a colour change mark each work/rest switch. At the end you can log the time, add another block (e.g. +5 min after a 1 min rest), or start a rest countdown between pieces that isn't counted as practice.

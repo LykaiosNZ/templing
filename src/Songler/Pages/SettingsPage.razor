@@ -29,6 +29,24 @@
         </div>
     </section>
 
+    <section aria-labelledby="set-presets">
+        <h2 class="settings-heading" id="set-presets">Interval presets</h2>
+        <div class="setting-row setting-row-top">
+            <div class="setting-text"><div class="setting-title">Metronome intervals</div></div>
+            <div class="setting-control">
+                <IntervalPresetsEditor List="Store.Settings.MetronomeIntervalPresets" Defaults="IntervalsEditor.MetronomeDefaults" Name="Metronome interval presets"
+                                       ListChanged="async l => { Store.Settings.MetronomeIntervalPresets = l; await Save(); }" />
+            </div>
+        </div>
+        <div class="setting-row setting-row-top">
+            <div class="setting-text"><div class="setting-title">Timer countdown</div></div>
+            <div class="setting-control">
+                <IntervalPresetsEditor List="Store.Settings.TimerIntervalPresets" Defaults="IntervalsEditor.TimerDefaults" Name="Timer countdown presets"
+                                       ListChanged="async l => { Store.Settings.TimerIntervalPresets = l; await Save(); }" />
+            </div>
+        </div>
+    </section>
+
     <section aria-labelledby="set-data">
         <h2 class="settings-heading" id="set-data">Data</h2>
         <div class="setting-row">

@@ -1,5 +1,6 @@
 @* Work / rest interval settings, shared by the Metronome (its Intervals section) and the Timer (its Countdown). *@
 @inject MetronomeService Metro
+@inject DataStore Store
 
 @if (Metro.StepPinned)
 {
@@ -7,14 +8,17 @@
 }
 @{ var iv = Settings; }
 @* an action, not a value: it always reads "Load preset" and fills in the fields below *@
-<MudSelect T="int?" Value="null" ValueChanged="Load" Label="Load preset" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
-    @for (int i = 0; i < Presets.Count; i++)
-    {
-        var idx = i;
-        var label = Label(Presets[i]);
-        <MudSelectItem T="int?" Value="idx">@label</MudSelectItem>
-    }
-</MudSelect>
+@if (Presets.Count > 0)
+{
+    <MudSelect T="int?" Value="null" ValueChanged="Load" Label="Load preset" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+        @for (int i = 0; i < Presets.Count; i++)
+        {
+            var idx = i;
+            var label = Label(Presets[i]);
+            <MudSelectItem T="int?" Value="idx">@label</MudSelectItem>
+        }
+    </MudSelect>
+}
 <div class="form-grid three">
     <DurationInput Seconds="iv.WorkMin * 60" SecondsChanged="async v => { iv.WorkMin = (v ?? 15) / 60; await Apply(); }" Label="Work" MinSeconds="15" MaxSeconds="7200" Variant="Variant.Outlined" Margin="Margin.Dense" />
     <DurationInput Seconds="iv.RestMin * 60" SecondsChanged="async v => { iv.RestMin = (v ?? 0) / 60; await Apply(); }" Label="Rest" MaxSeconds="3600" Variant="Variant.Outlined" Margin="Margin.Dense" />
@@ -23,26 +27,32 @@
 <MudSwitch T="bool" @bind-Value="iv.VoiceCues" @bind-Value:after="Apply" Color="Color.Primary" Label="Audio cues" Class="rail-line-switch" />
 
 @code {
-    public record Preset(double Work, double Rest, int Rounds);
-
-    public static readonly Preset[] MetronomePresets =
+    public static IReadOnlyList<IntervalPreset> MetronomeDefaults { get; } = new[]
     {
-        new(10, 0, 1), new(15, 0, 1), new(5, 1, 2), new(10, 2, 3), new(2, 0.5, 4), new(0.5, 0.25, 8),
+        P(10, 0, 1), P(15, 0, 1), P(5, 1, 2), P(10, 2, 3), P(2, 0.5, 4), P(0.5, 0.25, 8),
     };
 
-    public static readonly Preset[] TimerPresets =
+    public static IReadOnlyList<IntervalPreset> TimerDefaults { get; } = new[]
     {
-        new(5, 0, 1), new(10, 0, 1), new(15, 0, 1), new(20, 0, 1), new(10, 2, 3), new(2, 0.5, 4),
+        P(5, 0, 1), P(10, 0, 1), P(15, 0, 1), P(20, 0, 1), P(10, 2, 3), P(2, 0.5, 4),
     };
+
+    static IntervalPreset P(double work, double rest, int rounds) => new() { WorkMin = work, RestMin = rest, Rounds = rounds };
 
     [Parameter, EditorRequired] public IntervalSettings Settings { get; set; } = default!;
-    [Parameter] public IReadOnlyList<Preset> Presets { get; set; } = MetronomePresets;
+    /// <summary>The Timer's countdown (its own presets) rather than the Metronome's intervals.</summary>
+    [Parameter] public bool Timer { get; set; }
 
-    static string Label(Preset p)
+    IReadOnlyList<IntervalPreset> Presets => Timer
+        ? Store.Settings.TimerIntervalPresets ?? TimerDefaults
+        : Store.Settings.MetronomeIntervalPresets ?? MetronomeDefaults;
+
+    /// <summary>"10 min", "3 × 10 min · 2 min rest", "8 × 30 sec · 15 sec rest", "Endless 5 min · 1 min rest".</summary>
+    public static string Label(IntervalPreset p)
     {
         static string D(double min) => min < 1 ? $"{min * 60:0} sec" : $"{min:0.#} min";
-        var work = p.Rounds == 1 ? D(p.Work) : $"{p.Rounds} × {D(p.Work)}";
-        return p.Rest > 0 && p.Rounds != 1 ? $"{work} · {D(p.Rest)} rest" : work;
+        var work = p.Rounds switch { 1 => D(p.WorkMin), 0 => $"Endless {D(p.WorkMin)}", _ => $"{p.Rounds} × {D(p.WorkMin)}" };
+        return p.RestMin > 0 && p.Rounds != 1 ? $"{work} · {D(p.RestMin)} rest" : work;
     }
 
     async Task Load(int? i)
@@ -50,7 +60,7 @@
         if (i is not { } idx || idx < 0 || idx >= Presets.Count) return;
         var p = Presets[idx];
         var iv = Settings;
-        iv.WorkMin = p.Work; iv.RestMin = p.Rest; iv.Rounds = p.Rounds;
+        iv.WorkMin = p.WorkMin; iv.RestMin = p.RestMin; iv.Rounds = p.Rounds;
         await Apply();
     }
 

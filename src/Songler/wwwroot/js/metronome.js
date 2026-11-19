@@ -9,7 +9,8 @@
 //   factor: number,                   // manual tempo factor (when training disabled)
 //   countIn: { enabled, bars },
 //   volume, sound: 'click'|'beep'|'wood', accentFirst,
-//   training: { enabled, startFactor, endFactor, mode: 'time'|'bars', durationSec, everyBars, incFactor, quantum, stopAtEnd },
+//   training: { enabled, startFactor, endFactor, mode: 'time'|'bars', durationSec, everyBars, steps, stopAtEnd },
+//     steps equal jumps from start to end: one every everyBars bars, or one every durationSec / steps
 //   interval: { enabled, workSec, restSec, rounds, cues }
 // }
 
@@ -217,26 +218,18 @@ function accumulateActive() {
     }
 }
 
-function quantize(f) {
-    const q = cfg.training.quantum || 0;
-    return q > 0 ? Math.round(f / q) * q : f;
-}
-
 function trainingFactorAtBar() {
     const tr = cfg.training;
     if (!tr.enabled) return cfg.factor;
-    const dir = Math.sign(tr.endFactor - tr.startFactor) || 1;
-    let f;
+    const n = Math.max(1, tr.steps || 1);
+    let done; // jumps taken so far
     if (tr.mode === 'bars') {
-        const steps = Math.floor(st.trainingBars / Math.max(1, tr.everyBars));
-        f = tr.startFactor + dir * Math.abs(tr.incFactor) * steps;
+        done = Math.floor(st.trainingBars / Math.max(1, tr.everyBars));
     } else {
         const elapsed = activeNow() - st.trainingStartActive;
-        const p = Math.min(1, elapsed / Math.max(1, tr.durationSec));
-        f = tr.startFactor + (tr.endFactor - tr.startFactor) * p;
+        done = Math.floor(Math.min(1, elapsed / Math.max(1, tr.durationSec)) * n + 1e-9);
     }
-    if (dir > 0) f = Math.min(f, tr.endFactor); else f = Math.max(f, tr.endFactor);
-    return quantize(f);
+    return done >= n ? tr.endFactor : tr.startFactor + (tr.endFactor - tr.startFactor) * done / n;
 }
 
 // How far until the training tempo next changes: { bars, beats } for 'bars' mode, { sec } for 'time' mode.
@@ -247,11 +240,10 @@ function trainingNextStep() {
         const meter = st.meter || meterAt(stepCfg(), st.bar);
         return { bars: every - (st.trainingBars % every), beats: Math.max(1, meter.n - st.beat) };
     }
-    const span = tr.endFactor - tr.startFactor, dir = Math.sign(span) || 1, q = tr.quantum || 0;
+    const n = Math.max(1, tr.steps || 1);
     const elapsed = activeNow() - st.trainingStartActive;
-    let at = tr.durationSec;
-    if (q > 0 && span !== 0) at = Math.min(at, (st.factor + dir * q / 2 - tr.startFactor) / span * tr.durationSec);
-    return { sec: Math.max(0, at - elapsed) };
+    const next = Math.min(n, Math.floor(elapsed / Math.max(1, tr.durationSec) * n + 1e-9) + 1); // the jump after this one
+    return { sec: Math.max(0, tr.durationSec * next / n - elapsed) };
 }
 
 function trainingDone() {

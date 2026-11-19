@@ -359,7 +359,6 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         var s = Settings;
         var tr = Training;
         var iv = UserIntervals;
-        double quantum = Unit == TempoUnit.Percent ? 0.01 : 1.0 / Math.Max(1, RefSection.Bpm);
         var cfg = new
         {
             steps = Sections.Select(x => new { bpm = x.Bpm, beatsPerBar = x.BeatsPerBar, beatUnit = x.BeatUnit, subdivision = x.Subdivision, bars = x.Length, scoreBars = x.ScoreBars }),
@@ -380,8 +379,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
                 mode = tr.Mode == RampMode.EveryNBars ? "bars" : "time",
                 durationSec = tr.DurationMin * 60,
                 everyBars = tr.EveryBars,
-                incFactor = Unit == TempoUnit.Percent ? tr.Increment / 100 : tr.Increment / Math.Max(1, RefSection.Bpm),
-                quantum,
+                steps = tr.StepCount,
                 stopAtEnd = tr.StopAtEnd,
             },
             silent = Silent,
