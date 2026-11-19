@@ -21,10 +21,18 @@ public class EngineState
     public int unit { get; set; } = 4;
     public int barInPart { get; set; }
     public double? trainingProgress { get; set; }
+    public TrainingNext? trainingNext { get; set; }
     public double? workElapsed { get; set; }
     public string? finished { get; set; }
     public string? @event { get; set; }
     public string? reason { get; set; }
+}
+
+public class TrainingNext
+{
+    public int? bars { get; set; }
+    public int? beats { get; set; }
+    public double? sec { get; set; }
 }
 
 /// <summary>

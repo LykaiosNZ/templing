@@ -218,6 +218,7 @@ kbd {
 .phase.rest { background: rgba(57,135,229,.16); color: var(--series); font-family: var(--mono); }
 .training-bar { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 520px; font-family: var(--mono); font-size: .85rem; color: var(--ink-2); }
 .training-bar .mud-progress-linear { flex: 1; }
+.training-next { margin-top: -6px; font-family: var(--mono); font-size: .78rem; color: var(--muted); }
 .transport { display: flex; align-items: center; gap: 14px; }
 .play-btn {
     width: 84px; height: 84px; border-radius: 50%; border: none; cursor: pointer; display: grid; place-items: center; color: #fff;

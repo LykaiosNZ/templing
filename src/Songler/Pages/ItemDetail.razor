@@ -48,7 +48,7 @@ else
         <StatTile Label="Latest" Value="@(_st.Last?.ToString("0") ?? "—")" Unit="@(_st.Last.HasValue ? _item.Unit.Suffix() : null)" Icon="@Icons.Material.Rounded.Speed"
                   Sub="@(_st.Best is { } b ? $"Best {b:0}{_item.Unit.Suffix()}" : null)" />
         <StatTile Label="Improvement" Value="@Improvement" Icon="@Icons.Material.Rounded.TrendingUp" Sub="@(_st.FirstDate is { } fd ? $"since {fd:d MMM}" : null)" />
-        <StatTile Label="Sessions" Value="@_st.Sessions.ToString()" Icon="@Icons.Material.Rounded.CalendarMonth" Sub="@($"Last {Stats.Ago(_st.LastDate, DateTime.Today)}")" />
+        <StatTile Label="Sessions" Value="@_st.Sessions.ToString()" Icon="@Icons.Material.Rounded.CalendarMonth" Sub="@(_st.LastDate is null ? "Not started yet" : $"Last {Stats.Ago(_st.LastDate, DateTime.Today)}")" />
         <StatTile Label="Total time" Value="@Stats.Duration(_st.TotalSec)" Icon="@Icons.Material.Rounded.Timer" Sub="@AvgSub" />
     </div>
 

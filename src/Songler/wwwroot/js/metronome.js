@@ -239,6 +239,21 @@ function trainingFactorAtBar() {
     return quantize(f);
 }
 
+// How far until the training tempo next changes: { bars, beats } for 'bars' mode, { sec } for 'time' mode.
+function trainingNextStep() {
+    const tr = cfg.training;
+    if (tr.mode === 'bars') {
+        const every = Math.max(1, tr.everyBars);
+        const meter = st.meter || meterAt(stepCfg(), st.bar);
+        return { bars: every - (st.trainingBars % every), beats: Math.max(1, meter.n - st.beat) };
+    }
+    const span = tr.endFactor - tr.startFactor, dir = Math.sign(span) || 1, q = tr.quantum || 0;
+    const elapsed = activeNow() - st.trainingStartActive;
+    let at = tr.durationSec;
+    if (q > 0 && span !== 0) at = Math.min(at, (st.factor + dir * q / 2 - tr.startFactor) / span * tr.durationSec);
+    return { sec: Math.max(0, at - elapsed) };
+}
+
 function trainingDone() {
     const tr = cfg.training;
     if (!tr.enabled) return false;
@@ -426,10 +441,11 @@ function snapshot() {
     let remaining = null;
     if (st.phase === 'rest') remaining = st.restEnd - now;
     else if (st.phase === 'work' && st.phaseEnd !== Infinity) remaining = st.phaseEnd - now;
-    let trainingProgress = null;
+    let trainingProgress = null, trainingNext = null;
     if (cfg.training.enabled) {
         const tr = cfg.training;
         trainingProgress = tr.endFactor === tr.startFactor ? 1 : Math.max(0, Math.min(1, (st.factor - tr.startFactor) / (tr.endFactor - tr.startFactor)));
+        if (st.running && st.phase === 'work' && Math.abs(st.factor - tr.endFactor) > 1e-6) trainingNext = trainingNextStep();
     }
     return {
         running: st.running,
@@ -446,6 +462,7 @@ function snapshot() {
         unit: (st.meter || meterAt(stepCfg(), st.bar)).d,
         barInPart: (() => { const sb = stepCfg().scoreBars; return sb && sb.length ? st.bar % sb.length : st.bar; })(),
         trainingProgress,
+        trainingNext,
         finished: st.finished || null,
     };
 }

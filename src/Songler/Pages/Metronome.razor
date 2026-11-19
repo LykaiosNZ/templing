@@ -164,6 +164,10 @@
                     <MudProgressLinear Value="@(prog * 100)" Color="Color.Primary" Rounded="true" Size="Size.Medium" aria-label="Speed trainer progress" />
                     <span>@tr.End.ToString("0")@(Metro.Unit == TempoUnit.Percent ? "%" : "")</span>
                 </div>
+                @if (TrainingNextText is { } next)
+                {
+                    <div class="training-next">@next</div>
+                }
             }
 
             <div class="transport">
@@ -256,7 +260,7 @@
                             <MudNumericField T="int" @bind-Value="tr.EveryBars" @bind-Value:after="Apply" Label="Every (bars)" Min="1" Max="64" />
                         </div>
                     }
-                    <MudCheckBox T="bool" @bind-Value="tr.StopAtEnd" @bind-Value:after="Apply" Color="Color.Primary" Label="Stop when the end tempo is reached (otherwise hold)" />
+                    <MudCheckBox T="bool" @bind-Value="tr.StopAtEnd" @bind-Value:after="Apply" Color="Color.Primary" Label="Stop at end" />
                     <MudText Typo="Typo.caption" Class="muted d-block mt-2">@TrainerSummary</MudText>
             }
             else if (_panel == "intervals")
@@ -359,6 +363,22 @@
             var suf = Metro.Unit == TempoUnit.Percent ? "%" : "";
             var lo = Math.Round(Metro.SessionMin ?? 0); var hi = Math.Round(Metro.SessionMax.Value);
             return lo < hi ? $"{lo:0}–{hi:0}{suf}" : $"{hi:0}{suf}";
+        }
+    }
+
+    string? TrainingNextText
+    {
+        get
+        {
+            var n = Metro.IsRunning ? Metro.State.trainingNext : null;
+            if (n is null) return null;
+            var tr = Metro.Training; var u = Metro.Unit == TempoUnit.Percent ? "%" : "";
+            var dir = tr.End >= tr.Start ? "+" : "−";
+            var step = tr.Mode == RampMode.EveryNBars ? $"{dir}{Math.Abs(tr.Increment):0.#}{u}" : $"{dir}1{u}";
+            string when = n.bars is int b && b > 1 ? $"{b} bars"
+                        : n.beats is int bt ? $"{bt} beat{(bt == 1 ? "" : "s")}"
+                        : Stats.Clock(Math.Ceiling(n.sec ?? 0));
+            return $"Next {step} in {when}";
         }
     }
 
