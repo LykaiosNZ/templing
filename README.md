@@ -12,7 +12,7 @@ Then open http://localhost:5075. You need the .NET 11 SDK.
 
 ## Features
 
-- **Library**: songs, exercises and riffs. Each piece measures progress in **BPM** or **% of song tempo**, and has a goal and a tempo map of **sections**. Each section has its own tempo, time signature, subdivision and bar count.
+- **Library**: songs, exercises and riffs. Each piece measures progress in **BPM** or **% of song tempo**, and has a goal and a tempo map of **sections**. Each section has its own tempo, time signature, division (what clicks: 1/4, 1/8, 1/8t … 1/32) and bar count.
 - **Metronome**: a Web Audio look-ahead scheduler, so timing is sample-accurate. You can open it on its own (free mode), from a piece, or as a saved **custom metronome** with its own tempo changes. Practice stays on its page: leaving the Metronome or Timer while it runs asks first, and stops it.
   - **Speed trainer**: goes from a start tempo to an end tempo in a set number of whole-bpm steps (e.g. +6, +5, +6), spread over N minutes of playing or one every N bars. Tempo changes land on bar lines. It can hold at the end tempo or stop.
   - **Interval trainer**: work/rest/rounds, with presets you can edit in Settings. The click stops during rests, and audio cues sound before each change.

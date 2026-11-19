@@ -46,7 +46,7 @@ public class Section
     public double Bpm { get; set; } = 120;
     public int BeatsPerBar { get; set; } = 4;
     public int BeatUnit { get; set; } = 4;
-    /// <summary>Clicks per beat: 1 = quarters, 2 = eighths, 3 = triplets, 4 = sixteenths...</summary>
+    /// <summary>Clicks per beat (the division): in 4/4, 1 = 1/4, 2 = 1/8, 3 = 1/8t, 4 = 1/16. See <see cref="Division"/>.</summary>
     public int Subdivision { get; set; } = 1;
     /// <summary>Length in bars when playing through a sequence. 0 = loop until moved on.</summary>
     public int Bars { get; set; } = 0;
@@ -65,12 +65,45 @@ public class Section
     public bool MixedMeter => FromScore && ScoreBars!.Any(b => b[1] != ScoreBars![0][1] || b[2] != ScoreBars[0][2]);
     public string Meter => $"{BeatsPerBar}/{BeatUnit}{(MixedMeter ? " (mixed)" : "")}";
 
-    /// <summary>Click options, in menu order: clicks per beat and their name.</summary>
-    public static readonly (int Value, string Label)[] Subdivisions = [(1, "Beats"), (2, "8ths"), (3, "Triplets"), (4, "16ths"), (6, "Sextuplets")];
+    /// <summary>
+    /// Bottom numbers a time signature can have: note values. The engine would play anything (a beat is 4 ÷ unit
+    /// quarter notes), but 7ths and the like aren't note values, and Guitar Pro never produces them.
+    /// </summary>
+    public static readonly int[] BeatUnits = [1, 2, 4, 8, 16, 32];
 
-    /// <summary>"Beats", "8ths", "Triplets"… for a subdivision.</summary>
-    public static string ClickName(int subdivision) =>
-        Subdivisions.FirstOrDefault(x => x.Value == subdivision).Label ?? $"{subdivision} per beat";
+    // clicks per beat that make a note value: straight (1, 2, 4…) or triplet (3, 6, 12…)
+    static readonly int[] DivisionCounts = [1, 2, 3, 4, 6, 8, 12, 16, 24, 32];
+
+    /// <summary>
+    /// The division (what clicks) as a note value: clicks per beat on a beat of 1/<paramref name="beatUnit"/>.
+    /// In 4/4: 1 → "1/4", 2 → "1/8", 3 → "1/8t", 4 → "1/16". In 6/8 the same counts read "1/8", "1/16", "1/16t"…
+    /// </summary>
+    public static string DivisionName(int subdivision, int beatUnit)
+    {
+        var sub = Math.Max(1, subdivision);
+        if ((sub & (sub - 1)) == 0) return $"1/{beatUnit * sub}";
+        if (sub % 3 == 0 && ((sub / 3) & (sub / 3 - 1)) == 0) return $"1/{beatUnit * sub / 3 * 2}t";
+        return $"{sub} per beat";
+    }
+
+    /// <summary>
+    /// Division options for a beat unit, slowest first: straight up to 1/32, triplets up to 1/16t.
+    /// <paramref name="current"/> is kept in the list even if it's outside that range (older data).
+    /// </summary>
+    public static IReadOnlyList<(int Value, string Label)> Divisions(int beatUnit, int? current = null) =>
+        DivisionCounts.Where(n => n == current || (n % 3 == 0 ? beatUnit * n / 3 * 2 <= 16 : beatUnit * n <= 32))
+            .Select(n => (n, DivisionName(n, beatUnit))).ToList();
+
+    /// <summary>This section's division as a note value ("1/8t").</summary>
+    public string Division => DivisionName(Subdivision, BeatUnit);
+
+    /// <summary>After a meter change: keep the division if it's still offered, else the nearest slower one.</summary>
+    public void ClampDivision()
+    {
+        var options = Divisions(BeatUnit);
+        if (options.Any(o => o.Value == Subdivision)) return;
+        Subdivision = options.LastOrDefault(o => o.Value <= Subdivision).Value is var v and > 0 ? v : 1;
+    }
 }
 
 public class Piece

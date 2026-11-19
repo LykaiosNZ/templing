@@ -162,7 +162,7 @@ else
                         <tbody>
                             <tr><th scope="row">Tempo</th><td>@s0.Bpm.ToString("0") bpm</td></tr>
                             <tr><th scope="row">Meter</th><td>@s0.Meter</td></tr>
-                            <tr><th scope="row">Clicks</th><td>@SubName(s0.Subdivision)</td></tr>
+                            <tr><th scope="row">Division</th><td>@s0.Division</td></tr>
                         </tbody>
                     </MudSimpleTable>
                     @if (_piece.Type == PieceType.Song)
@@ -215,7 +215,7 @@ else
             if (_piece!.HasParts())
                 return $"{_parts.Count} sections" + (_weakest is { } w ? $" · weakest {w.Section.Name}" : "");
             var s0 = _piece.Sections[0];
-            return $"{s0.Bpm:0} bpm · {s0.Meter} · {SubName(s0.Subdivision).ToLowerInvariant()}";
+            return $"{s0.Bpm:0} bpm · {s0.Meter} · {s0.Division}";
         }
     }
 
@@ -233,7 +233,6 @@ else
         Snackbar.Add(_piece.Archived ? "Archived: hidden from the library unless \"Show archived\" is on" : "Unarchived", Severity.Info);
     }
 
-    static string SubName(int s) => Section.ClickName(s);
 
     string ProgressSub
     {

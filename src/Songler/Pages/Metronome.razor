@@ -84,7 +84,7 @@
                         <span>bpm</span>
                     }
                     <span> · @Meter</span>
-                    <span> · @SubName(Metro.PlayingSection.Subdivision)</span>
+                    <span> · @Metro.PlayingSection.Division</span>
                     @if (Metro.Source != MetronomeSource.Piece && Metro.Sections.Count > 1 && Math.Abs(Metro.Factor - 1) > 0.001 && !Metro.IsRunning)
                     {
                         <MudLink Class="ml-2" OnClick="() => Metro.ResetFactorAsync()" Typo="Typo.body2">reset ×@Metro.Factor.ToString("0.00")</MudLink>
@@ -217,6 +217,19 @@
             }
         </div>
 
+        @if (Metro.Source == MetronomeSource.Free)
+        {
+            var fs = Metro.Sections[0];
+            <RailSection Title="Time signature" Icon="@Icons.Material.Rounded.MusicNote">
+                <div class="form-grid">
+                    <MeterInput Section="fs" OnChanged="Apply" />
+                    <MudSelect T="int" @bind-Value="fs.Subdivision" @bind-Value:after="Apply" Label="Division" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                        @foreach (var (v, label) in Section.Divisions(fs.BeatUnit, fs.Subdivision)) { <MudSelectItem T="int" Value="v">@label</MudSelectItem> }
+                    </MudSelect>
+                </div>
+            </RailSection>
+        }
+
         <RailSection Title="Speed trainer" Icon="@Icons.Material.Rounded.TrendingUp" On="Metro.Training.Enabled" OnChanged="SetTraining">
             @{ var tr = Metro.Training; var u = Metro.Unit == TempoUnit.Percent ? "%" : "bpm"; }
             @if (Metro.TrainingPinned)
@@ -260,21 +273,6 @@
             <RailSection Title="Play through sections" Icon="@Icons.Material.Rounded.PlaylistPlay" On="Metro.PlayThrough" OnChanged="SetPlayThrough" />
         }
 
-        @if (Metro.Source == MetronomeSource.Free)
-        {
-            var fs = Metro.Sections[0];
-            <RailSection Title="Time signature" Icon="@Icons.Material.Rounded.MusicNote">
-                <div class="form-grid three">
-                    <MudNumericField T="int" @bind-Value="fs.BeatsPerBar" @bind-Value:after="Apply" Label="Beats" Min="1" Max="32" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                    <MudSelect T="int" @bind-Value="fs.BeatUnit" @bind-Value:after="Apply" Label="Unit" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
-                        @foreach (var bu in new[] { 2, 4, 8, 16 }) { <MudSelectItem T="int" Value="bu">/@bu</MudSelectItem> }
-                    </MudSelect>
-                    <MudSelect T="int" @bind-Value="fs.Subdivision" @bind-Value:after="Apply" Label="Clicks" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
-                        @foreach (var (v, label) in Section.Subdivisions) { <MudSelectItem T="int" Value="v">@label</MudSelectItem> }
-                    </MudSelect>
-                </div>
-            </RailSection>
-        }
 
         <RailSection Title="Sound" Icon="@Icons.Material.Rounded.VolumeUp">
             @{ var s = Metro.Settings; }
@@ -352,7 +350,6 @@
     /// <summary>The meter under the tempo: the bar that's playing (score bars can change meter mid-section), else the section's.</summary>
     string Meter => Metro.IsRunning && Metro.State.beats > 0 ? $"{Metro.State.beats}/{Metro.State.unit}" : Metro.PlayingSection.Meter;
 
-    static string SubName(int s) => Section.ClickName(s).ToLowerInvariant();
 
     protected override async Task OnParametersSetAsync()
     {

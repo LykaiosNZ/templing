@@ -205,6 +205,13 @@ kbd {
 .opt-toggle.mud-icon-button { border: 1px solid var(--ring); color: var(--ink-2); }
 .opt-toggle.on.mud-icon-button { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 /* Metronome / Timer: one centred practice column, options in the rail (OptionsRail) */
+/* MeterInput: a time signature as one outlined field, "7 / 8" */
+.meter-input.mud-input-control { margin: 0; }
+.meter-parts { display: flex; align-items: center; gap: 2px; padding: 9px 12px 7px; font-size: 1rem; }
+.meter-part { width: 2.4ch; padding: 0; border: 0; outline: 0; background: none; color: var(--mud-palette-text-primary); font: inherit; text-align: center; border-radius: 4px; }
+.meter-part:focus { background: var(--accent-soft); }
+.meter-slash { color: var(--muted); padding: 0 2px; }
+.sec-body .meter-input { flex: 0 0 auto; width: 120px; }
 .practice-col { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
 .options-rail.mud-drawer { border-left: 1px solid var(--mud-palette-divider); background: var(--mud-palette-background); }
 .options-rail .mud-drawer-content, .options-sheet .mud-drawer-content { display: flex; flex-direction: column; height: 100%; }

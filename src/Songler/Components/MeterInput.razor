@@ -1,0 +1,68 @@
+@* Time signature as one field, "7 / 8": type either number, or use ↑/↓ (the top steps by 1, the bottom doubles and
+   halves). Both are whole numbers. The top is 1–32 beats; the bottom is a note value (1, 2, 4, 8, 16 or 32), so a
+   typed 6 snaps to the nearest one, 8. Anything else puts the last good value back. Edits the section directly and
+   keeps its division valid for the new beat. *@
+
+<MudField Label="@Label" Variant="Variant.Outlined" Margin="Margin.Dense" InnerPadding="false" Class="meter-input">
+    <span class="meter-parts" role="group" aria-label="@Label">
+        <input class="meter-part" inputmode="numeric" autocomplete="off" maxlength="2" aria-label="Beats per bar"
+               @bind="_beats" @bind:after="CommitBeats" @onkeydown="KeyBeats" onfocus="this.select()" />
+        <span class="meter-slash" aria-hidden="true">/</span>
+        <input class="meter-part" inputmode="numeric" autocomplete="off" maxlength="2" aria-label="Beat unit (note value)"
+               @bind="_unit" @bind:after="CommitUnit" @onkeydown="KeyUnit" onfocus="this.select()" />
+    </span>
+</MudField>
+
+@code {
+    [Parameter, EditorRequired] public Section Section { get; set; } = default!;
+    [Parameter] public EventCallback OnChanged { get; set; }
+    [Parameter] public string Label { get; set; } = "Time signature";
+
+    string _beats = "", _unit = "";
+
+    // a parent re-render mid-typing doesn't clobber the field: the DOM only updates when these strings change
+    protected override void OnParametersSet() { _beats = Section.BeatsPerBar.ToString(); _unit = Section.BeatUnit.ToString(); }
+
+    Task CommitBeats() => SetBeats(int.TryParse(_beats, out var n) ? n : Section.BeatsPerBar);
+    Task CommitUnit() => SetUnit(int.TryParse(_unit, out var n) ? Snap(n) : Section.BeatUnit);
+
+    Task KeyBeats(KeyboardEventArgs e) => e.Key switch
+    {
+        "ArrowUp" => SetBeats(Section.BeatsPerBar + 1),
+        "ArrowDown" => SetBeats(Section.BeatsPerBar - 1),
+        _ => Task.CompletedTask,
+    };
+
+    Task KeyUnit(KeyboardEventArgs e)
+    {
+        var i = Array.IndexOf(Section.BeatUnits, Section.BeatUnit);
+        return e.Key switch
+        {
+            "ArrowUp" => SetUnit(Section.BeatUnits[Math.Min(Section.BeatUnits.Length - 1, i + 1)]),
+            "ArrowDown" => SetUnit(Section.BeatUnits[Math.Max(0, i - 1)]),
+            _ => Task.CompletedTask,
+        };
+    }
+
+    /// <summary>The nearest note value (ties go up: 6 → 8, 3 → 4); 0 or less is invalid and keeps the current one.</summary>
+    int Snap(int n) => n < 1 ? Section.BeatUnit
+        : Section.BeatUnits.OrderBy(u => Math.Abs(u - n)).ThenByDescending(u => u).First();
+
+    async Task SetBeats(int n)
+    {
+        n = Math.Clamp(n, 1, 32);
+        _beats = n.ToString();
+        if (n == Section.BeatsPerBar) return;
+        Section.BeatsPerBar = n;
+        await OnChanged.InvokeAsync();
+    }
+
+    async Task SetUnit(int u)
+    {
+        _unit = u.ToString();
+        if (u == Section.BeatUnit) return;
+        Section.BeatUnit = u;
+        Section.ClampDivision();
+        await OnChanged.InvokeAsync();
+    }
+}

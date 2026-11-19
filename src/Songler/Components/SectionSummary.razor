@@ -1,4 +1,4 @@
-@* One-line summary of a section: number, name, then tempo · meter · clicks · length ("16 bars", "loop", "from the score").
+@* One-line summary of a section: number, name, then tempo · meter · division · length ("16 bars", "loop", "from the score").
    Used by the sections editor's collapsed rows. *@
 
 <span class="pl-num">@(Index + 1).</span>
@@ -16,6 +16,6 @@
     public static string Meta(Section s)
     {
         var length = s.Length > 0 ? $"{s.Length} bar{(s.Length == 1 ? "" : "s")}" : "loop";
-        return $"{s.Bpm:0} bpm · {s.Meter} · {Section.ClickName(s.Subdivision).ToLowerInvariant()} · {length}";
+        return $"{s.Bpm:0} bpm · {s.Meter} · {s.Division} · {length}";
     }
 }

@@ -50,7 +50,7 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 - **Options rail** (`OptionsRail`, Metronome and Timer): the page's settings sit in a 320 px rail on the right, and the page itself is one centred column (`practice-col`).
   - The rail is for configuration only: no summaries, totals or explanations.
   - The source select (and Save or ⋮) goes at the top, then `RailSection`s.
-  - A feature you switch on and off (Speed trainer, Intervals, Count-in, Play through) is a section whose whole header is its on/off switch (`role="switch"`): the icon sits in a circle lit while on, the same look as the strip buttons, and the title dims while off. Its fields show only while it's on. Switches inside a section are that feature's own options (Stop at end, Audio cues), with labels smaller than the section title. Other sections (Time signature, Sound, Countdown) are always open. Sections don't collapse.
+  - A feature you switch on and off (Speed trainer, Intervals, Count-in, Play through) is a section whose whole header is its on/off switch (`role="switch"`): the icon sits in a circle lit while on, the same look as the strip buttons, and the title dims while off. Its fields show only while it's on. Switches inside a section are that feature's own options (Stop at end, Audio cues), with labels smaller than the section title. Other sections (Time signature, Sound, Countdown) are always open. Order: source, Time signature (free metronome), then the features, then Sound. Sections don't collapse.
   - Hiding the rail leaves a 56 px strip of quick controls rather than a copy of the sections: `RailToggle`s for the features, plus `RailVolume` (click turns sound on or off, hover shows the slider).
   - Below `lg` the same sections open as a bottom sheet from an Options button in the page head.
   - The rail starts open; hiding it lasts for the session.
@@ -119,6 +119,7 @@ Reuse these instead of rebuilding them. When two screens show the same thing, th
 | `PracticeGuard`, `PracticeKeys` | On the Metronome and Timer pages: ask before leaving while running; the practice shortcuts |
 | `SessionPanel` | Practised time on the Metronome and Timer, inside the stage. Hidden until there's time; one line while playing; once stopped, Log + Discard + page extras (Timer: +5 min, +10 min, Rest). Hidden while a plan runs. |
 | `DurationInput` | Any duration field |
+| `MeterInput` | Any time signature: one outlined field "7 / 8", each number typed or stepped with ↑/↓ (the bottom doubles/halves and snaps to a note value: 1, 2, 4, 8, 16, 32). Pair it with a "Division" select from `Section.Divisions(unit)` (note values, 1/4 … 1/32, triplets to 1/16t) |
 | `PlanStepSummary` | One-line plan step (Plans list, plan editor rows) |
 | `SectionsEditor`, `SectionSummary` | Tempo-map editor (piece editor, custom metronome sections): header with count, quick-add chips, collapsible rows |
 | `LogTable` | Practice log lists (History, Piece detail) |
