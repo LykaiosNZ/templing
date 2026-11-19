@@ -11,7 +11,7 @@ dotnet build src/Songler/Songler.csproj
 dotnet run --project src/Songler/Songler.csproj --launch-profile http   # http://localhost:5075
 ```
 
-- The `http` profile listens on all interfaces, on `http://…:5075` and `https://…:7212`. From another device, use **`https://<this machine's IP>:7212`** and accept the certificate warning (the dev certificate is for localhost). Plain http only works on localhost: the .NET WebAssembly runtime needs `crypto.subtle`, which browsers only expose to secure pages. Each address is its own origin with its own IndexedDB data, so it starts empty (use backup/restore to copy data across).
+- The `http` profile listens on all interfaces (`http://…:5075`), but other devices need HTTPS: the .NET WebAssembly runtime needs `crypto.subtle`, which browsers only expose to secure pages (HTTPS or localhost). To test on another device, run the **`lan`** profile (`--launch-profile lan`) and open `https://<this machine's IP>:7212`, accepting the certificate warning (the dev certificate is for localhost). Keep HTTPS out of the `http` profile: with an HTTPS address configured, the dev server redirects every page load to it, localhost included. Each address has its own IndexedDB data, so it starts empty (use backup/restore to copy data across).
 - The dev server does **not** hot-reload: restart it after C# / Razor / JS / CSS changes (static files are served from a build manifest, so even CSS edits need a build + restart) (`.claude/launch.json` has the `songler` preview config).
 - There is no test project. Verify changes in the browser, and use clearly named throwaway fixtures (e.g. ids prefixed `zztest-`). Remove them afterwards and never touch the user's real data in the browser.
 
