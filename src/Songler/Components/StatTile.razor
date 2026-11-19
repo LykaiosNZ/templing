@@ -3,7 +3,19 @@
         @if (Icon != null) { <MudIcon Icon="@Icon" Size="Size.Small" aria-hidden="true" /> }
         <span>@Label</span>
     </div>
-    <div class="stat-value">@Value@if (Unit != null) { <span class="stat-unit">@Unit</span> }</div>
+    <div class="stat-value">
+        @if (Seconds is { } sec)
+        {
+            @foreach (var part in Stats.Duration(sec).Split(' '))
+            {
+                if (char.IsDigit(part[0])) { @part } else { <span class="stat-unit">&nbsp;@part&nbsp;</span> }
+            }
+        }
+        else
+        {
+            @Value@if (Unit != null) { <span class="stat-unit">@Unit</span> }
+        }
+    </div>
     @if (Sub != null) { <div class="stat-sub">@Sub</div> }
     @ChildContent
 </div>
@@ -12,6 +24,8 @@
     [Parameter] public string Label { get; set; } = "";
     [Parameter] public string Value { get; set; } = "";
     [Parameter] public string? Unit { get; set; }
+    /// <summary>A duration: shown as "54 h 42 min" with the unit words small, instead of <see cref="Value"/>.</summary>
+    [Parameter] public int? Seconds { get; set; }
     [Parameter] public string? Sub { get; set; }
     [Parameter] public string? Icon { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }

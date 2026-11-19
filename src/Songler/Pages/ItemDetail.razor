@@ -49,7 +49,7 @@ else
                   Sub="@(_st.Best is { } b ? $"Best {b:0}{_item.Unit.Suffix()}" : null)" />
         <StatTile Label="Improvement" Value="@Improvement" Icon="@Icons.Material.Rounded.TrendingUp" Sub="@(_st.FirstDate is { } fd ? $"since {fd:d MMM}" : null)" />
         <StatTile Label="Sessions" Value="@_st.Sessions.ToString()" Icon="@Icons.Material.Rounded.CalendarMonth" Sub="@(_st.LastDate is null ? "Not started yet" : $"Last {Stats.Ago(_st.LastDate, DateTime.Today)}")" />
-        <StatTile Label="Total time" Value="@Stats.Duration(_st.TotalSec)" Icon="@Icons.Material.Rounded.Timer" Sub="@AvgSub" />
+        <StatTile Label="Total time" Seconds="_st.TotalSec" Icon="@Icons.Material.Rounded.Timer" Sub="@AvgSub" />
     </div>
 
     <MudGrid Spacing="4" Class="mt-1">
@@ -58,10 +58,10 @@ else
                 <div class="card-head">
                     <h2 class="card-title">Tempo over time</h2>
                     <MudSpacer />
-                    <MudToggleGroup T="int" Value="_rangeMonths" ValueChanged="RangeChanged" Size="Size.Small" Outlined="true" Color="Color.Primary" aria-label="Chart range">
-                        <MudToggleItem Value="3" Text="3 months" />
-                        <MudToggleItem Value="0" Text="All" />
-                    </MudToggleGroup>
+                    <MudSelect T="int" Value="_rangeMonths" ValueChanged="RangeChanged" Label="Period" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="toolbar-select">
+                        <MudSelectItem T="int" Value="3">Last 3 months</MudSelectItem>
+                        <MudSelectItem T="int" Value="0">All time</MudSelectItem>
+                    </MudSelect>
                     @if (_item.Sections.Count > 1)
                     {
                         <MudSelect T="string" @bind-Value="SectionPick" @bind-Value:after="Refresh" Label="@(_item.Type == ItemType.Song ? "Part" : "Section")" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Class="toolbar-select">
@@ -83,11 +83,11 @@ else
             <section class="card">
                 <h2 class="card-title">Weekly practice time</h2>
                 <div class="hide-phone">
-                    <BarChart Labels="_weekLabels" TipLabels="_weekTips" Values="_weekValues" ValueFormat="@(v => Stats.Duration((int)(v * 60)))" AxisFormat="@(v => $"{v:0}m")"
+                    <BarChart Labels="_weekLabels" TipLabels="_weekTips" Values="_weekValues" ValueFormat="@(v => Stats.Duration((int)(v * 60)))" Minutes="true"
                               HighlightLast="true" LabelEvery="3" Height="260" Width="400" AriaLabel="Minutes practised per week" />
                 </div>
                 <div class="show-phone-block">
-                    <BarChart Labels="_weekLabels.TakeLast(8).ToList()" TipLabels="_weekTips.TakeLast(8).ToList()" Values="_weekValues.TakeLast(8).ToList()" ValueFormat="@(v => Stats.Duration((int)(v * 60)))" AxisFormat="@(v => $"{v:0}m")"
+                    <BarChart Labels="_weekLabels.TakeLast(8).ToList()" TipLabels="_weekTips.TakeLast(8).ToList()" Values="_weekValues.TakeLast(8).ToList()" ValueFormat="@(v => Stats.Duration((int)(v * 60)))" Minutes="true"
                               HighlightLast="true" LabelEvery="2" Height="240" Width="380" AriaLabel="Minutes practised per week, last 8 weeks" />
                 </div>
             </section>

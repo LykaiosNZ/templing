@@ -12,7 +12,7 @@
             {
                 var y = Y(t);
                 <line x1="@L" x2="@(W - R)" y1="@F(y)" y2="@F(y)" class="viz-grid" />
-                var axisText = AxisFormat(t);
+                var axisText = Tick(t);
                 <SvgText x="@(L - 8)" y="@F(y + 4)" text-anchor="end" class="viz-axis">@axisText</SvgText>
             }
             @if (Target is { } tg && tg <= _max)
@@ -71,6 +71,10 @@
     [Parameter] public List<double> Values { get; set; } = new();
     [Parameter] public Func<double, string> ValueFormat { get; set; } = v => v.ToString("0");
     [Parameter] public Func<double, string> AxisFormat { get; set; } = v => v.ToString("0");
+    /// <summary>Values are minutes: ticks in compact minutes, or whole hours once the scale is large (see DESIGN.md). Overrides <see cref="AxisFormat"/>.</summary>
+    [Parameter] public bool Minutes { get; set; }
+    bool _hours;
+    string Tick(double v) => !Minutes ? AxisFormat(v) : _hours ? $"{v / 60:0.#}h" : $"{v:0}m";
     [Parameter] public bool HighlightLast { get; set; }
     [Parameter] public double? Target { get; set; }
     [Parameter] public string TargetLabel { get; set; } = "Goal";
@@ -107,7 +111,8 @@
         if (Values.Count == 0) return;
         var hi = Math.Max(Values.Max(), Target ?? 0);
         if (hi <= 0) hi = 1;
-        var step = NiceStep(hi / 4);
+        _hours = Minutes && hi >= 300;
+        var step = _hours ? Math.Max(1, NiceStep(hi / 60 / 4)) * 60 : NiceStep(hi / 4);
         _max = Math.Ceiling(hi / step) * step;
         if (_max < hi * 1.05) _max += step;
         _ticks = new();

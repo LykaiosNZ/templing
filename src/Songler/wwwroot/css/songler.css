@@ -85,7 +85,7 @@ kbd {
 .form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
 
 /* stat tiles */
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 8px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 8px; }
 .stat-tile { background: var(--card); border: 1px solid var(--ring); border-radius: var(--radius); padding: 16px 18px; }
 .stat-label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: .76rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
 .stat-value { font-size: 1.9rem; font-weight: 800; letter-spacing: -.03em; margin-top: 6px; font-variant-numeric: tabular-nums; color: var(--ink); line-height: 1.15; }

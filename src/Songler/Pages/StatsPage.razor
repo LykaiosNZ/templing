@@ -5,63 +5,65 @@
 <PageTitle>Stats · Songler</PageTitle>
 
 <div class="page-head">
+    <h1 class="page-title" tabindex="-1">Stats</h1>
     <div>
-        <h1 class="page-title" tabindex="-1">Stats</h1>
-        <MudText Typo="Typo.body2" Class="muted">Time counts active practice only (rests excluded). Early entries without a time still count as practice days.</MudText>
+    <MudSelect T="int" @bind-Value="_period" @bind-Value:after="Refresh" Label="Period" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="toolbar-select">
+        <MudSelectItem T="int" Value="30">Last 30 days</MudSelectItem>
+        <MudSelectItem T="int" Value="90">Last 90 days</MudSelectItem>
+        <MudSelectItem T="int" Value="365">Last 12 months</MudSelectItem>
+        <MudSelectItem T="int" Value="0">All time</MudSelectItem>
+    </MudSelect>
     </div>
-    <MudToggleGroup T="int" @bind-Value="_period" @bind-Value:after="Refresh" Color="Color.Primary" Size="Size.Small" Outlined="true" aria-label="Period">
-        <MudToggleItem Value="30" Text="30 days" />
-        <MudToggleItem Value="90" Text="90 days" />
-        <MudToggleItem Value="365" Text="Year" />
-        <MudToggleItem Value="0" Text="All" />
-    </MudToggleGroup>
 </div>
 
 <div class="tiles">
-    <StatTile Label="Practice time" Value="@Stats.Duration(_totalSec)" Icon="@Icons.Material.Rounded.Timer" Sub="@($"{_timedDays} timed days")" />
+    <StatTile Label="Practice time" Seconds="_totalSec" Icon="@Icons.Material.Rounded.Timer" Sub="@($"avg {Stats.Duration((int)(_totalSec / Math.Max(1, _spanDays / 7.0)))} a week")" />
     <StatTile Label="Days practised" Value="@_days.ToString()" Icon="@Icons.Material.Rounded.CalendarMonth" Sub="@(_spanDays > 0 ? $"{(double)_days / _spanDays:P0} of days" : null)" />
-    <StatTile Label="Avg per day" Value="@Stats.Duration(_timedDays > 0 ? _totalSec / _timedDays : 0)" Icon="@Icons.Material.Rounded.AvTimer" Sub="on days with time logged" />
+    <StatTile Label="Avg per day" Seconds="_timedDays > 0 ? _totalSec / _timedDays : 0" Icon="@Icons.Material.Rounded.AvTimer" />
     <StatTile Label="Items practised" Value="@_itemCount.ToString()" Icon="@Icons.Material.Rounded.LibraryMusic" Sub="@($"{_logs.Count} entries")" />
-    <StatTile Label="Longest streak" Value="@_streak.longest.ToString()" Unit=" days" Icon="@Icons.Material.Rounded.LocalFireDepartment" Sub="@($"Current {_streak.current}")" />
+    <StatTile Label="Longest streak" Value="@_streak.longest.ToString()" Unit=" days" Icon="@Icons.Material.Rounded.LocalFireDepartment" Sub="@($"Current {_streak.current} day{(_streak.current == 1 ? "" : "s")}")" />
 </div>
 
 <MudGrid Spacing="4" Class="mt-1">
     <MudItem xs="12">
         <section class="card">
-            <h2 class="card-title">Last 12 months</h2>
-            <Heatmap SecondsByDay="_byDayAll" Practiced="_practicedAll" Weeks="53" />
+            <h2 class="card-title">Practice calendar</h2>
+            <Heatmap SecondsByDay="_byDay" Practiced="_practiced" Weeks="_heatWeeks" From="_from" />
         </section>
     </MudItem>
     <MudItem xs="12" lg="8">
         <section class="card">
-            <h2 class="card-title">Minutes per week</h2>
-            <BarChart Labels="_weekLabels" TipLabels="_weekTips" Values="_weekValues" ValueFormat="@(v => Stats.Duration((int)(v * 60)))" AxisFormat="@(v => $"{v:0}m")"
-                      HighlightLast="true" LabelEvery="@Math.Max(1, _weekValues.Count / 8)" AriaLabel="Minutes per week" />
+            <h2 class="card-title">Weekly practice time</h2>
+            <BarChart Labels="_weekLabels" TipLabels="_weekTips" Values="_weekValues" ValueFormat="@(v => Stats.Duration((int)(v * 60)))" Minutes="true"
+                      HighlightLast="true" LabelEvery="@Math.Max(1, _weekValues.Count / 8)" AriaLabel="Practice time per week" />
         </section>
     </MudItem>
     <MudItem xs="12" lg="4">
         <section class="card">
-            <h2 class="card-title">By day of week</h2>
-            <BarChart Labels="_dowLabels" Values="_dowValues" ValueFormat="@(v => $"{v:0} days")" AriaLabel="Practice days by weekday" Height="260" Width="400" />
+            <h2 class="card-title">Days practised by weekday</h2>
+            <BarChart Labels="_dowLabels" Values="_dowValues" ValueFormat="@(v => v == 1 ? "1 day" : $"{v:0} days")" AriaLabel="Days practised by weekday" Height="260" Width="400" />
         </section>
     </MudItem>
     <MudItem xs="12" md="6" lg="4">
         <section class="card">
             <h2 class="card-title">Time by item</h2>
-            <HBars Rows="_byItem" AriaLabel="Practice time by item" />
+            <HBars Rows="_byItem" Limit="8" AriaLabel="Practice time by item" />
         </section>
     </MudItem>
     <MudItem xs="12" md="6" lg="4">
         <section class="card">
             <h2 class="card-title">Biggest gains</h2>
-            <MudText Typo="Typo.caption" Class="muted d-block mb-2">First recorded tempo → best in this period</MudText>
-            <HBars Rows="_gains" AriaLabel="Tempo improvement by item" />
+            <HBars Rows="_gains" Limit="8" AriaLabel="Tempo improvement by item" />
         </section>
     </MudItem>
     <MudItem xs="12" md="6" lg="4">
         <section class="card">
             <h2 class="card-title">Goal progress</h2>
-            <HBars Rows="_progress" Max="1" AriaLabel="Progress toward goal by item" />
+            @if (_goalsReached > 0)
+            {
+                <MudText Typo="Typo.body2" Class="muted mb-2">@(_goalsReached == 1 ? "1 goal reached" : $"{_goalsReached} goals reached")</MudText>
+            }
+            <HBars Rows="_progress" Max="1" Limit="8" AriaLabel="Progress toward goal by item" />
         </section>
         <section class="card mt-4">
             <h2 class="card-title">By type</h2>
@@ -73,10 +75,11 @@
 @code {
     int _period = 90;
     List<PracticeLog> _logs = new();
-    int _totalSec, _days, _timedDays, _itemCount, _spanDays;
+    int _totalSec, _days, _timedDays, _itemCount, _spanDays, _heatWeeks = 13, _goalsReached;
+    DateTime _from = DateTime.Today;
     (int current, int longest) _streak;
-    Dictionary<DateTime, int> _byDayAll = new();
-    HashSet<DateTime> _practicedAll = new();
+    Dictionary<DateTime, int> _byDay = new();
+    HashSet<DateTime> _practiced = new();
     List<string> _weekLabels = new(), _weekTips = new(), _dowLabels = new();
     List<double> _weekValues = new(), _dowValues = new();
     List<HBars.Row> _byItem = new(), _gains = new(), _progress = new(), _byType = new();
@@ -96,8 +99,10 @@
         _timedDays = _logs.Where(l => l.DurationSec > 0).Select(l => l.Date.Date).Distinct().Count();
         _itemCount = _logs.Select(l => l.ItemName).Distinct().Count();
         _streak = Stats.Streaks(Store.Logs, today);
-        _byDayAll = Stats.SecondsByDay(Store.Logs);
-        _practicedAll = Stats.DaysPracticed(Store.Logs);
+        _from = from.Date;
+        _byDay = Stats.SecondsByDay(_logs);
+        _practiced = days;
+        _heatWeeks = (int)((Stats.WeekStart(today) - Stats.WeekStart(_from)).TotalDays / 7) + 1;
 
         var weeks = Stats.WeeklySeconds(_logs, today, Math.Clamp((int)Math.Ceiling(_spanDays / 7.0), 4, 104));
         _weekLabels = Stats.WeekLabels(weeks);
@@ -119,6 +124,7 @@
 
         _gains = new();
         _progress = new();
+        _goalsReached = 0;
         foreach (var item in Store.Items)
         {
             var pts = _logs.Where(l => l.ItemId == item.Id && l.Unit == item.Unit && l.Value.HasValue).OrderBy(l => l.Date).ToList();
@@ -130,7 +136,10 @@
             }
             var st = Stats.ForItem(item, Store.Logs);
             if (!item.Archived && st.Progress is { } p && st.LastDate >= from)
-                _progress.Add(new HBars.Row(item.Name, Math.Min(1, p), $"{p:P0}", $"library/{item.Id}", p >= 1 ? "var(--good)" : null));
+            {
+                if (p >= 1) _goalsReached++;
+                else _progress.Add(new HBars.Row(item.Name, p, $"{p:P0}", $"library/{item.Id}"));
+            }
         }
         _gains = _gains.OrderByDescending(g => g.Value).Take(10).ToList();
         _progress = _progress.OrderByDescending(g => g.Value).ToList();

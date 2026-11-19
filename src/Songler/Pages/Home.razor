@@ -22,7 +22,7 @@
 else
 {
     <div class="tiles">
-        <StatTile Label="This week" Value="@Stats.Duration(_weekSec)" Icon="@Icons.Material.Rounded.DateRange" Sub="@($"Goal {Stats.Duration(Store.Settings.WeeklyGoalMin * 60)}")">
+        <StatTile Label="This week" Seconds="_weekSec" Icon="@Icons.Material.Rounded.DateRange" Sub="@($"Goal {Stats.Duration(Store.Settings.WeeklyGoalMin * 60)}")">
             <div class="progress-track mt-2" role="progressbar" aria-label="Weekly goal" aria-valuenow="@((int)(_weekPct * 100))" aria-valuemin="0" aria-valuemax="100">
                 <div class="progress-fill @(_weekPct >= 1 ? "done" : "")" style="width:@Pct(_weekPct)%"></div>
             </div>
@@ -30,7 +30,7 @@ else
         <StatTile Label="Current streak" Value="@_streak.current.ToString()" Unit="@(_streak.current == 1 ? " day" : " days")" Icon="@Icons.Material.Rounded.LocalFireDepartment"
                   Sub="@(_streak.current == 0 && _lastDay is { } ld ? $"Last practised {Stats.Ago(ld, DateTime.Today)} · best {_streak.longest}" : $"Longest {_streak.longest} days")" />
         <StatTile Label="Days practised" Value="@_days.ToString()" Icon="@Icons.Material.Rounded.CalendarMonth" Sub="@($"{_last30} of the last 30")" />
-        <StatTile Label="Total logged" Value="@Stats.Duration(_totalSec)" Icon="@Icons.Material.Rounded.Timer" Sub="@($"{Store.Logs.Count} entries")" />
+        <StatTile Label="Total logged" Seconds="_totalSec" Icon="@Icons.Material.Rounded.Timer" Sub="@($"{Store.Logs.Count} entries")" />
     </div>
 
     <MudGrid Spacing="4" Class="mt-1">
@@ -45,12 +45,12 @@ else
             <section class="card mt-4">
                 <h2 class="card-title">Weekly practice time</h2>
                 <div class="hide-phone">
-                    <BarChart Labels="_weekLabels" TipLabels="_weekTips" Values="_weekValues" ValueFormat="@(v => Stats.Duration((int)(v * 60)))" AxisFormat="@(v => $"{v:0}m")"
+                    <BarChart Labels="_weekLabels" TipLabels="_weekTips" Values="_weekValues" ValueFormat="@(v => Stats.Duration((int)(v * 60)))" Minutes="true"
                               HighlightLast="true" Target="Store.Settings.WeeklyGoalMin" TargetLabel="@GoalLabel" LabelEvery="3" AriaLabel="Minutes practised per week, last 16 weeks" />
                 </div>
                 <div class="show-phone-block">
                     <BarChart Labels="_weekLabels.TakeLast(8).ToList()" TipLabels="_weekTips.TakeLast(8).ToList()" Values="_weekValues.TakeLast(8).ToList()"
-                              ValueFormat="@(v => Stats.Duration((int)(v * 60)))" AxisFormat="@(v => $"{v:0}m")" Width="380" Height="240"
+                              ValueFormat="@(v => Stats.Duration((int)(v * 60)))" Minutes="true" Width="380" Height="240"
                               HighlightLast="true" Target="Store.Settings.WeeklyGoalMin" TargetLabel="@GoalLabel" LabelEvery="2" AriaLabel="Minutes practised per week, last 8 weeks" />
                 </div>
             </section>

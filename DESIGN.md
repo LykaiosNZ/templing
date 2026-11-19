@@ -25,6 +25,12 @@ The house rules for how screens look and read. Follow them when building or chan
 
 Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, change it there.
 
+## Charts
+
+- A chart's title says what's measured ("Days practised by weekday", "Weekly practice time"), not just how it's split ("By day of week").
+- Everything on a page with a period picker follows that period, the calendar included.
+- Long ranked lists show their top 8 with "Show all".
+
 ## Layout
 
 - **Page head:** `h1` on the left (optional overline above, optional info line below); the page's primary action on the right.
@@ -42,6 +48,7 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
   - In toolbars and compact editor rows (plan steps, sections): `Variant.Outlined`, `Margin.Dense`, `Dense="true"`, fixed width via `toolbar-select` (ellipsis on overflow).
   - In forms (dialogs, settings panels): the default variant, matching the text fields beside them.
   - **Filter selects always show a value**: an explicit "All items" / "All parts" / "All time" option rather than an empty, clearable select. Empty outlined selects render their label as a placeholder, which looks different from their filled neighbours.
+  - **Period pickers are selects** (label "Period", options "Last 30 days" … "All time"), not toggle groups. Segmented toggles are for switching a panel or a mode, not for ranges.
   - Option order: most relevant first (e.g. items by most recently logged), not alphabetical, unless the list is a fixed set.
 - **Rows that open something:** the whole row is clickable with a hover highlight. A pencil appears on hover and stays reachable by keyboard. Links inside the row still work.
 
@@ -53,7 +60,7 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 ## Colour
 
 - Use the CSS tokens (`--ink`, `--ink-2`, `--muted`, `--accent`, `--accent-soft`, `--ring`, `--card-2`, MudBlazor palette vars). No literal colours in pages.
-- Accent (orange) means primary action, current or active state. Warning (amber) means something needs attention, e.g. a step whose item was deleted. Blue is reserved for rest phases and the practice heatmap.
+- Accent (orange) means primary action, current or active state. Warning (amber) means something needs attention, e.g. a step whose item was deleted. Blue is for data (chart bars, ranked bars, the practice heatmap) and for rest phases.
 
 ## Shared components
 
@@ -64,6 +71,6 @@ Reuse these instead of rebuilding them. When two screens show the same thing, th
 | `IntervalsEditor` | Work / rest / rounds + presets (Metronome intervals, Timer countdown) |
 | `DurationInput` | Any duration field |
 | `LogTable` | Practice log lists (History, Item detail) |
-| `StatTile` | Headline numbers |
+| `StatTile` | Headline numbers (pass `Seconds` for durations so the unit words render small) |
 | `FeelHint`, `EffortSlider` | Feel / effort display and input |
-| `Charts/*` | Tempo line, bar chart, heatmap, ranked bars |
+| `Charts/*` | Tempo line, bar chart, heatmap, ranked bars (`HBars Limit` for long lists with "Show all"; `BarChart Minutes` for minute values: compact minute ticks, whole hours once the scale is large) |

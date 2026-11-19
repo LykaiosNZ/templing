@@ -1,7 +1,7 @@
 @* Ranked horizontal bars (plain HTML so labels wrap and stay readable). *@
 
 <ul class="hbars" aria-label="@AriaLabel">
-    @foreach (var row in Rows)
+    @foreach (var row in _all || Limit is null ? Rows : Rows.Take(Limit.Value))
     {
         var pct = _max > 0 ? row.Value / _max * 100 : 0;
         <li class="hbar-row">
@@ -22,12 +22,19 @@
         </li>
     }
 </ul>
+@if (Limit is { } lim && Rows.Count > lim)
+{
+    <MudButton Variant="Variant.Text" Size="Size.Small" Class="mt-1" OnClick="() => _all = !_all">@(_all ? "Show fewer" : $"Show all ({Rows.Count})")</MudButton>
+}
 
 @code {
     public record Row(string Label, double Value, string Display, string? Href = null, string? Color = null);
     [Parameter] public List<Row> Rows { get; set; } = new();
     [Parameter] public string AriaLabel { get; set; } = "Ranking";
     [Parameter] public double? Max { get; set; }
+    /// <summary>Show only the first N rows, with a "Show all" button.</summary>
+    [Parameter] public int? Limit { get; set; }
+    bool _all;
     double _max;
     protected override void OnParametersSet() => _max = Max ?? (Rows.Count > 0 ? Rows.Max(r => r.Value) : 0);
 }
