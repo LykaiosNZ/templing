@@ -21,6 +21,8 @@
 body { -webkit-font-smoothing: antialiased; }
 .mud-layout { background: var(--mud-palette-background); min-height: 100vh; }
 .muted { color: var(--muted) !important; }
+/* a label resting inside an empty field (e.g. an unselected "Piece" select) reads as a placeholder, so style it like one */
+.mud-input-control-input-container:not(:focus-within) > .mud-input:not(.mud-shrink) ~ .mud-input-label { color: var(--mud-palette-text-primary); opacity: .42; }
 .small { font-size: .82rem; }
 .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
