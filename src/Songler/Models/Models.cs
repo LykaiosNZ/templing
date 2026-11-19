@@ -187,7 +187,7 @@ public class PlanStep
     public string IntervalText => Kind == PlanStepKind.Rest ? $"{Dur(Minutes)} rest"
         : Rounds > 1 ? $"{Rounds} × {Dur(Minutes)}{(RestMin > 0 ? $", {Dur(RestMin)} rests" : "")}" : Dur(Minutes);
 
-    static string Dur(double min) => min < 1 ? $"{Math.Round(min * 60)}s" : min % 1 == 0 ? $"{min:0} min" : $"{min:0.#} min";
+    static string Dur(double min) => Songler.Services.Stats.DurationMin(min);
 }
 
 /// <summary>An ordered practice routine (warm-up, exercises, songs…).</summary>

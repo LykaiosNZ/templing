@@ -12,7 +12,7 @@
     <section class="plan-bar @(step.Kind == PlanStepKind.Rest ? "rest" : "")" aria-label="Practice plan">
         <div class="plan-bar-main">
             <div class="plan-bar-info">
-                <span class="plan-name">@plan.Name <span class="plan-left">· step @(Runner.Index + 1) of @plan.Steps.Count · about @Stats.Duration((int)(Runner.MinutesLeft * 60), true) left</span></span>
+                <span class="plan-name">@plan.Name <span class="plan-left">· step @(Runner.Index + 1) of @plan.Steps.Count · about @Stats.Duration((int)(Runner.MinutesLeft * 60)) left</span></span>
                 <span class="plan-step">
                     <strong>@Runner.Describe(step)</strong>
                     <span class="muted plan-step-meta"> · @step.IntervalText@(step.Kind == PlanStepKind.Item ? $" · {(step.Mode == StepMode.Timer ? "timer" : "metronome")}" : "")@(step.TempoText(Store.GetItem(step.ItemId)?.Unit ?? TempoUnit.Bpm) is { Length: > 0 } tt ? $" · {tt}" : "")</span>

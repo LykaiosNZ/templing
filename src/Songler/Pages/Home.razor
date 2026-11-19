@@ -116,7 +116,7 @@ else
     List<IGrouping<DateTime, PracticeLog>> _recent = new();
     DateTime? _lastDay;
 
-    string GoalLabel => $"Weekly goal {Stats.Duration(Store.Settings.WeeklyGoalMin * 60, true)}";
+    string GoalLabel => $"Weekly goal {Stats.Duration(Store.Settings.WeeklyGoalMin * 60)}";
 
     string Greeting => DateTime.Now.Hour switch { < 12 => "Good morning", < 18 => "Good afternoon", _ => "Good evening" };
     static string Pct(double? p) => Math.Min(100, (p ?? 0) * 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);

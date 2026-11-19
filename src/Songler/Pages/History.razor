@@ -8,32 +8,56 @@
 <div class="page-head">
     <div>
         <h1 class="page-title" tabindex="-1">History</h1>
-        <MudText Typo="Typo.body2" Class="muted">@_logs.Count entries · @Stats.Duration(_logs.Sum(l => l.DurationSec ?? 0)) logged</MudText>
+        <MudText Typo="Typo.body2" Class="muted">@(_logs.Count == 1 ? "1 entry" : $"{_logs.Count} entries") · @Stats.Duration(_logs.Sum(l => l.DurationSec ?? 0)) logged</MudText>
     </div>
     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.AddTask" OnClick="Add">Log practice</MudButton>
 </div>
 
 <div class="toolbar">
-    <MudSelect T="string" @bind-Value="_item" @bind-Value:after="Refresh" Label="Item" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Style="min-width:240px">
-        @foreach (var i in Store.Items) { <MudSelectItem T="string" Value="@i.Id">@i.Name</MudSelectItem> }
+    <MudTextField @bind-Value="_search" @bind-Value:after="Refresh" Placeholder="Search" Immediate="true" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense"
+                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.Search" Class="search-box" aria-label="Search notes and items" />
+    <MudSpacer />
+    <div class="toolbar-end">
+    <MudSelect T="string" @bind-Value="_item" @bind-Value:after="Refresh" Label="Item" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="toolbar-select">
+        <MudSelectItem T="string" Value="@("")">All items</MudSelectItem>
+        @foreach (var i in Store.ItemsByRecent(includeArchived: true)) { <MudSelectItem T="string" Value="@i.Id">@i.Name</MudSelectItem> }
     </MudSelect>
-    <MudSelect T="int" @bind-Value="_range" @bind-Value:after="Refresh" Label="Period" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width:180px">
+    <MudSelect T="int" @bind-Value="_range" @bind-Value:after="Refresh" Label="Period" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="toolbar-select">
         <MudSelectItem T="int" Value="7">Last 7 days</MudSelectItem>
         <MudSelectItem T="int" Value="30">Last 30 days</MudSelectItem>
         <MudSelectItem T="int" Value="90">Last 90 days</MudSelectItem>
         <MudSelectItem T="int" Value="0">All time</MudSelectItem>
     </MudSelect>
-    <MudTextField @bind-Value="_search" @bind-Value:after="Refresh" Placeholder="Search notes" Immediate="true" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense"
-                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.Search" aria-label="Search notes" />
+    </div>
 </div>
 
 <section class="card">
     @* key forces paging reset when filters change *@
-    <LogTable @key="_version" Logs="_logs" ShowItem="true" PageSize="60" />
+    <LogTable @key="_version" Logs="_logs" ShowItem="true" PageSize="60">
+        <Empty>
+            @if (Filtered)
+            {
+                <div class="empty-state">
+                    <MudText Typo="Typo.h6">No matching entries</MudText>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ClearFilters">Clear filters</MudButton>
+                </div>
+            }
+            else
+            {
+                <div class="empty-state">
+                    <MudText Typo="Typo.h6">No entries yet</MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.AddTask" OnClick="Add">Log practice</MudButton>
+                </div>
+            }
+        </Empty>
+    </LogTable>
 </section>
 
 @code {
-    string? _item, _search;
+    string _item = "";
+    string? _search;
+    bool Filtered => _item != "" || _range > 0 || !string.IsNullOrWhiteSpace(_search);
+    void ClearFilters() { _item = ""; _range = 0; _search = null; Refresh(); }
     int _range;
     int _version;
     List<PracticeLog> _logs = new();
@@ -44,7 +68,7 @@
     void Refresh()
     {
         IEnumerable<PracticeLog> q = Store.Logs;
-        if (_item != null) q = q.Where(l => l.ItemId == _item);
+        if (_item != "") q = q.Where(l => l.ItemId == _item);
         if (_range > 0) q = q.Where(l => l.Date > DateTime.Today.AddDays(-_range));
         if (!string.IsNullOrWhiteSpace(_search)) q = q.Where(l => (l.Notes ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase) || l.ItemName.Contains(_search, StringComparison.OrdinalIgnoreCase));
         _logs = q.OrderByDescending(l => l.Date).ThenBy(l => l.ItemName).ToList();

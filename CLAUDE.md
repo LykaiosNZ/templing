@@ -2,6 +2,8 @@
 
 Practice tracker for guitar: Blazor WebAssembly (.NET 11) + MudBlazor 9, Web Audio metronome in JS, all data in the browser (IndexedDB). No server, no accounts.
 
+**UI conventions live in [DESIGN.md](DESIGN.md)** (copy, formats, controls, icons, shared components). Read it before UI work, and add to it when a new UI decision is made.
+
 ## Run / build
 
 ```bash

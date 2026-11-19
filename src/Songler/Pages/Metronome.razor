@@ -44,7 +44,7 @@
             }
             <MudDivider />
             <MudText Typo="Typo.overline" Class="px-4 muted">Library</MudText>
-            @foreach (var i in Store.Items.Where(i => !i.Archived))
+            @foreach (var i in Store.ItemsByRecent())
             {
                 <MudMenuItem Href="@($"metronome/item/{i.Id}")" Icon="@i.Type.Icon()">@i.Name</MudMenuItem>
             }

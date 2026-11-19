@@ -15,10 +15,10 @@
             <MudTextField @bind-Value="s.Name" @bind-Value:after="Changed" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-name" />
             <MudNumericField T="double" @bind-Value="s.Bpm" @bind-Value:after="Changed" Label="@BpmLabel" Min="20" Max="400" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num" />
             <MudNumericField T="int" @bind-Value="s.BeatsPerBar" @bind-Value:after="Changed" Label="Beats" Disabled="s.FromScore" Min="1" Max="32" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num-s" />
-            <MudSelect T="int" @bind-Value="s.BeatUnit" @bind-Value:after="Changed" Label="Unit" Disabled="s.FromScore" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num-s">
+            <MudSelect T="int" @bind-Value="s.BeatUnit" @bind-Value:after="Changed" Label="Unit" Disabled="s.FromScore" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="sec-num-s">
                 @foreach (var u in new[] { 2, 4, 8, 16 }) { <MudSelectItem T="int" Value="u">/@u</MudSelectItem> }
             </MudSelect>
-            <MudSelect T="int" @bind-Value="s.Subdivision" @bind-Value:after="Changed" Label="Clicks" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-sub">
+            <MudSelect T="int" @bind-Value="s.Subdivision" @bind-Value:after="Changed" Label="Clicks" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="sec-sub">
                 <MudSelectItem T="int" Value="1">Beats</MudSelectItem>
                 <MudSelectItem T="int" Value="2">8ths</MudSelectItem>
                 <MudSelectItem T="int" Value="3">Triplets</MudSelectItem>

@@ -30,15 +30,15 @@
                         else
                         {
                             <MudSelect T="string" @bind-Value="s.ItemId" @bind-Value:after="() => s.SectionId = null" Label="Item" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-item">
-                                @foreach (var it in Store.Items.Where(x => !x.Archived || x.Id == s.ItemId)) { <MudSelectItem T="string" Value="@it.Id">@it.Name</MudSelectItem> }
+                                @foreach (var it in Store.ItemsByRecent(keepId: s.ItemId)) { <MudSelectItem T="string" Value="@it.Id">@it.Name</MudSelectItem> }
                             </MudSelect>
                             @if (item is { } it2 && it2.Sections.Count > 1)
                             {
-                                <MudSelect T="string" @bind-Value="s.SectionId" Label="@(it2.Type == ItemType.Song ? "Part" : "Section")" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-part">
+                                <MudSelect T="string" @bind-Value="s.SectionId" Label="@(it2.Type == ItemType.Song ? "Part" : "Section")" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="ps-part">
                                     @foreach (var sec in it2.Sections) { <MudSelectItem T="string" Value="@sec.Id">@sec.Name</MudSelectItem> }
                                 </MudSelect>
                             }
-                            <MudSelect T="StepMode" @bind-Value="s.Mode" Label="With" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-mode">
+                            <MudSelect T="StepMode" @bind-Value="s.Mode" Label="With" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="ps-mode">
                                 <MudSelectItem T="StepMode" Value="StepMode.Metronome">Metronome</MudSelectItem>
                                 <MudSelectItem T="StepMode" Value="StepMode.Timer">Timer (no click)</MudSelectItem>
                             </MudSelect>

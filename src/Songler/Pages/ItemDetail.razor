@@ -64,7 +64,8 @@ else
                     </MudToggleGroup>
                     @if (_item.Sections.Count > 1)
                     {
-                        <MudSelect T="string" @bind-Value="_section" @bind-Value:after="Refresh" Label="@(_item.Type == ItemType.Song ? "Part" : "Section")" Clearable="true" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Style="max-width:220px">
+                        <MudSelect T="string" @bind-Value="SectionPick" @bind-Value:after="Refresh" Label="@(_item.Type == ItemType.Song ? "Part" : "Section")" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Class="toolbar-select">
+                            <MudSelectItem T="string" Value="@("")">@(_item.Type == ItemType.Song ? "All parts" : "All sections")</MudSelectItem>
                             @foreach (var s in _item.Sections) { <MudSelectItem T="string" Value="@s.Id">@s.Name</MudSelectItem> }
                         </MudSelect>
                     }
@@ -149,7 +150,7 @@ else
                                                 <span class="feel-pill" style="--feel:@f.Color" title="@f.Advice">@f.Label</span>
                                             }
                                         </td>
-                                        <td class="small muted">@(ps.LastDate is null ? "not yet" : Stats.Ago(ps.LastDate, DateTime.Today))@(ps.TotalSec > 0 ? $" · {Stats.Duration(ps.TotalSec, true)}" : "")</td>
+                                        <td class="small muted">@(ps.LastDate is null ? "not yet" : Stats.Ago(ps.LastDate, DateTime.Today))@(ps.TotalSec > 0 ? $" · {Stats.Duration(ps.TotalSec)}" : "")</td>
                                         <td class="act" style="white-space:nowrap">
                                             <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.AddTask" aria-label="@($"Log {s.Name}")" OnClick="() => AddLogFor(s.Id)" />
                                             <MudIconButton Size="Size.Small" Icon="@Mdi.Metronome" Color="Color.Primary" Href="@($"metronome/item/{_item.Id}/{s.Id}")" aria-label="@($"Practise {s.Name} with the metronome")" />
@@ -202,6 +203,7 @@ else
     PracticeItem? _item;
     ItemStats _st = default!;
     string? _section;
+    string SectionPick { get => _section ?? ""; set => _section = string.IsNullOrEmpty(value) ? null : value; }
     List<TempoPoint> _points = new();
     List<PracticeLog> _logs = new();
     List<string> _weekLabels = new(), _weekTips = new();
@@ -225,7 +227,7 @@ else
     }
 
     string AvgSub => _st.Sessions > 0 && _st.TotalSec > 0
-        ? $"avg {Stats.Duration(_st.TotalSec / Math.Max(1, _logs.Count(l => l.DurationSec > 0)), true)} per session"
+        ? $"avg {Stats.Duration(_st.TotalSec / Math.Max(1, _logs.Count(l => l.DurationSec > 0)))} per session"
         : "no time logged";
 
     void RangeChanged(int months) { _rangeMonths = months; Refresh(); }

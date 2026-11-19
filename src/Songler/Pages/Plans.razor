@@ -84,13 +84,7 @@ else
         return string.Join(" · ", parts);
     }
 
-    static string StepDur(double min)
-    {
-        if (min < 1) return $"{Math.Round(min * 60)}s";
-        var ts = TimeSpan.FromMinutes(min);
-        if (ts.TotalHours >= 1) return ts.Minutes == 0 ? $"{(int)ts.TotalHours} h" : $"{(int)ts.TotalHours} h {ts.Minutes} min";
-        return $"{min:0.#} min";
-    }
+    static string StepDur(double min) => Stats.DurationMin(min);
 
     async Task Duplicate(PracticePlan p)
     {

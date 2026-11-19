@@ -10,7 +10,7 @@
         <div class="d-flex gap-2 align-center flex-wrap">
             @if (_tracks.Count > 1)
             {
-                <MudSelect T="int" Value="Item.ScoreTrack" ValueChanged="TrackChanged" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Label="Track" Style="min-width:220px">
+                <MudSelect T="int" Value="Item.ScoreTrack" ValueChanged="TrackChanged" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Label="Track" Class="toolbar-select">
                     @foreach (var t in _tracks) { <MudSelectItem T="int" Value="t.Index">@t.Name</MudSelectItem> }
                 </MudSelect>
             }

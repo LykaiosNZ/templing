@@ -3,7 +3,7 @@
 
 @if (Logs.Count == 0)
 {
-    <MudText Class="muted pa-4">No entries yet.</MudText>
+    @if (Empty != null) { @Empty } else { <MudText Class="muted pa-4">No entries yet</MudText> }
 }
 else
 {
@@ -29,12 +29,20 @@ else
                     prev = l.Date.Date;
                     var item = Store.GetItem(l.ItemId);
                     var section = item?.Sections.Count > 1 ? item.Sections.FirstOrDefault(s => s.Id == l.SectionId)?.Name : null;
-                    <tr class="@(newDay ? "day-start" : "")">
-                        <td class="date">@(newDay ? l.Date.ToString("ddd d MMM yy") : "")</td>
+                    var log = l;
+                    var dayTotal = _dayTotals.GetValueOrDefault(l.Date.Date);
+                    <tr class="clickable @(newDay ? "day-start" : "")" @onclick="() => Edit(log)">
+                        <td class="date">
+                            @if (newDay)
+                            {
+                                <div>@Stats.Day(l.Date)</div>
+                                @if (dayTotal > 0) { <div class="day-total">@Stats.Duration(dayTotal)</div> }
+                            }
+                        </td>
                         @if (ShowItem)
                         {
                             <td>
-                                @if (item != null) { <a href="library/@item.Id">@l.ItemName</a> } else { <span>@l.ItemName</span> }
+                                @if (item != null) { <a href="library/@item.Id" @onclick:stopPropagation="true">@l.ItemName</a> } else { <span>@l.ItemName</span> }
                                 @if (section != null) { <span class="muted small"> · @section</span> }
                             </td>
                         }
@@ -51,7 +59,7 @@ else
                             }
                         </td>
                         <td class="notes">@l.Notes</td>
-                        <td class="act"><MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit entry {l.ItemName} {l.Date:d MMM}")" OnClick="() => Edit(l)" /></td>
+                        <td class="act" @onclick:stopPropagation="true"><MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" Class="row-edit" aria-label="@($"Edit entry {l.ItemName} {l.Date:d MMM}")" OnClick="() => Edit(log)" /></td>
                     </tr>
                 }
             </tbody>
@@ -61,19 +69,21 @@ else
     <div class="log-cards show-phone-block">
         @foreach (var day in Logs.Take(_shown).GroupBy(l => l.Date.Date))
         {
+            var dt = _dayTotals.GetValueOrDefault(day.Key);
             <div class="log-day">
-                <div class="log-day-head">@day.Key.ToString("ddd d MMM yy")</div>
+                <div class="log-day-head">@Stats.Day(day.Key)@if (dt > 0) { <span class="day-total"> · @Stats.Duration(dt)</span> }</div>
                 @foreach (var l in day)
                 {
                     var item = Store.GetItem(l.ItemId);
                     var section = item?.Sections.Count > 1 ? item.Sections.FirstOrDefault(s => s.Id == l.SectionId)?.Name : null;
                     var what = ShowItem ? l.ItemName + (section != null ? $" · {section}" : "") : _hasParts ? section ?? "Full run-through" : null;
-                    <div class="log-row">
+                    var log = l;
+                    <div class="log-row clickable" @onclick="() => Edit(log)">
                         <div class="log-row-main">
                             @if (what != null) { <span class="log-what">@what</span> }
                             <span class="mono">@l.ValueText</span>
                             <span class="mono muted">@(l.DurationSec is { } d ? Stats.Duration(d) : "—")</span>
-                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" Class="log-edit" aria-label="@($"Edit entry {l.ItemName} {l.Date:d MMM}")" OnClick="() => Edit(l)" />
+                            <span class="log-edit" @onclick:stopPropagation="true"><MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit entry {l.ItemName} {l.Date:d MMM}")" OnClick="() => Edit(log)" /></span>
                         </div>
                         @if (Effort.Get(l.Effort) is { } feel || !string.IsNullOrWhiteSpace(l.Notes))
                         {
@@ -97,6 +107,9 @@ else
     [Parameter] public List<PracticeLog> Logs { get; set; } = new();
     [Parameter] public bool ShowItem { get; set; } = true;
     [Parameter] public int PageSize { get; set; } = 40;
+    /// <summary>Shown instead of the default "No entries yet" when the list is empty (e.g. filtered to nothing).</summary>
+    [Parameter] public RenderFragment? Empty { get; set; }
+    Dictionary<DateTime, int> _dayTotals = new();
     int _shown;
 
     bool _hasParts;
@@ -104,8 +117,11 @@ else
     protected override void OnInitialized() => _shown = PageSize;
 
     // single-item view: show a Part column when the item is split into sections
-    protected override void OnParametersSet() =>
+    protected override void OnParametersSet()
+    {
         _hasParts = !ShowItem && Logs.Select(l => l.ItemId).Distinct().Any(id => Store.GetItem(id)?.Sections.Count > 1);
+        _dayTotals = Logs.GroupBy(l => l.Date.Date).ToDictionary(g => g.Key, g => g.Sum(l => l.DurationSec ?? 0));
+    }
 
     async Task Edit(PracticeLog l)
     {

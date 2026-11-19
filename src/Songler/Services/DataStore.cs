@@ -117,6 +117,14 @@ public class DataStore(IJSRuntime js)
         Changed?.Invoke();
     }
 
+    /// <summary>Items for pickers: most recently logged first, never-logged last (see DESIGN.md).</summary>
+    public List<PracticeItem> ItemsByRecent(bool includeArchived = false, string? keepId = null)
+    {
+        var last = Logs.Where(l => l.ItemId != null).GroupBy(l => l.ItemId!).ToDictionary(g => g.Key, g => g.Max(l => l.Date));
+        return Items.Where(i => includeArchived || !i.Archived || i.Id == keepId)
+            .OrderByDescending(i => last.TryGetValue(i.Id, out var d) ? d : DateTime.MinValue).ThenBy(i => i.Name).ToList();
+    }
+
     // ---------- Plans ----------
     public PracticePlan? GetPlan(string? id) => Plans.FirstOrDefault(p => p.Id == id);
 

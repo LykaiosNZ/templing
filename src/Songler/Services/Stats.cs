@@ -128,19 +128,25 @@ public static class Stats
     public static List<string> WeekTips(List<(DateTime week, int sec)> weeks) =>
         weeks.Select((w, i) => i == weeks.Count - 1 && w.week == WeekStart(DateTime.Today) ? "This week (so far)" : $"Week of {w.week:d MMM yyyy}").ToList();
 
-    public static string Duration(int sec, bool shortForm = false)
+    /// <summary>Durations in text: "45 s", "10 min", "1 h", "1 h 5 min" (see DESIGN.md).</summary>
+    public static string Duration(int sec)
     {
-        var ts = TimeSpan.FromSeconds(sec);
-        if (ts.TotalHours >= 1) return shortForm ? $"{(int)ts.TotalHours}h {ts.Minutes}m" : $"{(int)ts.TotalHours}h {ts.Minutes:00}m";
-        if (ts.TotalMinutes >= 1) return $"{(int)ts.TotalMinutes}m";
-        return sec == 0 ? "0m" : $"{sec}s";
+        var ts = TimeSpan.FromSeconds(Math.Max(0, sec));
+        if (ts.TotalHours >= 1) return ts.Minutes == 0 ? $"{(int)ts.TotalHours} h" : $"{(int)ts.TotalHours} h {ts.Minutes} min";
+        if (ts.TotalMinutes >= 1) return $"{(int)ts.TotalMinutes} min";
+        return sec <= 0 ? "0 min" : $"{sec} s";
     }
+
+    public static string DurationMin(double min) => Duration((int)Math.Round(min * 60));
 
     public static string Clock(double sec)
     {
         var ts = TimeSpan.FromSeconds(Math.Max(0, sec));
         return ts.TotalHours >= 1 ? ts.ToString(@"h\:mm\:ss") : ts.ToString(@"m\:ss");
     }
+
+    /// <summary>Day label: "Sat 14 Nov", with the year only outside the current year (see DESIGN.md).</summary>
+    public static string Day(DateTime d) => d.Year == DateTime.Today.Year ? d.ToString("ddd d MMM") : d.ToString("ddd d MMM yyyy");
 
     public static string Ago(DateTime? d, DateTime today)
     {

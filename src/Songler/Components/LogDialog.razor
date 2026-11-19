@@ -9,7 +9,7 @@
             <MudDatePicker Label="Date" @bind-Date="_date" DateFormat="ddd d MMM yyyy" Editable="true" MaxDate="DateTime.Today" />
             <MudSelect T="string" Label="Item" @bind-Value="_itemId" @bind-Value:after="OnItemChanged" AnchorOrigin="Origin.BottomCenter" Clearable="true"
                        HelperText="Leave empty for free practice">
-                @foreach (var i in Store.Items.Where(i => !i.Archived || i.Id == _itemId))
+                @foreach (var i in Store.ItemsByRecent(keepId: _itemId))
                 {
                     <MudSelectItem T="string" Value="@i.Id">@i.Name</MudSelectItem>
                 }
