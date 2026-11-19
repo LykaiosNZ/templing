@@ -24,7 +24,7 @@ else
         </div>
         <div class="d-flex gap-2 flex-wrap">
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Mdi.Metronome" Href="@($"metronome/piece/{_piece.Id}")">Metronome</MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.HourglassBottom" Href="@($"timer/piece/{_piece.Id}")">Timer</MudButton>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.HourglassBottom" Href="@($"timer/piece/{_piece.Id}")">Timer</MudButton>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.AddTask" OnClick="AddLog">Log</MudButton>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Edit" OnClick="Edit">Edit</MudButton>
             <MudTooltip Text="More">
