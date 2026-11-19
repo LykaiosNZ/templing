@@ -163,6 +163,9 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     /// <summary>Raised when an interval / training / play-through run completes on its own.</summary>
     public event Action<string>? Finished;
 
+    /// <summary>The loaded preset or piece was renamed: tell listeners (mini player, page title) to redraw.</summary>
+    public void NotifyTitleChanged() => Changed?.Invoke();
+
     public string Title => Source switch
     {
         MetronomeSource.Piece => Piece?.Name ?? "Piece",

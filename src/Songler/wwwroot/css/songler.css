@@ -522,6 +522,9 @@ code { font-family: var(--mono); font-size: .85em; background: var(--card-2); pa
 
 /* fixed-width select whose text truncates instead of resizing the control */
 .toolbar-select { width: 200px; flex: none; }
+/* group headings inside a select (disabled items) */
+.mud-list-item.select-group { opacity: 1 !important; min-height: 0; padding-top: 10px; pointer-events: none; }
+.mud-list-item.select-group, .mud-list-item.select-group .mud-typography { font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 .toolbar-select .mud-input { min-width: 0; }
 .toolbar-select div.mud-input-slot { display: block !important; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 700px) { .toolbar-select { width: auto; } }

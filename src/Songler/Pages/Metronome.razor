@@ -30,36 +30,39 @@
             <FeelHint Piece="piece" />
         }
     </div>
-    <div class="d-flex gap-2 flex-wrap">
-        <MudMenu Label="Load…" StartIcon="@Icons.Material.Rounded.FolderOpen" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" AriaLabel="Load metronome source">
-            <MudMenuItem Href="metronome/free" Icon="@Mdi.Metronome">Free metronome</MudMenuItem>
+    <div class="d-flex gap-2 flex-wrap align-center">
+        <MudSelect T="string" Value="@SourceKey" ValueChanged="LoadSource" Label="Metronome" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="toolbar-select">
+            <MudSelectItem T="string" Value="@("free")">Free metronome</MudSelectItem>
             @if (Store.Presets.Count > 0)
             {
-                <MudDivider />
-                <MudText Typo="Typo.overline" Class="px-4 muted">Custom metronomes</MudText>
+                <MudSelectItem T="string" Value="@("group:custom")" Disabled="true" Class="select-group">Custom metronomes</MudSelectItem>
                 @foreach (var p in Store.Presets.OrderBy(p => p.Name))
                 {
-                    <MudMenuItem Href="@($"metronome/preset/{p.Id}")" Icon="@Icons.Material.Rounded.Tune">@p.Name</MudMenuItem>
+                    <MudSelectItem T="string" Value="@($"preset:{p.Id}")">@p.Name</MudSelectItem>
                 }
             }
-            <MudDivider />
-            <MudText Typo="Typo.overline" Class="px-4 muted">Library</MudText>
+            <MudSelectItem T="string" Value="@("group:library")" Disabled="true" Class="select-group">Library</MudSelectItem>
             @foreach (var i in Store.PiecesByRecent())
             {
-                <MudMenuItem Href="@($"metronome/piece/{i.Id}")" Icon="@i.Type.Icon()">@i.Name</MudMenuItem>
+                <MudSelectItem T="string" Value="@($"piece:{i.Id}")">@i.Name</MudSelectItem>
             }
-        </MudMenu>
+        </MudSelect>
         @if (Metro.Source == MetronomeSource.Preset)
         {
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.ViewAgenda" OnClick="EditPresetSections">Edit sections…</MudButton>
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Save" OnClick="SavePreset">Save</MudButton>
-            <MudTooltip Text="Delete custom metronome">
-                <MudIconButton Icon="@Icons.Material.Rounded.Delete" Variant="Variant.Outlined" aria-label="Delete custom metronome" OnClick="DeletePreset" />
+            <MudTooltip Text="More">
+                <MudMenu Icon="@Icons.Material.Rounded.MoreVert" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" AriaLabel="@($"More for {Metro.Title}")">
+                    <MudMenuItem Icon="@Icons.Material.Rounded.Save" OnClick="() => AfterMenu(SavePreset)">Save changes</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Rounded.ViewAgenda" OnClick="() => AfterMenu(EditPresetSections)">Edit sections…</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Rounded.Edit" OnClick="() => AfterMenu(RenamePreset)">Rename…</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Rounded.Delete" IconColor="Color.Error" OnClick="() => AfterMenu(DeletePreset)">Delete…</MudMenuItem>
+                </MudMenu>
             </MudTooltip>
         }
         else if (Metro.Source == MetronomeSource.Free)
         {
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Save" OnClick="SavePreset">Save as custom</MudButton>
+            <MudTooltip Text="Save as custom metronome">
+                <MudIconButton Icon="@Icons.Material.Rounded.Save" Variant="Variant.Outlined" aria-label="Save as custom metronome" OnClick="SavePreset" />
+            </MudTooltip>
         }
     </div>
 </div>
@@ -439,13 +442,52 @@
             Snackbar.Add($"Saved “{p.Name}”", Severity.Success);
             return;
         }
-        var name = await PromptDialog.ShowAsync(Dialogs, "Save custom metronome", "Name", "My metronome");
+        var name = await PromptDialog.ShowAsync(Dialogs, "Save as custom metronome", "Name",
+            placeholder: SuggestedName(), taken: Store.Presets.Select(x => x.Name));
         if (name == null) return;
         var preset = Metro.ToPreset(name);
         await Store.SavePresetAsync(preset);
         Snackbar.Add($"Saved “{name}”", Severity.Success);
         Nav.NavigateTo($"metronome/preset/{preset.Id}");
     }
+
+    async Task RenamePreset()
+    {
+        if (Metro.Preset is not { } p) return;
+        var name = await PromptDialog.ShowAsync(Dialogs, "Rename custom metronome", "Name", p.Name, "Rename",
+            taken: Store.Presets.Where(x => x.Id != p.Id).Select(x => x.Name));
+        if (name == null || name == p.Name) return;
+        p.Name = name;
+        await Store.SavePresetAsync(p);
+        Metro.NotifyTitleChanged();
+        StateHasChanged();
+        Snackbar.Add($"Renamed to “{name}”", Severity.Success);
+    }
+
+    /// <summary>What's set up now, as a name: "128 bpm · 4/4", or "3 sections · 128 bpm".</summary>
+    string SuggestedName()
+    {
+        var first = Metro.Sections.FirstOrDefault();
+        if (first is null) return "My metronome";
+        return Metro.Sections.Count == 1 ? $"{first.Bpm:0} bpm · {first.Meter}" : $"{Metro.Sections.Count} sections · {first.Bpm:0} bpm";
+    }
+
+    /// <summary>The select's value for what's loaded.</summary>
+    string SourceKey => Metro.Source switch
+    {
+        MetronomeSource.Preset => $"preset:{Metro.Preset?.Id}",
+        MetronomeSource.Piece => $"piece:{Metro.Piece?.Id}",
+        _ => "free",
+    };
+
+    void LoadSource(string key)
+    {
+        if (key == SourceKey || key.StartsWith("group:")) return;
+        var (kind, id) = key.IndexOf(':') is var c and > 0 ? (key[..c], key[(c + 1)..]) : (key, "");
+        Nav.NavigateTo(kind switch { "preset" => $"metronome/preset/{id}", "piece" => $"metronome/piece/{id}", _ => "metronome/free" });
+    }
+
+    void AfterMenu(Func<Task> action) => _ = InvokeAsync(action);
 
     async Task DeletePreset()
     {

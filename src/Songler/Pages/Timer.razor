@@ -24,16 +24,15 @@
         }
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        <MudMenu Label="Load…" StartIcon="@Icons.Material.Rounded.FolderOpen" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
-                 Disabled="Metro.IsRunning" AriaLabel="Load timer source">
-            <MudMenuItem Href="timer/free" Icon="@Icons.Material.Rounded.HourglassEmpty">Timer</MudMenuItem>
-            <MudDivider />
-            <MudText Typo="Typo.overline" Class="px-4 muted">Library</MudText>
+        <MudSelect T="string" Value="@SourceKey" ValueChanged="LoadSource" Label="Timer" Disabled="Metro.IsRunning"
+                   Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="toolbar-select">
+            <MudSelectItem T="string" Value="@("free")">Free timer</MudSelectItem>
+            <MudSelectItem T="string" Value="@("group:library")" Disabled="true" Class="select-group">Library</MudSelectItem>
             @foreach (var i in Store.PiecesByRecent())
             {
-                <MudMenuItem Href="@($"timer/piece/{i.Id}")" Icon="@i.Type.Icon()">@i.Name</MudMenuItem>
+                <MudSelectItem T="string" Value="@($"piece:{i.Id}")">@i.Name</MudSelectItem>
             }
-        </MudMenu>
+        </MudSelect>
     </div>
 </div>
 
@@ -110,6 +109,15 @@
 </MudGrid>
 
 @code {
+    /// <summary>The select's value for what's loaded.</summary>
+    string SourceKey => Metro.Source == MetronomeSource.Piece && Metro.Piece is { } p ? $"piece:{p.Id}" : "free";
+
+    void LoadSource(string key)
+    {
+        if (key == SourceKey || key.StartsWith("group:")) return;
+        Nav.NavigateTo(key.StartsWith("piece:") ? $"timer/piece/{key[6..]}" : "timer/free");
+    }
+
     [Parameter] public string? PieceId { get; set; }
     string? _lastPhase;
     int _flashKey;
