@@ -244,7 +244,7 @@
                     <MudNumericField T="int" @bind-Value="tr.EveryBars" @bind-Value:after="Apply" Label="Every (bars)" Min="1" Max="64" Variant="Variant.Outlined" Margin="Margin.Dense" />
                 }
             </div>
-            <MudCheckBox T="bool" @bind-Value="tr.StopAtEnd" @bind-Value:after="Apply" Color="Color.Primary" Label="Stop at end" Dense="true" />
+            <MudSwitch T="bool" @bind-Value="tr.StopAtEnd" @bind-Value:after="Apply" Color="Color.Primary" Label="Stop at end" Class="rail-line-switch" />
         </RailSection>
 
         <RailSection Title="Intervals" Icon="@Icons.Material.Rounded.Timelapse" On="Metro.Settings.Interval.Enabled" OnChanged="SetIntervals">

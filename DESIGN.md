@@ -74,7 +74,7 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 - **No helper text under fields** in rows of fields: it pushes the field out of line. Examples go in the placeholder ("120, 65–145 or 85%"); a short note goes in the label ("Bars (loop)").
 - **Menu items that open a dialog** end with "…" and start it via `AfterMenu(...)`, not by awaiting it in `OnClick` (MudMenu stays open until the handler returns).
 - **Menus:** set the name with `AriaLabel="…"` on `MudMenu`. Plain `aria-label` lands on a wrapper and the button ends up unnamed.
-- **On/off options:** icon toggles (`opt-toggle`, `aria-pressed`, tooltip "Name: on/off"), lit while on, or the switch in a rail section's head. Not "On"/"Off" text. The rail's strip toggles are the hidden-rail stand-ins for the section switches, not extra copies on the page.
+- **On/off options:** icon toggles (`opt-toggle`, `aria-pressed`, tooltip "Name: on/off"), lit while on, or the switch in a rail section's head. Not "On"/"Off" text, and not checkboxes: an on/off field in a form is a `MudSwitch` with its label on the left (`rail-line-switch` in the rail). The rail's strip toggles are the hidden-rail stand-ins for the section switches, not extra copies on the page.
 - **Sound on/off** is shown as on/off (lit = sound on), not as a mute button that lights up when muted. It's `Metro.Muted`, not saved; moving the volume slider turns the sound back on.
 - **Selects:**
   - In toolbars and compact editor rows (plan steps, sections): `Variant.Outlined`, `Margin.Dense`, `Dense="true"`, fixed width via `toolbar-select` (ellipsis on overflow).
