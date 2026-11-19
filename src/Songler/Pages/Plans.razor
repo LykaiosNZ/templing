@@ -8,10 +8,7 @@
 <PageTitle>Plans · Songler</PageTitle>
 
 <div class="page-head">
-    <div>
-        <h1 class="page-title" tabindex="-1">Plans</h1>
-        <MudText Typo="Typo.body2" Class="muted">Practice routines run in order. Each step opens the metronome or timer with its intervals set, then asks you to log it.</MudText>
-    </div>
+    <h1 class="page-title" tabindex="-1">Plans</h1>
     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.Add" OnClick="New">New plan</MudButton>
 </div>
 
@@ -20,7 +17,6 @@
     <div class="empty-state">
         <MudIcon Icon="@Icons.Material.Rounded.ChecklistRtl" Style="font-size:3rem" />
         <MudText Typo="Typo.h6">No plans yet</MudText>
-        <MudText Class="muted">Build your usual routine once (warm-up, exercises, songs), then run it with one click.</MudText>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="New" Class="mt-2">Create a plan</MudButton>
     </div>
 }
@@ -34,11 +30,16 @@ else
                 <div class="card-head">
                     <div>
                         <h2 class="card-title">@plan.Name</h2>
-                        <MudText Typo="Typo.caption" Class="muted">@plan.Steps.Count steps · @Stats.Duration((int)(plan.TotalMinutes * 60)) · last run @Stats.Ago(plan.LastRun, DateTime.Today)</MudText>
+                        <MudText Typo="Typo.caption" Class="muted">@Meta(plan, running)</MudText>
                     </div>
-                    <div class="d-flex gap-1">
-                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit {plan.Name}")" OnClick="() => Edit(plan)" />
-                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Delete" aria-label="@($"Delete {plan.Name}")" OnClick="() => Delete(plan)" />
+                    <div class="d-flex">
+                        <MudTooltip Text="Edit">
+                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit {plan.Name}")" OnClick="() => Edit(plan)" />
+                        </MudTooltip>
+                        <MudMenu Icon="@Icons.Material.Rounded.MoreVert" Size="Size.Small" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" AriaLabel="@($"More for {plan.Name}")">
+                            <MudMenuItem Icon="@Icons.Material.Rounded.ContentCopy" OnClick="() => Duplicate(plan)">Duplicate</MudMenuItem>
+                            <MudMenuItem Icon="@Icons.Material.Rounded.Delete" OnClick="() => Delete(plan)">Delete</MudMenuItem>
+                        </MudMenu>
                     </div>
                 </div>
                 <ol class="plan-list">
@@ -46,19 +47,24 @@ else
                     {
                         var s = plan.Steps[i];
                         var idx = i;
-                        <li class="@(s.Kind == PlanStepKind.Rest ? "rest" : "") @(running && Runner.Index == idx ? "on" : "")">
+                        var missing = s.Kind == PlanStepKind.Item && Store.GetItem(s.ItemId) == null;
+                        var (icon, mode) = s.Kind == PlanStepKind.Rest ? (Icons.Material.Rounded.SelfImprovement, "Rest")
+                            : s.Mode == StepMode.Timer ? (Icons.Material.Rounded.HourglassBottom, "Timer") : (Mdi.Metronome, "Metronome");
+                        <li class="@(s.Kind == PlanStepKind.Rest ? "rest" : "") @(missing ? "missing" : "") @(running && Runner.Index == idx ? "on" : "")">
+                            <span class="pl-num">@(idx + 1).</span>
+                            <MudIcon Icon="@(missing ? Icons.Material.Rounded.WarningAmber : icon)" Class="pl-icon" title="@(missing ? "Item deleted" : mode)" aria-label="@(missing ? "Item deleted" : mode)" />
                             <span class="pl-name">@Runner.Describe(s)</span>
-                            <span class="pl-meta">@s.IntervalText@(s.Kind == PlanStepKind.Item && s.Mode == StepMode.Timer ? " · timer" : "")@(StepTempo(s) is { Length: > 0 } t ? $" · {t}" : "")</span>
+                            <span class="pl-meta">@(s.Kind == PlanStepKind.Rest ? StepDur(s.Minutes) : s.IntervalText)@(StepTempo(s) is { Length: > 0 } t ? $" · {t}" : "")</span>
                         </li>
                     }
                 </ol>
                 @if (running)
                 {
-                    <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="() => Runner.EndAsync()" FullWidth="true">End plan</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.Stop" OnClick="() => Runner.EndAsync()" FullWidth="true">End plan</MudButton>
                 }
                 else
                 {
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.PlayArrow" OnClick="() => Run(plan)" FullWidth="true">Run plan</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.PlayArrow" OnClick="() => Run(plan)" FullWidth="true">Run plan</MudButton>
                 }
             </article>
         }
@@ -68,6 +74,33 @@ else
 @code {
     protected override void OnInitialized() { Store.Changed += OnChanged; Runner.Changed += OnChanged; }
     void OnChanged() => InvokeAsync(StateHasChanged);
+
+    string Meta(PracticePlan p, bool running)
+    {
+        var n = p.Steps.Count;
+        var parts = new List<string> { $"{n} step{(n == 1 ? "" : "s")}", StepDur(p.TotalMinutes) };
+        if (running) parts.Add($"Step {Runner.Index + 1} of {n}");
+        else parts.Add(p.LastRun is null ? "Not run yet" : $"Last run {Stats.Ago(p.LastRun, DateTime.Today)}");
+        return string.Join(" · ", parts);
+    }
+
+    static string StepDur(double min)
+    {
+        if (min < 1) return $"{Math.Round(min * 60)}s";
+        var ts = TimeSpan.FromMinutes(min);
+        if (ts.TotalHours >= 1) return ts.Minutes == 0 ? $"{(int)ts.TotalHours} h" : $"{(int)ts.TotalHours} h {ts.Minutes} min";
+        return $"{min:0.#} min";
+    }
+
+    async Task Duplicate(PracticePlan p)
+    {
+        var copy = System.Text.Json.JsonSerializer.Deserialize<PracticePlan>(System.Text.Json.JsonSerializer.Serialize(p, DataStore.Json), DataStore.Json)!;
+        copy.Id = Guid.NewGuid().ToString("N");
+        copy.Name = $"{p.Name} (copy)";
+        copy.Created = DateTime.Now;
+        copy.LastRun = null;
+        await Store.SavePlanAsync(copy);
+    }
 
     string StepTempo(PlanStep s) => s.TempoText(Store.GetItem(s.ItemId)?.Unit ?? TempoUnit.Bpm);
 

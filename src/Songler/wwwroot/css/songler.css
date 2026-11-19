@@ -427,11 +427,15 @@ code { font-family: var(--mono); font-size: .85em; background: var(--card-2); pa
 .plan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
 .plan-card { display: flex; flex-direction: column; gap: 10px; }
 .plan-card.running { border-color: var(--accent); }
-.plan-list { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
-.plan-list li { font-size: .88rem; }
+.plan-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.plan-list li { font-size: .88rem; display: flex; align-items: baseline; gap: 8px; }
+.plan-list .pl-num { min-width: 1.2em; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; flex: none; }
+.plan-list .pl-icon { font-size: 1rem; align-self: center; color: var(--muted); flex: none; }
+.plan-list li.missing, .plan-list li.missing .pl-icon { color: var(--mud-palette-warning); }
+.plan-list li.on .pl-icon { color: inherit; }
 .plan-list li.rest { color: var(--muted); }
 .plan-list li.on { color: var(--accent); font-weight: 700; }
-.plan-list .pl-meta { color: var(--ink-2); font-size: .8rem; margin-left: 6px; }
+.plan-list .pl-meta { color: var(--ink-2); font-size: .8rem; }
 .plan-list li.on .pl-meta { color: inherit; }
 .plan-steps { display: flex; flex-direction: column; gap: 8px; max-height: 55vh; overflow-y: auto; }
 .plan-step-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; border-radius: 10px; border: 1px solid var(--mud-palette-lines-default); }
