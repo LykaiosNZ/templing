@@ -44,7 +44,7 @@ public static class Backup
     /// <summary>Short description of what's in a backup, e.g. "28 items, 384 log entries, 2 plans".</summary>
     public static string Describe(BackupFile b)
     {
-        var parts = new List<string> { $"{b.Items?.Count ?? 0} items", $"{b.Logs?.Count ?? 0} log entries" };
+        var parts = new List<string> { $"{b.Items?.Count ?? 0} pieces", $"{b.Logs?.Count ?? 0} log entries" };
         if (b.Plans is { Count: > 0 } pl) parts.Add($"{pl.Count} plans");
         if (b.Presets is { Count: > 0 } pr) parts.Add($"{pr.Count} custom metronomes");
         return string.Join(", ", parts);

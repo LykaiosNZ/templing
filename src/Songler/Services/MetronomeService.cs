@@ -155,7 +155,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
 
     public string Title => Source switch
     {
-        MetronomeSource.Item => Item?.Name ?? "Item",
+        MetronomeSource.Item => Item?.Name ?? "Piece",
         MetronomeSource.Preset => Preset?.Name ?? "Preset",
         _ => "Metronome"
     };

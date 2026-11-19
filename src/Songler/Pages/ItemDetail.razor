@@ -7,7 +7,7 @@
 
 @if (_item is null)
 {
-    <MudAlert Severity="Severity.Warning">Item not found. <a href="library">Back to library</a></MudAlert>
+    <MudAlert Severity="Severity.Warning">Piece not found. <a href="library">Back to library</a></MudAlert>
 }
 else
 {
@@ -311,12 +311,12 @@ else
     {
         if (_item == null) return;
         var count = Store.LogsFor(_item.Id).Count();
-        var r = await Dialogs.ShowMessageBoxAsync("Delete item?",
+        var r = await Dialogs.ShowMessageBoxAsync("Delete piece?",
             $"“{_item.Name}” will be removed from your library. {(count > 0 ? $"Its {count} log entries will be deleted too." : "")} This cannot be undone.",
             "Delete", cancelText: "Cancel");
         if (r != true) return;
         await Store.DeleteItemAsync(_item, deleteLogs: true);
-        Snackbar.Add("Item deleted", Severity.Info);
+        Snackbar.Add("Piece deleted", Severity.Info);
         Nav.NavigateTo("library");
     }
 

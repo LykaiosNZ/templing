@@ -19,8 +19,8 @@
 <div class="tiles">
     <StatTile Label="Practice time" Seconds="_totalSec" Icon="@Icons.Material.Rounded.Timer" Sub="@($"avg {Stats.Duration((int)(_totalSec / Math.Max(1, _spanDays / 7.0)))} a week")" />
     <StatTile Label="Days practised" Value="@_days.ToString()" Icon="@Icons.Material.Rounded.CalendarMonth" Sub="@(_spanDays > 0 ? $"{(double)_days / _spanDays:P0} of days" : null)" />
-    <StatTile Label="Avg per day" Seconds="_timedDays > 0 ? _totalSec / _timedDays : 0" Icon="@Icons.Material.Rounded.AvTimer" Sub="@(_days > 0 ? $"{_itemsPerDay:0.#} item{(Math.Round(_itemsPerDay, 1) == 1 ? "" : "s")} a day" : null)" />
-    <StatTile Label="Items practised" Value="@_itemCount.ToString()" Icon="@Icons.Material.Rounded.LibraryMusic" Sub="@($"{_logs.Count} entries")" />
+    <StatTile Label="Avg per day" Seconds="_timedDays > 0 ? _totalSec / _timedDays : 0" Icon="@Icons.Material.Rounded.AvTimer" Sub="@(_days > 0 ? $"{_itemsPerDay:0.#} piece{(Math.Round(_itemsPerDay, 1) == 1 ? "" : "s")} a day" : null)" />
+    <StatTile Label="Pieces practised" Value="@_itemCount.ToString()" Icon="@Icons.Material.Rounded.LibraryMusic" Sub="@($"{_logs.Count} entries")" />
     <StatTile Label="Longest streak" Value="@_streak.longest.ToString()" Unit=" days" Icon="@Icons.Material.Rounded.LocalFireDepartment" Sub="@($"Current {_streak.current} day{(_streak.current == 1 ? "" : "s")}")" />
 </div>
 
@@ -46,14 +46,14 @@
     </MudItem>
     <MudItem xs="12" md="6" lg="4">
         <section class="card">
-            <h2 class="card-title">Time by item</h2>
-            <HBars Rows="_byItem" Limit="8" AriaLabel="Practice time by item" />
+            <h2 class="card-title">Time by piece</h2>
+            <HBars Rows="_byItem" Limit="8" AriaLabel="Practice time by piece" />
         </section>
     </MudItem>
     <MudItem xs="12" md="6" lg="4">
         <section class="card">
             <h2 class="card-title">Biggest gains</h2>
-            <HBars Rows="_gains" Limit="8" AriaLabel="Tempo improvement by item" />
+            <HBars Rows="_gains" Limit="8" AriaLabel="Tempo improvement by piece" />
         </section>
     </MudItem>
     <MudItem xs="12" md="6" lg="4">
@@ -63,7 +63,7 @@
             {
                 <MudText Typo="Typo.body2" Class="muted mb-2">@(_goalsReached == 1 ? "1 goal reached" : $"{_goalsReached} goals reached")</MudText>
             }
-            <HBars Rows="_progress" Max="1" Limit="8" AriaLabel="Progress toward goal by item" />
+            <HBars Rows="_progress" Max="1" Limit="8" AriaLabel="Progress toward goal by piece" />
         </section>
         <section class="card mt-4">
             <h2 class="card-title">By type</h2>

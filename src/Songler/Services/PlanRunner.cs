@@ -60,7 +60,7 @@ public class PlanRunner
         if (s.Kind == PlanStepKind.Rest) return "Rest";
         var item = _store.GetItem(s.ItemId);
         var part = item?.Sections.FirstOrDefault(x => x.Id == s.SectionId)?.Name;
-        return (item?.Name ?? "Missing item") + (part != null ? $" · {part}" : "");
+        return (item?.Name ?? "Missing piece") + (part != null ? $" · {part}" : "");
     }
 
     public async Task StartAsync(PracticePlan plan)

@@ -12,7 +12,7 @@
                           Error="@(_nameTouched && string.IsNullOrWhiteSpace(_m.Name))" ErrorText="Enter a name" />
             <div>
                 <MudText Typo="Typo.subtitle2" Class="mb-1">Type</MudText>
-                <MudToggleGroup T="ItemType" Value="_m.Type" ValueChanged="TypeChanged" Color="Color.Primary" Size="Size.Small" Outlined="true" CheckMark="false" aria-label="Item type">
+                <MudToggleGroup T="ItemType" Value="_m.Type" ValueChanged="TypeChanged" Color="Color.Primary" Size="Size.Small" Outlined="true" CheckMark="false" aria-label="Type">
                     @foreach (var t in ItemTypeExt.Ordered)
                     {
                         <MudToggleItem Value="t">
@@ -79,7 +79,7 @@
     public static async Task<PracticeItem?> ShowAsync(IDialogService dialogs, PracticeItem? item = null)
     {
         var p = new DialogParameters<ItemDialog> { { x => x.Item, item ?? new PracticeItem() }, { x => x.IsNew, item == null } };
-        var r = await dialogs.ShowAsync<ItemDialog>(item == null ? "Add item" : "Edit item", p,
+        var r = await dialogs.ShowAsync<ItemDialog>(item == null ? "Add piece" : "Edit piece", p,
             new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true, Position = DialogPosition.TopCenter });
         var res = await r.Result;
         return res is { Canceled: false } ? res.Data as PracticeItem : null;

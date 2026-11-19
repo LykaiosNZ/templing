@@ -15,11 +15,11 @@
 
 <div class="toolbar">
     <MudTextField @bind-Value="_search" @bind-Value:after="Refresh" Placeholder="Search" Immediate="true" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense"
-                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.Search" Class="search-box" aria-label="Search notes and items" />
+                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.Search" Class="search-box" aria-label="Search notes and pieces" />
     <MudSpacer />
     <div class="toolbar-end">
-    <MudSelect T="string" @bind-Value="_item" @bind-Value:after="Refresh" Label="Item" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="toolbar-select">
-        <MudSelectItem T="string" Value="@("")">All items</MudSelectItem>
+    <MudSelect T="string" @bind-Value="_item" @bind-Value:after="Refresh" Label="Piece" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="toolbar-select">
+        <MudSelectItem T="string" Value="@("")">All pieces</MudSelectItem>
         @foreach (var i in Store.ItemsByRecent(includeArchived: true)) { <MudSelectItem T="string" Value="@i.Id">@i.Name</MudSelectItem> }
     </MudSelect>
     <MudSelect T="int" @bind-Value="_range" @bind-Value:after="Refresh" Label="Period" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="toolbar-select">

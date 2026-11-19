@@ -60,7 +60,7 @@
                                 }
                                 else
                                 {
-                                    <MudSelect T="string" @bind-Value="s.ItemId" @bind-Value:after="() => s.SectionId = null" Label="Item" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="ps-item">
+                                    <MudSelect T="string" @bind-Value="s.ItemId" @bind-Value:after="() => s.SectionId = null" Label="Piece" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="ps-item">
                                         @foreach (var it in Store.ItemsByRecent(keepId: s.ItemId)) { <MudSelectItem T="string" Value="@it.Id">@it.Name</MudSelectItem> }
                                     </MudSelect>
                                     @if (item is { } it2 && it2.Sections.Count > 1)
@@ -141,8 +141,8 @@
             return noItem.Count switch
             {
                 0 => null,
-                1 => $"Select an item for step {noItem[0]}",
-                _ => $"Select an item for steps {string.Join(", ", noItem.SkipLast(1))} and {noItem[^1]}"
+                1 => $"Select a piece for step {noItem[0]}",
+                _ => $"Select a piece for steps {string.Join(", ", noItem.SkipLast(1))} and {noItem[^1]}"
             };
         }
     }

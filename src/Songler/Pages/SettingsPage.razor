@@ -67,7 +67,7 @@
     {
         if (Restored == 1)
         {
-            Snackbar.Add($"Backup restored, including settings. You now have {Store.Items.Count} items and {Store.Logs.Count} log entries.", Severity.Success);
+            Snackbar.Add($"Backup restored, including settings. You now have {Store.Items.Count} pieces and {Store.Logs.Count} log entries.", Severity.Success);
             Nav.NavigateTo("settings", replace: true);
         }
     }
@@ -108,7 +108,7 @@
     async Task ClearAll()
     {
         var ok = await Dialogs.ShowMessageBoxAsync("Delete all data?",
-            "This permanently removes every item, log entry, plan and custom metronome from this browser. Export a backup first if you might want it back.",
+            "This permanently removes every piece, log entry, plan and custom metronome from this browser. Export a backup first if you might want it back.",
             "Delete everything", cancelText: "Cancel");
         if (ok != true) return;
         await Store.ClearAllAsync();

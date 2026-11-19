@@ -58,7 +58,7 @@
                 var ok = await _mod.InvokeAsync<bool>("mount", _hostId, Item.ScoreFileId, Opts());
                 _tracks = ok ? await TrackList() : new();
                 _ready = ok;
-                _error = ok ? null : "The score file for this item wasn't found in this browser. Re-import it from the item editor.";
+                _error = ok ? null : "The score file for this piece wasn't found in this browser. Re-import it from the piece editor.";
                 StateHasChanged();
                 return;
             }

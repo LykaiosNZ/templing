@@ -23,10 +23,10 @@
         : Step.Kind == PlanStepKind.Rest ? Icons.Material.Rounded.SelfImprovement
         : Step.Mode == StepMode.Timer ? Icons.Material.Rounded.HourglassBottom : Mdi.Metronome;
 
-    string IconLabel => Missing ? (Step.ItemId == null ? "No item" : "Item deleted")
+    string IconLabel => Missing ? (Step.ItemId == null ? "No piece" : "Piece deleted")
         : Step.Kind == PlanStepKind.Rest ? "Rest" : Step.Mode == StepMode.Timer ? "Timer" : "Metronome";
 
-    string Name => Step.Kind == PlanStepKind.Item && Step.ItemId == null ? "No item" : Runner.Describe(Step);
+    string Name => Step.Kind == PlanStepKind.Item && Step.ItemId == null ? "No piece" : Runner.Describe(Step);
 
     string Meta
     {

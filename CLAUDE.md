@@ -53,6 +53,8 @@ Serialisation uses `DataStore.Json` (PascalCase property names, string enums via
 
 ## Gotchas learned the hard way
 
+- **Naming:** the UI says "piece" (and "section"); the code says `PracticeItem` / `Section`. Keep code names as they are and write UI text per DESIGN.md.
+
 - **SVG `<text>` in Razor:** Razor reserves `<text>`, so use the `<SvgText>` component (`Components/Charts/SvgText.cs`).
 - **Render fragments capture lazily:** inside `@for` loops, child content (e.g. `<SvgText>@x</SvgText>`) is evaluated later. Copy values to locals in the loop body (`var label = Labels[i];`) instead of indexing parameters or loop variables inside the fragment.
 - **JS interop with arrays:** `InvokeVoidAsync("fn", array)` spreads a `string[]` as `params`. Pass `(object)array`.

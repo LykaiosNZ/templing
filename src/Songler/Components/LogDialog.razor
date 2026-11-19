@@ -8,7 +8,7 @@
     <DialogContent>
         <MudForm @ref="_form" Class="d-flex flex-column gap-3">
             <div class="d-flex gap-3">
-                <MudSelect T="string" Label="Item" @bind-Value="ItemPick" @bind-Value:after="OnItemChanged" AnchorOrigin="Origin.BottomCenter" Style="flex:2 1 0">
+                <MudSelect T="string" Label="Piece" @bind-Value="ItemPick" @bind-Value:after="OnItemChanged" AnchorOrigin="Origin.BottomCenter" Style="flex:2 1 0">
                     <MudSelectItem T="string" Value="@("")">Free practice</MudSelectItem>
                     @foreach (var i in Store.ItemsByRecent(keepId: _itemId))
                     {
