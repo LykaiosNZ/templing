@@ -1,83 +1,47 @@
-@* GitHub-style practice calendar. Sequential single-hue ramp by minutes; practiced-but-untimed days use the first step. *@
+@* Practice calendar on MudChart's HeatMap: one row per weekday, one column per week, minutes practised per day. *@
+@inject DataStore Store
 
 <div class="viz heatmap" role="img" aria-label="@AriaLabel">
-    <div class="viz-plot">
-    <svg viewBox="0 0 @F(_w) @F(_h)" class="viz-svg" @onmouseleave="() => _hover = null">
-        @foreach (var (label, x) in _months)
-        {
-            <SvgText x="@F(x)" y="10" class="viz-axis">@label</SvgText>
-        }
-        @foreach (var (label, row) in new[] { ("Mon", 0), ("Wed", 2), ("Fri", 4) })
-        {
-            <SvgText x="0" y="@F(Top + row * Step + Cell - 2)" class="viz-axis">@label</SvgText>
-        }
-        @foreach (var c in _cells)
-        {
-            var cell = c;
-            <rect x="@F(cell.X)" y="@F(cell.Y)" width="@Cell" height="@Cell" rx="2.5" class="hm-cell hm-@cell.Level @(cell.Date == Today ? "today" : "") @(From is { } f && cell.Date < f.Date ? "out" : "")"
-                  @onmouseenter="() => _hover = cell" />
-        }
-    </svg>
-    @if (_hover is { } h)
-    {
-        var below = h.Y < Top + 2 * Step;
-        <ChartTip X="h.X + Cell / 2" Y="@(below ? h.Y + Cell : h.Y)" Below="below" ViewWidth="_w" ViewHeight="_h"
-                  Label="@Stats.Day(h.Date)" Value="@Describe(h)" />
-    }
-    </div>
-    <div class="hm-legend" aria-hidden="true">
-        <span class="muted">Less</span>
-        @for (int i = 0; i <= 4; i++) { <span class="hm-swatch hm-@i"></span> }
-        <span class="muted">More</span>
-    </div>
+    <MudChart T="double" ChartType="ChartType.HeatMap" ChartSeries="_series" ChartLabels="_labels" ChartOptions="_options"
+              Width="100%" Height="@($"{Height}px")" MatchBoundsToSize="true" />
 </div>
 
 @code {
     [Parameter] public Dictionary<DateTime, int> SecondsByDay { get; set; } = new();
-    [Parameter] public HashSet<DateTime> Practiced { get; set; } = new();
     [Parameter] public int Weeks { get; set; } = 26;
-    /// <summary>Start of the selected period; earlier days are drawn faded.</summary>
-    [Parameter] public DateTime? From { get; set; }
+    [Parameter] public int Height { get; set; } = 190;
     [Parameter] public DateTime Today { get; set; } = DateTime.Today;
     [Parameter] public string AriaLabel { get; set; } = "Practice calendar";
 
-    const double Cell = 12, Gap = 3, Step = Cell + Gap, Left = 30, Top = 16;
-    record HCell(DateTime Date, double X, double Y, int Level, int Sec, bool Did);
-    List<HCell> _cells = new();
-    List<(string, double)> _months = new();
-    double _w, _h;
-    HCell? _hover;
-
-    static string F(double v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
-
-    static string Describe(HCell c) => c.Sec > 0 ? $"{Stats.Duration(c.Sec)} practised" : c.Did ? "Practised (no time logged)" : "No practice";
+    static readonly string[] Days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    List<ChartSeries<double>> _series = new();
+    string[] _labels = [];
+    HeatMapChartOptions _options = new();
 
     protected override void OnParametersSet()
     {
-        _cells = new(); _months = new();
         var start = Stats.WeekStart(Today).AddDays(-7 * (Weeks - 1));
-        int lastMonth = -1;
-        for (int w = 0; w < Weeks; w++)
+        _series = Days.Select((name, d) => new ChartSeries<double>
         {
-            for (int d = 0; d < 7; d++)
-            {
-                var date = start.AddDays(w * 7 + d);
-                if (date > Today) break;
-                var sec = SecondsByDay.GetValueOrDefault(date);
-                var did = sec > 0 || Practiced.Contains(date);
-                var min = sec / 60.0;
-                int level = !did ? 0 : min <= 0 ? 1 : min < 20 ? 1 : min < 45 ? 2 : min < 75 ? 3 : 4;
-                _cells.Add(new HCell(date, Left + w * Step, Top + d * Step, level, sec, did));
-            }
+            Name = name,
+            Data = Enumerable.Range(0, Weeks).Select(w => SecondsByDay.GetValueOrDefault(start.AddDays(w * 7 + d)) / 60.0).ToArray(),
+        }).ToList();
+        // a month name over the first week that starts in that month
+        _labels = Enumerable.Range(0, Weeks).Select(w =>
+        {
             var first = start.AddDays(w * 7);
-            if (first.Month != lastMonth && first.Day <= 7 || w == 0)
-            {
-                if (w == 0 && first.Day > 21) { lastMonth = first.Month; continue; }
-                _months.Add((first.ToString("MMM"), Left + w * Step));
-                lastMonth = first.Month;
-            }
-        }
-        _w = Left + Weeks * Step;
-        _h = Top + 7 * Step;
+            return w == 0 || first.Day <= 7 ? first.ToString("MMM") : "";
+        }).ToArray();
+        _options = new HeatMapChartOptions
+        {
+            ChartPalette = ChartColors.Heat(Store.Settings.DarkMode),
+            ShowLabels = false,
+            ShowLegend = true,
+            ShowToolTips = true,
+            ValueFormatString = "F0",
+            TooltipTitleFormat = "{{Y_VALUE}} min",
+            TooltipSubtitleFormat = "{{SERIES_NAME}}",
+            XAxisLabelPosition = XAxisLabelPosition.Top,
+        };
     }
 }

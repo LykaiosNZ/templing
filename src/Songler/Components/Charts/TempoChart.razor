@@ -1,4 +1,6 @@
-@* Tempo progress over time: line through each day's top tempo, a thin whisker for ranged sessions, dashed goal line. *@
+@* Tempo over time on MudChart's time-series line: each day's top tempo, plus the goal as a faint flat line. *@
+@using MudBlazor.Charts
+@inject DataStore Store
 
 <div class="viz" role="img" aria-label="@AriaLabel">
     @if (Points.Count == 0)
@@ -7,64 +9,8 @@
     }
     else
     {
-        <div class="viz-plot">
-        <svg viewBox="0 0 @W @H" class="viz-svg" @onmouseleave="() => _hover = -1">
-            @* grid + y labels *@
-            @foreach (var t in _ticks)
-            {
-                var y = Y(t);
-                <line x1="@L" x2="@(W - R)" y1="@F(y)" y2="@F(y)" class="viz-grid" />
-                var tickText = t.ToString("0") + (Unit == TempoUnit.Percent ? "%" : "");
-                <SvgText x="@(L - 8)" y="@F(y + 4)" text-anchor="end" class="viz-axis">@tickText</SvgText>
-            }
-            @* x labels *@
-            @foreach (var (d, x) in _xTicks)
-            {
-                <SvgText x="@F(x)" y="@(H - 8)" text-anchor="middle" class="viz-axis">@d.ToString("d MMM")</SvgText>
-            }
-            @if (Goal is { } g && g >= _min && g <= _max)
-            {
-                var goalText = $"Goal {g:0}{(Unit == TempoUnit.Percent ? "%" : " bpm")}";
-                <line x1="@L" x2="@(W - R)" y1="@F(Y(g))" y2="@F(Y(g))" class="viz-goal" />
-                <SvgText x="@(W - R)" y="@F(Y(g) - 6)" text-anchor="end" class="viz-goal-label">@goalText</SvgText>
-            }
-            @* range whiskers *@
-            @for (int i = 0; i < Points.Count; i++)
-            {
-                var p = Points[i];
-                if (p.Min is { } mn && mn < p.Value)
-                {
-                    <line x1="@F(X(p.Date))" x2="@F(X(p.Date))" y1="@F(Y(mn))" y2="@F(Y(p.Value))" class="viz-whisker" />
-                }
-            }
-            <path d="@_path" class="viz-line" />
-            @for (int i = 0; i < Points.Count; i++)
-            {
-                var idx = i;
-                var p = Points[i];
-                var cx = X(p.Date); var cy = Y(p.Value);
-                <circle cx="@F(cx)" cy="@F(cy)" r="@(idx == _hover ? 6 : (p.Effort.HasValue ? 4.5 : Points.Count > 40 ? 2.5 : 4))" class="viz-dot @(idx == _hover ? "on" : "")"
-                        style="@(Effort.Get(p.Effort) is { } fe ? $"fill:{fe.Color}" : null)" />
-                <circle cx="@F(cx)" cy="@F(cy)" r="12" class="viz-hit" tabindex="0"
-                        aria-label="@($"{p.Date:d MMM yyyy}: {Fmt(p)}{(Effort.Get(p.Effort) is { } fa ? $", felt {fa.Label}" : "")}")"
-                        @onmouseenter="() => _hover = idx" @onfocus="() => _hover = idx" @onblur="() => _hover = -1" />
-            }
-            @if (_hover >= 0 && _hover < Points.Count)
-            {
-                var p = Points[_hover];
-                var x = X(p.Date); var y = Y(p.Value);
-                <line x1="@F(x)" x2="@F(x)" y1="@T" y2="@(H - B)" class="viz-crosshair" />
-            }
-        </svg>
-        @if (_hover >= 0 && _hover < Points.Count)
-        {
-            var p = Points[_hover];
-            var x = X(p.Date); var y = Y(p.Value);
-            var tipText = Fmt(p) + (Effort.Get(p.Effort) is { } ft ? $" · {ft.Label}" : "");
-            <ChartTip X="x" Y="@(y < 70 ? y + 10 : y - 10)" Below="@(y < 70)" ViewWidth="W" ViewHeight="H"
-                      Label="@Stats.Day(p.Date)" Value="@tipText" Note="@(string.IsNullOrEmpty(p.Note) ? null : Trunc(p.Note!, 60))" />
-        }
-        </div>
+        <MudChart T="double" ChartType="ChartType.Timeseries" ChartSeries="_series" ChartOptions="_options"
+                  Width="100%" Height="@($"{Height}px")" MatchBoundsToSize="true" />
     }
 </div>
 
@@ -72,60 +18,51 @@
     [Parameter] public List<TempoPoint> Points { get; set; } = new();
     [Parameter] public double? Goal { get; set; }
     [Parameter] public TempoUnit Unit { get; set; }
+    [Parameter] public int Height { get; set; } = 260;
     [Parameter] public string AriaLabel { get; set; } = "Tempo progress chart";
 
-    [Parameter] public int Width { get; set; } = 760;
-    [Parameter] public int Height { get; set; } = 260;
-    double W => Width;
-    double H => Height;
-    const double L = 48, R = 16, T = 16, B = 30;
-    double _min, _max;
-    DateTime _d0, _d1;
-    List<double> _ticks = new();
-    List<(DateTime, double)> _xTicks = new();
-    string _path = "";
-    int _hover = -1;
-
-    static string F(double v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
-    static string Trunc(string s, int n) => s.Length > n ? s[..n] + "…" : s;
-    string Fmt(TempoPoint p)
-    {
-        var suf = Unit == TempoUnit.Percent ? "%" : " bpm";
-        return p.Min is { } mn && mn < p.Value ? $"{mn:0}–{p.Value:0}{suf}" : $"{p.Value:0}{suf}";
-    }
-
-    double X(DateTime d) => _d1 == _d0 ? (L + W - R) / 2 : L + (d - _d0).TotalDays / (_d1 - _d0).TotalDays * (W - L - R);
-    double Y(double v) => T + (1 - (v - _min) / (_max - _min)) * (H - T - B);
+    List<ChartSeries<double>> _series = new();
+    TimeSeriesChartOptions _options = new();
 
     protected override void OnParametersSet()
     {
-        _hover = -1;
         if (Points.Count == 0) return;
-        var vals = Points.Select(p => p.Value).Concat(Points.Where(p => p.Min.HasValue).Select(p => p.Min!.Value)).ToList();
-        if (Goal.HasValue) vals.Add(Goal.Value);
-        var lo = vals.Min(); var hi = vals.Max();
-        var span = Math.Max(10, hi - lo);
-        var step = NiceStep(span / 4);
-        _min = Math.Floor((lo - span * 0.05) / step) * step;
-        _max = Math.Ceiling((hi + span * 0.05) / step) * step;
-        if (_min < 0) _min = 0;
-        _ticks = new();
-        for (var t = _min; t <= _max + 1e-9; t += step) _ticks.Add(t);
-        _d0 = Points[0].Date; _d1 = Points[^1].Date;
-        if (_d1 == _d0) { _d0 = _d0.AddDays(-1); _d1 = _d1.AddDays(1); }
-        var days = (_d1 - _d0).TotalDays;
-        int n = Width < 500 ? 3 : 5;
-        _xTicks = Enumerable.Range(0, n).Select(i => _d0.AddDays(Math.Round(days * i / (n - 1)))).Distinct().Select(d => (d, X(d))).ToList();
-        var sb = new System.Text.StringBuilder();
-        for (int i = 0; i < Points.Count; i++)
-            sb.Append(i == 0 ? "M" : "L").Append(F(X(Points[i].Date))).Append(',').Append(F(Y(Points[i].Value)));
-        _path = sb.ToString();
-    }
-
-    static double NiceStep(double raw)
-    {
-        var mag = Math.Pow(10, Math.Floor(Math.Log10(raw)));
-        var n = raw / mag;
-        return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * mag;
+        var dark = Store.Settings.DarkMode;
+        var tempo = new ChartSeries<double>
+        {
+            Name = "Tempo",
+            Data = Points.Select(p => new TimeValue<double>(p.Date, p.Value)).ToArray(),
+        };
+        _series = [tempo];
+        var palette = new List<string> { ChartColors.Series(dark) };
+        var overrides = new Dictionary<IChartSeries, SeriesDisplayOverride>();
+        if (Goal is { } g)
+        {
+            var first = Points.Min(p => p.Date); var last = Points.Max(p => p.Date);
+            if (last == first) last = first.AddDays(1);
+            var goal = new ChartSeries<double> { Name = "Goal", Data = new[] { new TimeValue<double>(first, g), new TimeValue<double>(last, g) } };
+            _series.Add(goal);
+            palette.Add(ChartColors.Good(dark));
+            overrides[goal] = new SeriesDisplayOverride { StrokeOpacity = 0.6 };
+        }
+        var span = Points.Max(p => p.Date) - Points.Min(p => p.Date);
+        var suffix = Unit == TempoUnit.Percent ? "%" : " bpm";
+        _options = new TimeSeriesChartOptions
+        {
+            ShowLegend = false,
+            ShowDataMarkers = true,
+            LineStrokeWidth = 2,
+            ChartPalette = palette.ToArray(),
+            SeriesDisplayOverrides = overrides,
+            TimeLabelFormat = "d MMM",
+            TimeLabelSpacing = TimeSpan.FromDays(Math.Max(1, Math.Ceiling(span.TotalDays / 6))),
+            TimeLabelSpacingRounding = true,
+            TooltipTimeLabelFormat = "ddd d MMM yyyy",
+            YAxisTicks = 0,
+            MaxNumYAxisTicks = 6,
+            YAxisToStringFunc = v => $"{v:0}{suffix}",
+            TooltipTitleFormat = "{{Y_AXIS_VALUE}}",
+            TooltipSubtitleFormat = "{{X_VALUE}}",
+        };
     }
 }

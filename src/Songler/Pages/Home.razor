@@ -38,19 +38,11 @@ else
                     <h2 class="card-title">Practice calendar</h2>
                     <a href="stats" class="small">All stats →</a>
                 </div>
-                <Heatmap SecondsByDay="_byDay" Practiced="_practiced" Weeks="26" />
+                <Heatmap SecondsByDay="_byDay" Weeks="26" />
             </section>
             <section class="card mt-4">
                 <h2 class="card-title">Weekly practice time</h2>
-                <div class="hide-phone">
-                    <BarChart Labels="_weekLabels" TipLabels="_weekTips" Values="_weekValues" ValueFormat="@(v => Stats.Duration((int)(v * 60)))" Minutes="true"
-                              HighlightLast="true" Target="Store.Settings.WeeklyGoalMin" TargetLabel="@GoalLabel" LabelEvery="3" AriaLabel="Minutes practised per week, last 16 weeks" />
-                </div>
-                <div class="show-phone-block">
-                    <BarChart Labels="_weekLabels.TakeLast(8).ToList()" TipLabels="_weekTips.TakeLast(8).ToList()" Values="_weekValues.TakeLast(8).ToList()"
-                              ValueFormat="@(v => Stats.Duration((int)(v * 60)))" Minutes="true" Width="380" Height="240"
-                              HighlightLast="true" Target="Store.Settings.WeeklyGoalMin" TargetLabel="@GoalLabel" LabelEvery="2" AriaLabel="Minutes practised per week, last 8 weeks" />
-                </div>
+                <BarChart Labels="_weekLabels" Values="_weekValues" Minutes="true" LabelEvery="3" AriaLabel="Practice time per week, last 16 weeks" />
             </section>
         </MudItem>
         <MudItem xs="12" lg="4">
@@ -108,13 +100,12 @@ else
     (int current, int longest) _streak;
     Dictionary<DateTime, int> _byDay = new();
     HashSet<DateTime> _practiced = new();
-    List<string> _weekLabels = new(), _weekTips = new();
+    List<string> _weekLabels = new();
     List<double> _weekValues = new();
     List<(Piece, PieceStats)> _goals = new();
     List<IGrouping<DateTime, PracticeLog>> _recent = new();
     DateTime? _lastDay;
 
-    string GoalLabel => $"Weekly goal {Stats.Duration(Store.Settings.WeeklyGoalMin * 60)}";
 
     string Greeting => DateTime.Now.Hour switch { < 12 => "Good morning", < 18 => "Good afternoon", _ => "Good evening" };
 
@@ -136,7 +127,6 @@ else
         _streak = Stats.Streaks(logs, today);
         var weeks = Stats.WeeklySeconds(logs, today, 16);
         _weekLabels = Stats.WeekLabels(weeks);
-        _weekTips = Stats.WeekTips(weeks);
         _weekValues = weeks.Select(w => w.sec / 60.0).ToList();
         _goals = Store.Pieces.Where(i => !i.Archived && i.Goal.HasValue)
             .Select(i => (i, Stats.ForPiece(i, logs)))

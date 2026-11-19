@@ -1,4 +1,5 @@
-@* Simple single-series column chart with hover/focus tooltips. *@
+@* Single-series column chart on MudChart. Tooltips are MudChart's own, written with the same formatter as the axis. *@
+@inject DataStore Store
 
 <div class="viz" role="img" aria-label="@AriaLabel">
     @if (Values.Count == 0 || Values.All(v => v <= 0))
@@ -7,119 +8,50 @@
     }
     else
     {
-        <div class="viz-plot">
-        <svg viewBox="0 0 @W @Height" class="viz-svg" @onmouseleave="() => _hover = -1">
-            @foreach (var t in _ticks)
-            {
-                var y = Y(t);
-                <line x1="@L" x2="@(W - R)" y1="@F(y)" y2="@F(y)" class="viz-grid" />
-                var axisText = Tick(t);
-                <SvgText x="@(L - 8)" y="@F(y + 4)" text-anchor="end" class="viz-axis">@axisText</SvgText>
-            }
-            @if (Target is { } tg && tg <= _max)
-            {
-                var targetText = TargetLabel;
-                <line x1="@L" x2="@(W - R)" y1="@F(Y(tg))" y2="@F(Y(tg))" class="viz-goal" />
-                @* legend sits above the plot so it never covers bars *@
-                <line x1="@L" x2="@(L + 18)" y1="9" y2="9" class="viz-goal" />
-                <SvgText x="@(L + 24)" y="13" class="viz-goal-label">@targetText</SvgText>
-            }
-            @for (int i = 0; i < Values.Count; i++)
-            {
-                var idx = i;
-                var v = Values[i];
-                var label = i < Labels.Count ? Labels[i] : "";
-                var x = L + i * _slot + _slot * 0.15;
-                var bw = _slot * 0.7;
-                var y = Y(v);
-                var h = Height - B - y;
-                var cls = HighlightLast && i == Values.Count - 1 ? "viz-bar current" : "viz-bar";
-                if (h > 0.5)
-                {
-                    <path d="@BarPath(x, y, bw, h)" class="@cls @(idx == _hover ? "on" : "")" />
-                }
-                @if (ShowLabel(i))
-                {
-                    <SvgText x="@F(x + bw / 2)" y="@(Height - 10)" text-anchor="middle" class="viz-axis">@label</SvgText>
-                }
-                <rect x="@F(L + i * _slot)" y="@T" width="@F(_slot)" height="@(Height - T - B)" class="viz-hit" tabindex="0"
-                      aria-label="@($"{label}: {ValueFormat(v)}")"
-                      @onmouseenter="() => _hover = idx" @onfocus="() => _hover = idx" @onblur="() => _hover = -1" />
-            }
-            <line x1="@L" x2="@(W - R)" y1="@(Height - B)" y2="@(Height - B)" class="viz-baseline" />
-        </svg>
-        @if (_hover >= 0 && _hover < Values.Count)
-        {
-            var v = Values[_hover];
-            var tipLabel = TipLabels is { } tl && _hover < tl.Count ? tl[_hover] : _hover < Labels.Count ? Labels[_hover] : "";
-            var cx = L + _hover * _slot + _slot / 2;
-            var top = Y(v);
-            <ChartTip X="cx" Y="@(top < 50 ? top + 6 : top - 6)" Below="@(top < 50)" ViewWidth="W" ViewHeight="Height" Label="@tipLabel" Value="@ValueFormat(v)" />
-        }
-        </div>
+        <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="_series" ChartLabels="_labels" ChartOptions="_options"
+                  Width="100%" Height="@($"{Height}px")" MatchBoundsToSize="true" />
     }
 </div>
 
 @code {
     [Parameter] public List<string> Labels { get; set; } = new();
-    [Parameter] public List<string>? TipLabels { get; set; }
     [Parameter] public List<double> Values { get; set; } = new();
-    [Parameter] public Func<double, string> ValueFormat { get; set; } = v => v.ToString("0");
-    [Parameter] public Func<double, string> AxisFormat { get; set; } = v => v.ToString("0");
-    /// <summary>Values are minutes: ticks in compact minutes, or whole hours once the scale is large (see DESIGN.md). Overrides <see cref="AxisFormat"/>.</summary>
+    /// <summary>Values are minutes: the axis steps in round durations and labels read "30 min", "1 hr 30 min".</summary>
     [Parameter] public bool Minutes { get; set; }
-    bool _hours;
-    string Tick(double v) => !Minutes ? AxisFormat(v) : _hours ? $"{v / 60:0.#} hr" : $"{v:0} min";
-    [Parameter] public bool HighlightLast { get; set; }
-    [Parameter] public double? Target { get; set; }
-    [Parameter] public string TargetLabel { get; set; } = "Goal";
-    [Parameter] public int Height { get; set; } = 220;
+    /// <summary>Axis and tooltip text for a value (ignored when <see cref="Minutes"/> is set).</summary>
+    [Parameter] public Func<double, string> Format { get; set; } = v => v.ToString("0");
+    [Parameter] public int Height { get; set; } = 240;
     [Parameter] public int LabelEvery { get; set; } = 1;
     [Parameter] public string AriaLabel { get; set; } = "Bar chart";
 
-    [Parameter] public int Width { get; set; } = 760;
-    double W => Width;
-    const double L = 44, R = 12, B = 28;
-    double T => Target.HasValue ? 26 : 12;
-    double _max, _slot;
-    List<double> _ticks = new();
-    int _hover = -1;
-
-    static string F(double v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
-    double Y(double v) => T + (1 - v / _max) * (Height - T - B);
-    // every Nth label, always the last one, and skip a label that would crowd the last
-    bool ShowLabel(int i)
-    {
-        if (LabelEvery <= 1) return true;
-        var last = Values.Count - 1;
-        return i == last || (i % LabelEvery == 0 && last - i >= LabelEvery);
-    }
-
-    static string BarPath(double x, double y, double w, double h)
-    {
-        var r = Math.Min(4, Math.Min(w / 2, h));
-        return $"M{F(x)},{F(y + h)}V{F(y + r)}Q{F(x)},{F(y)} {F(x + r)},{F(y)}H{F(x + w - r)}Q{F(x + w)},{F(y)} {F(x + w)},{F(y + r)}V{F(y + h)}Z";
-    }
+    List<ChartSeries<double>> _series = new();
+    string[] _labels = [];
+    BarChartOptions _options = new();
 
     protected override void OnParametersSet()
     {
-        if (Values.Count == 0) return;
-        var hi = Math.Max(Values.Max(), Target ?? 0);
-        if (hi <= 0) hi = 1;
-        _hours = Minutes && hi >= 300;
-        var step = _hours ? Math.Max(1, NiceStep(hi / 60 / 4)) * 60 : NiceStep(hi / 4);
-        _max = Math.Ceiling(hi / step) * step;
-        if (_max < hi * 1.05) _max += step;
-        _ticks = new();
-        for (var t = 0.0; t <= _max + 1e-9; t += step) _ticks.Add(t);
-        _slot = (W - L - R) / Values.Count;
+        _series = [new() { Name = AriaLabel, Data = Values.ToArray() }];
+        _labels = Labels.ToArray();
+        var hi = Values.DefaultIfEmpty(0).Max();
+        _options = new BarChartOptions
+        {
+            ShowLegend = false,
+            ChartPalette = [ChartColors.Series(Store.Settings.DarkMode)],
+            BarWidthRatio = 0.7,
+            XAxisLabelInterval = Math.Max(1, LabelEvery),
+            YAxisTicks = Minutes ? MinuteStep(hi) : 0,
+            MaxNumYAxisTicks = 6,
+            YAxisToStringFunc = Minutes ? (v => Stats.Duration((int)Math.Round(v * 60))) : Format,
+            TooltipTitleFormat = "{{Y_AXIS_VALUE}}",
+            TooltipSubtitleFormat = "{{X_VALUE}}",
+        };
     }
 
-    static double NiceStep(double raw)
+    // round duration steps (15 min … 2 hr) giving about four ticks
+    static int MinuteStep(double max)
     {
-        if (raw <= 0) return 1;
-        var mag = Math.Pow(10, Math.Floor(Math.Log10(raw)));
-        var n = raw / mag;
-        return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * mag;
+        foreach (var step in new[] { 5, 10, 15, 30, 60, 120, 180, 240, 300, 600 })
+            if (max / step <= 5) return step;
+        return 600;
     }
 }

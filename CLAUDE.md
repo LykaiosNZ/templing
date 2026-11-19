@@ -53,10 +53,11 @@ Serialisation uses `DataStore.Json` (PascalCase property names, string enums via
 
 ## Gotchas learned the hard way
 
+- **Prefer MudBlazor components** (charts, progress bars, tooltips, dialogs…) over hand-built ones; see DESIGN.md. The docs at mudblazor.com are a client-side app, so read them in a browser tab (plain fetches return an empty shell).
+
 - **Naming:** a thing in the library is a **piece** everywhere: UI text, code (`Piece`, `PieceId`, `PieceDialog`, `PieceDetail`), routes (`/metronome/piece/{id}`), CSS (`.piece-card`) and the IndexedDB store (`pieces`). Never "item" (MudBlazor's `MudSelectItem` etc. aside).
 
-- **SVG `<text>` in Razor:** Razor reserves `<text>`, so use the `<SvgText>` component (`Components/Charts/SvgText.cs`).
-- **Render fragments capture lazily:** inside `@for` loops, child content (e.g. `<SvgText>@x</SvgText>`) is evaluated later. Copy values to locals in the loop body (`var label = Labels[i];`) instead of indexing parameters or loop variables inside the fragment.
+- **Render fragments capture lazily:** inside `@for` loops, child content (e.g. `<MudChip>@x</MudChip>`) is evaluated later. Copy values to locals in the loop body (`var label = Labels[i];`) instead of indexing parameters or loop variables inside the fragment.
 - **JS interop with arrays:** `InvokeVoidAsync("fn", array)` spreads a `string[]` as `params`. Pass `(object)array`.
 - **MudBlazor 9** renamed things (e.g. `AutoGrow` → `Sizing`, tabs `PanelClass` → `TabPanelsClass`). The analyzer warnings (MUD0002) tell you the replacement, so treat them as errors.
 - **Icons:** MudBlazor's Material set (`Icons.Material.Rounded.*`) by default. For icons it lacks (e.g. metronome), use Pictogrammers MDI: add the name to `tools/icons/icons.txt`, run `npm install && npm run generate` in `tools/icons`, then use `Mdi.Name`. Only listed icons ship. The output, `Components/Mdi.g.cs`, is generated, so don't hand-edit it.

@@ -20,7 +20,7 @@ The house rules for how screens look and read. Follow them when building or chan
 | Durations in text | `45 sec`, `10 min`, `1 hr`, `1 hr 5 min`: always `hr`, `min`, `sec` | `Stats.Duration(sec)` |
 | Running clocks / countdowns | `m:ss`, `h:mm:ss` | `Stats.Clock(sec)` |
 | Duration inputs | h:mm:ss text field | `<DurationInput>` (never number fields or `MudTimePicker`) |
-| Chart axis ticks | `100 min`, or whole hours (`2 hr`) once the scale is large | `BarChart Minutes` |
+| Chart axis ticks and tooltips | durations in round steps ("30 min", "1 hr 30 min"), same format as text | `BarChart Minutes` (MudChart `YAxisToStringFunc` + `{{Y_AXIS_VALUE}}`) |
 | Dates | `Sat 14 Nov`; add the year (`14 Nov 2025`) only outside the current year | |
 | Relative dates | `today`, `yesterday`, `3 days ago`, `2w ago`, then a date | `Stats.Ago` |
 | Tempo | `120 bpm`, `90%`, ranges `65–145` | |
@@ -30,10 +30,10 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 ## Charts
 
 - A chart's title says what's measured ("Days practised by weekday", "Weekly practice time"), not just how it's split ("By day of week").
-- Everything on a page with a period picker follows that period. The practice calendar keeps a fixed 12 months so it doesn't change size; days outside the period are faded.
+- Everything on a page with a period picker follows that period. The practice calendar is the exception: it always shows the last 12 months so it doesn't change size.
 - Cards side by side in a grid end level at the bottom (`equal-cards` on the `MudGrid`).
 - Long ranked lists show their top 8 with "Show all".
-- Chart tooltips use `ChartTip` (HTML over the svg, inside `.viz-plot`), never SVG shapes: SVG tooltips scale with the chart and can't size to their text.
+- Charts are `MudChart` (bar, time series, heat map) with `MatchBoundsToSize` so text keeps its size at any width. Tooltips are MudChart's own, set through `TooltipTitleFormat` / `TooltipSubtitleFormat` (`{{Y_AXIS_VALUE}}`, `{{X_VALUE}}`, `{{SERIES_NAME}}`). Palettes come from the theme via `ChartColors`. We accept MudChart's limits (no reference lines or per-bar colours) rather than hand-build charts.
 
 ## Layout
 
@@ -49,6 +49,8 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 - Controls in a row have no visible label of their own (the row names them), but still get an accessible name (`aria-label`, `DurationInput AriaLabel`).
 
 ## Controls
+
+- **Prefer existing MudBlazor components** over hand-built ones: `MudChart` for charts, `MudProgressLinear` for bars, `MudTooltip` / a component's own tooltip options for tooltips, and so on. Configure them through their parameters and options first; only build something custom when MudBlazor has nothing that fits, and say why in a comment. Check the API at mudblazor.com (it renders client-side, so open it in a browser rather than fetching it).
 
 - **Buttons:** at most one filled primary button per view (or per card when that card is the active one). Secondary actions are outlined; tertiary ones are text buttons.
 - **Every icon-only button has a tooltip** (`MudTooltip`) naming what it does ("Move up", "Edit entry", "More"), plus an accessible name (`aria-label`, or `AriaLabel` on `MudMenu`) that can carry more context ("Move Verse up"). Tooltips never include keyboard shortcuts.
@@ -97,4 +99,4 @@ Reuse these instead of rebuilding them. When two screens show the same thing, th
 | `GoalBar` | Goal progress bar (`MudProgressLinear`: accent, green when reached) |
 | `StatTile` | Headline numbers (pass `Seconds` for durations so the unit words render small) |
 | `FeelHint`, `EffortSlider` | Feel / effort display and input |
-| `Charts/*` | Tempo line, bar chart, heatmap, ranked bars (`HBars Limit` for long lists with "Show all"; `BarChart Minutes` for minute values: ticks in min, whole hr once the scale is large) |
+| `Charts/*` | MudChart wrappers: `BarChart` (`Minutes` for durations), `TempoChart` (time series + faint goal line), `Heatmap` (practice calendar); `HBars` ranked lists on `MudProgressLinear` (`Limit` + "Show all") |
