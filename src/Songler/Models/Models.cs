@@ -245,6 +245,8 @@ public class MetronomeSettings
     public bool Flash { get; set; } = true;
     public TrainingSettings Training { get; set; } = new();
     public IntervalSettings Interval { get; set; } = new();
+    /// <summary>The Timer page's countdown (always on; separate from the metronome's intervals).</summary>
+    public IntervalSettings Timer { get; set; } = new() { Enabled = true, WorkMin = 10, RestMin = 0, Rounds = 1 };
 }
 
 public class AppSettings

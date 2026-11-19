@@ -108,12 +108,16 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         Changed?.Invoke();
     }
 
+    /// <summary>The user's interval settings for the current mode: the timer's countdown (always on) or the metronome's intervals.</summary>
+    private IntervalSettings UserIntervals => Silent ? Settings.Timer : Settings.Interval;
+    private bool UserIntervalsOn => Silent || Settings.Interval.Enabled;
+
     /// <summary>The interval plan the next run will use (step override or the user's settings).</summary>
     public (bool Enabled, double WorkSec, double RestSec, int Rounds) EffectiveIntervals =>
         _step is { } st ? (true, st.WorkSec, st.RestSec, st.Rounds)
-        : (Settings.Interval.Enabled, Settings.Interval.WorkMin * 60, Settings.Interval.RestMin * 60, Settings.Interval.Rounds);
+        : (UserIntervalsOn, UserIntervals.WorkMin * 60, UserIntervals.RestMin * 60, UserIntervals.Rounds);
 
-    /// <summary>Starts a silent practice timer using the interval settings (or a stopwatch when intervals are off).</summary>
+    /// <summary>Starts a silent practice countdown using the timer settings.</summary>
     public async Task StartTimerAsync()
     {
         Silent = true; _override = null;
@@ -337,7 +341,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         if (_mod == null) return;
         var s = Settings;
         var tr = Training;
-        var iv = s.Interval;
+        var iv = UserIntervals;
         double quantum = Unit == TempoUnit.Percent ? 0.01 : 1.0 / Math.Max(1, RefSection.Bpm);
         var cfg = new
         {
@@ -368,7 +372,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
             restOnly = (_override ?? _step)?.RestOnly ?? false,
             interval = new
             {
-                enabled = (_override ?? _step)?.Enabled ?? iv.Enabled,
+                enabled = (_override ?? _step)?.Enabled ?? UserIntervalsOn,
                 workSec = (_override ?? _step)?.WorkSec ?? iv.WorkMin * 60,
                 restSec = (_override ?? _step)?.RestSec ?? iv.RestMin * 60,
                 rounds = (_override ?? _step)?.Rounds ?? iv.Rounds,

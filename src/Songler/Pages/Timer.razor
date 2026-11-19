@@ -62,13 +62,6 @@
                 </button>
             </div>
 
-            <div class="quick-toggles" role="group" aria-label="Options">
-                <MudTooltip Text="@($"Intervals: {(Metro.Settings.Interval.Enabled ? "on" : "off")}")">
-                    <MudIconButton Icon="@Icons.Material.Rounded.Timelapse" Class="@(Metro.Settings.Interval.Enabled ? "opt-toggle on" : "opt-toggle")" aria-label="Intervals"
-                                   aria-pressed="@(Metro.Settings.Interval.Enabled ? "true" : "false")" OnClick="ToggleIntervals" />
-                </MudTooltip>
-            </div>
-
             @if (ShowEndPanel)
             {
                 <div class="timer-end" role="region" aria-label="Session finished">
@@ -110,19 +103,8 @@
 
     <MudItem xs="12" lg="5">
         <section class="card">
-            <h2 class="card-title seg-label">Intervals<span class="@(Metro.Settings.Interval.Enabled ? "seg-dot on" : "seg-dot")" aria-label="@(Metro.Settings.Interval.Enabled ? "On" : "Off")"></span></h2>
-            <IntervalsEditor />
-        </section>
-
-        <section class="card mt-4">
-            <h2 class="card-title">Between pieces</h2>
-            <div class="d-flex gap-2 flex-wrap">
-                @foreach (var m in new[] { 1.0, 2.0, 3.0, 5.0 })
-                {
-                    var min = m;
-                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.SelfImprovement" Disabled="Metro.IsRunning" OnClick="() => Metro.StartRestAsync(min)">@min.ToString("0") min</MudButton>
-                }
-            </div>
+            <h2 class="card-title">Countdown</h2>
+            <IntervalsEditor Settings="Metro.Settings.Timer" Presets="IntervalsEditor.TimerPresets" ShowCues="false" />
         </section>
     </MudItem>
 </MudGrid>
@@ -151,11 +133,10 @@
             if (!Metro.IsRunning)
             {
                 if (ShowEndPanel && Metro.SessionActiveSec >= 1) return Stats.Clock(Metro.SessionActiveSec);
-                var ei = Metro.EffectiveIntervals;
-                return ei.Enabled ? Stats.Clock(ei.WorkSec) : "0:00";
+                return Stats.Clock(Metro.EffectiveIntervals.WorkSec);
             }
             if (Metro.State.remaining is { } rem) return Stats.Clock(Math.Ceiling(rem));
-            return Stats.Clock(Metro.State.workElapsed ?? 0); // stopwatch
+            return Stats.Clock(Metro.State.workElapsed ?? 0);
         }
     }
 
@@ -167,11 +148,11 @@
             if (!Metro.IsRunning)
             {
                 if (ShowEndPanel && Metro.SessionActiveSec >= 1) return "practised this session";
-                return iv.Enabled ? $"{iv.Rounds switch { 0 => "endless", 1 => "1 round", var n => $"{n} rounds" }}{(iv.RestSec > 0 && iv.Rounds != 1 ? $" · {Stats.Clock(iv.RestSec)} rests" : "")}" : "stopwatch";
+                return iv.Rounds == 1 ? "" : $"{(iv.Rounds == 0 ? "endless" : $"{iv.Rounds} rounds")}{(iv.RestSec > 0 ? $" · {Stats.Clock(iv.RestSec)} rests" : "")}";
             }
             if (Metro.RestOnlyRunning) return "not counted as practice";
             if (Metro.State.remaining is null) return "elapsed";
-            return iv.Enabled && iv.Rounds > 1 ? $"round {Metro.State.round} of {iv.Rounds}" : Rest ? "until work" : "remaining";
+            return iv.Rounds > 1 ? $"round {Metro.State.round} of {iv.Rounds}" : Rest ? "until work" : "remaining";
         }
     }
 
@@ -187,7 +168,6 @@
                 var total = Rest ? _restTotal : Math.Max(1, (Metro.State.workElapsed ?? 0) + rem);
                 frac = 1 - rem / Math.Max(1, total);
             }
-            else if (Metro.IsRunning) frac = ((Metro.State.workElapsed ?? 0) % 60) / 60; // stopwatch: one lap per minute
             var on = Math.Clamp(frac, 0, 1) * c;
             if (on < 0.5) return null;
             return $"{on.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)} {c.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)}";
@@ -235,12 +215,6 @@
     }
 
     Task Apply() => Metro.ApplyAsync();
-
-    async Task ToggleIntervals()
-    {
-        Metro.Settings.Interval.Enabled = !Metro.Settings.Interval.Enabled;
-        await Metro.ApplyAsync();
-    }
 
     async Task Log()
     {
