@@ -109,7 +109,7 @@ else
 
     async Task Run(PracticePlan p)
     {
-        if (p.Steps.Any(s => s.Kind == PlanStepKind.Item && Store.GetItem(s.ItemId) == null))
+        if (p.Steps.Any(s => s.Kind == PlanStepKind.Piece && Store.GetPiece(s.PieceId) == null))
             Snackbar.Add("Some steps refer to deleted pieces; skip them when they come up.", Severity.Warning);
         await Runner.StartAsync(p);
     }

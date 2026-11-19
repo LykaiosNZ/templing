@@ -3,33 +3,33 @@ using System.Text.Json.Serialization;
 namespace Songler.Models;
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
-public enum ItemType { Exercise, RiffLick, Song, Other }
+public enum PieceType { Exercise, RiffLick, Song, Other }
 
-/// <summary>How progress on an item is measured: absolute BPM, or percent of the original/target tempo.</summary>
+/// <summary>How progress on an piece is measured: absolute BPM, or percent of the original/target tempo.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum TempoUnit { Bpm, Percent }
 
-public static class ItemTypeExt
+public static class PieceTypeExt
 {
-    public static string Label(this ItemType t) => t switch
+    public static string Label(this PieceType t) => t switch
     {
-        ItemType.RiffLick => "Riff / Lick",
+        PieceType.RiffLick => "Riff / Lick",
         _ => t.ToString()
     };
 
-    public static string Icon(this ItemType t) => t switch
+    public static string Icon(this PieceType t) => t switch
     {
-        ItemType.Exercise => MudBlazor.Icons.Material.Rounded.FitnessCenter,
-        ItemType.RiffLick => MudBlazor.Icons.Material.Rounded.Bolt,
-        ItemType.Song => MudBlazor.Icons.Material.Rounded.LibraryMusic,
+        PieceType.Exercise => MudBlazor.Icons.Material.Rounded.FitnessCenter,
+        PieceType.RiffLick => MudBlazor.Icons.Material.Rounded.Bolt,
+        PieceType.Song => MudBlazor.Icons.Material.Rounded.LibraryMusic,
         _ => MudBlazor.Icons.Material.Rounded.MusicNote
     };
 
     /// <summary>Display order: songs first.</summary>
-    public static readonly ItemType[] Ordered = [ItemType.Song, ItemType.RiffLick, ItemType.Exercise, ItemType.Other];
+    public static readonly PieceType[] Ordered = [PieceType.Song, PieceType.RiffLick, PieceType.Exercise, PieceType.Other];
 
-    /// <summary>True when an item is practised as separate parts (songs, or anything with several sections).</summary>
-    public static bool HasParts(this PracticeItem i) => i.Sections.Count > 1;
+    /// <summary>True when an piece is practised as separate parts (songs, or anything with several sections).</summary>
+    public static bool HasParts(this Piece i) => i.Sections.Count > 1;
 
     public static string Suffix(this TempoUnit u) => u == TempoUnit.Percent ? "%" : " bpm";
 
@@ -66,11 +66,11 @@ public class Section
     public string Meter => $"{BeatsPerBar}/{BeatUnit}{(MixedMeter ? " (mixed)" : "")}";
 }
 
-public class PracticeItem
+public class Piece
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = "";
-    public ItemType Type { get; set; } = ItemType.Exercise;
+    public PieceType Type { get; set; } = PieceType.Exercise;
     public TempoUnit Unit { get; set; } = TempoUnit.Bpm;
     /// <summary>Goal tempo in <see cref="Unit"/> (BPM, or percent of original tempo).</summary>
     public double? Goal { get; set; }
@@ -91,9 +91,9 @@ public class PracticeLog
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public DateTime Date { get; set; } = DateTime.Today;
-    public string? ItemId { get; set; }
-    /// <summary>Name snapshot (also used for free-metronome sessions with no item).</summary>
-    public string ItemName { get; set; } = "";
+    public string? PieceId { get; set; }
+    /// <summary>Name snapshot (also used for free-metronome sessions with no piece).</summary>
+    public string PieceName { get; set; } = "";
     public string? SectionId { get; set; }
     public TempoUnit Unit { get; set; } = TempoUnit.Bpm;
     /// <summary>Lowest tempo for ranged sessions (e.g. a 65 - 145 warmup). Null for single values.</summary>
@@ -139,18 +139,18 @@ public static class Effort
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
-public enum PlanStepKind { Item, Rest }
+public enum PlanStepKind { Piece, Rest }
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum StepMode { Metronome, Timer }
 
-/// <summary>One step of a practice plan: practise an item for a while, or rest.</summary>
+/// <summary>One step of a practice plan: practise an piece for a while, or rest.</summary>
 public class PlanStep
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
-    public PlanStepKind Kind { get; set; } = PlanStepKind.Item;
-    public string? ItemId { get; set; }
-    /// <summary>Optional part/section of the item to practise.</summary>
+    public PlanStepKind Kind { get; set; } = PlanStepKind.Piece;
+    public string? PieceId { get; set; }
+    /// <summary>Optional part/section of the piece to practise.</summary>
     public string? SectionId { get; set; }
     public StepMode Mode { get; set; } = StepMode.Metronome;
     /// <summary>Work minutes per round (or rest length for rest steps).</summary>
@@ -159,7 +159,7 @@ public class PlanStep
     /// <summary>Rest between rounds, in minutes.</summary>
     public double RestMin { get; set; }
 
-    // ---- tempo (metronome steps), in the item's unit (bpm or %)
+    // ---- tempo (metronome steps), in the piece's unit (bpm or %)
     /// <summary>Tempo to start at. Null = the last logged tempo.</summary>
     public double? StartTempo { get; set; }
     /// <summary>Speed trainer for this step only: ramps from TrainerStart to TrainerEnd over the step's work time.</summary>
@@ -171,7 +171,7 @@ public class PlanStep
 
     public string TempoText(TempoUnit unit)
     {
-        if (Kind != PlanStepKind.Item || Mode != StepMode.Metronome) return "";
+        if (Kind != PlanStepKind.Piece || Mode != StepMode.Metronome) return "";
         var u = unit == TempoUnit.Percent ? "%" : " bpm";
         if (Trainer) return $"{TrainerStart:0} → {TrainerEnd:0}{u}";
         return StartTempo is { } t ? $"start {t:0}{u}" : "";
@@ -195,7 +195,7 @@ public class PracticePlan
     public double TotalMinutes => Steps.Sum(s => s.TotalMinutes);
 }
 
-/// <summary>A saved custom metronome (tempo map) that isn't tied to a library item.</summary>
+/// <summary>A saved custom metronome (tempo map) that isn't tied to a library piece.</summary>
 public class MetronomePreset
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");

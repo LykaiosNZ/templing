@@ -3,7 +3,7 @@
 
 <MudDialog>
     <TitleContent>
-        <MudText Typo="Typo.h6">@(IsNew ? "Add to library" : $"Edit {Item.Name}")</MudText>
+        <MudText Typo="Typo.h6">@(IsNew ? "Add to library" : $"Edit {Piece.Name}")</MudText>
     </TitleContent>
     <DialogContent>
         <div class="d-flex flex-column gap-4">
@@ -12,8 +12,8 @@
                           Error="@(_nameTouched && string.IsNullOrWhiteSpace(_m.Name))" ErrorText="Enter a name" />
             <div>
                 <MudText Typo="Typo.subtitle2" Class="mb-1">Type</MudText>
-                <MudToggleGroup T="ItemType" Value="_m.Type" ValueChanged="TypeChanged" Color="Color.Primary" Size="Size.Small" Outlined="true" CheckMark="false" aria-label="Type">
-                    @foreach (var t in ItemTypeExt.Ordered)
+                <MudToggleGroup T="PieceType" Value="_m.Type" ValueChanged="TypeChanged" Color="Color.Primary" Size="Size.Small" Outlined="true" CheckMark="false" aria-label="Type">
+                    @foreach (var t in PieceTypeExt.Ordered)
                     {
                         <MudToggleItem Value="t">
                             <span class="d-inline-flex align-center gap-1"><MudIcon Icon="@t.Icon()" Size="Size.Small" />@t.Label()</span>
@@ -43,10 +43,10 @@
                         @(_m.ScoreFileId == null ? ScoreImportDialog.Title + "…" : "Re-import from score file…")
                     </MudButton>
                 </div>
-                @if (_m.Type == ItemType.Song)
+                @if (_m.Type == PieceType.Song)
                 {
                     <div class="d-flex flex-wrap gap-1 mb-2 align-center" role="group" aria-label="Add a section">
-                        @foreach (var part in ItemTypeExt.SongParts)
+                        @foreach (var part in PieceTypeExt.SongParts)
                         {
                             var name = part;
                             <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Icon="@Icons.Material.Rounded.Add" OnClick="() => AddPart(name)">@name</MudChip>
@@ -71,32 +71,32 @@
 
 @code {
     [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
-    [Parameter] public PracticeItem Item { get; set; } = new();
+    [Parameter] public Piece Piece { get; set; } = new();
     [Parameter] public bool IsNew { get; set; }
-    PracticeItem _m = new();
+    Piece _m = new();
     bool _nameTouched;
 
-    public static async Task<PracticeItem?> ShowAsync(IDialogService dialogs, PracticeItem? item = null)
+    public static async Task<Piece?> ShowAsync(IDialogService dialogs, Piece? piece = null)
     {
-        var p = new DialogParameters<ItemDialog> { { x => x.Item, item ?? new PracticeItem() }, { x => x.IsNew, item == null } };
-        var r = await dialogs.ShowAsync<ItemDialog>(item == null ? "Add piece" : "Edit piece", p,
+        var p = new DialogParameters<PieceDialog> { { x => x.Piece, piece ?? new Piece() }, { x => x.IsNew, piece == null } };
+        var r = await dialogs.ShowAsync<PieceDialog>(piece == null ? "Add piece" : "Edit piece", p,
             new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true, Position = DialogPosition.TopCenter });
         var res = await r.Result;
-        return res is { Canceled: false } ? res.Data as PracticeItem : null;
+        return res is { Canceled: false } ? res.Data as Piece : null;
     }
 
     protected override void OnInitialized()
     {
         // edit a copy so Cancel discards changes
-        _m = System.Text.Json.JsonSerializer.Deserialize<PracticeItem>(System.Text.Json.JsonSerializer.Serialize(Item, DataStore.Json), DataStore.Json)!;
+        _m = System.Text.Json.JsonSerializer.Deserialize<Piece>(System.Text.Json.JsonSerializer.Serialize(Piece, DataStore.Json), DataStore.Json)!;
     }
 
-    void TypeChanged(ItemType t)
+    void TypeChanged(PieceType t)
     {
         var was = _m.Type;
         _m.Type = t;
         // sensible defaults when creating: songs are measured as % of the real tempo
-        if (IsNew && t == ItemType.Song && was != ItemType.Song)
+        if (IsNew && t == PieceType.Song && was != PieceType.Song)
         {
             _m.Unit = TempoUnit.Percent;
             _m.Goal ??= 100;
@@ -134,7 +134,7 @@
         if (IsNew)
         {
             if (string.IsNullOrWhiteSpace(_m.Name)) _m.Name = r.Name;
-            _m.Type = ItemType.Song; _m.Unit = TempoUnit.Percent; _m.Goal ??= 100;
+            _m.Type = PieceType.Song; _m.Unit = TempoUnit.Percent; _m.Goal ??= 100;
         }
     }
 
@@ -149,7 +149,7 @@
         if (string.IsNullOrWhiteSpace(_m.Name)) { _nameTouched = true; return; }
         _m.Name = _m.Name.Trim();
         if (_m.Sections.Count == 0) _m.Sections.Add(new Section());
-        await Store.SaveItemAsync(_m);
+        await Store.SavePieceAsync(_m);
         Dialog.Close(DialogResult.Ok(_m));
     }
 }

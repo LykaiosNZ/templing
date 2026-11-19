@@ -21,9 +21,9 @@
 </div>
 
 @code {
-    string Href => Metro.Silent ? (Metro.Source == MetronomeSource.Item ? $"timer/item/{Metro.Item?.Id}" : "timer") : Metro.Source switch
+    string Href => Metro.Silent ? (Metro.Source == MetronomeSource.Piece ? $"timer/piece/{Metro.Piece?.Id}" : "timer") : Metro.Source switch
     {
-        MetronomeSource.Item => $"metronome/item/{Metro.Item?.Id}",
+        MetronomeSource.Piece => $"metronome/piece/{Metro.Piece?.Id}",
         MetronomeSource.Preset => $"metronome/preset/{Metro.Preset?.Id}",
         _ => "metronome"
     };
@@ -45,7 +45,7 @@
         }
     }
 
-    /// <summary>Secondary detail (hidden on phones): real bpm for % items, session time.</summary>
+    /// <summary>Secondary detail (hidden on phones): real bpm for % pieces, session time.</summary>
     string? Extra
     {
         get

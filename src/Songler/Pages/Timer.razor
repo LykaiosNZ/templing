@@ -1,6 +1,6 @@
 @page "/timer"
 @page "/timer/free"
-@page "/timer/item/{ItemId}"
+@page "/timer/piece/{PieceId}"
 @implements IDisposable
 @inject MetronomeService Metro
 @inject DataStore Store
@@ -13,7 +13,7 @@
 
 <div class="page-head">
     <div>
-        @if (Metro.Item is { } it && Metro.Source == MetronomeSource.Item)
+        @if (Metro.Piece is { } it && Metro.Source == MetronomeSource.Piece)
         {
             <MudText Typo="Typo.overline" Class="muted">@it.Type.Label()</MudText>
             <h1 class="page-title" tabindex="-1">@it.Name</h1>
@@ -29,9 +29,9 @@
             <MudMenuItem Href="timer/free" Icon="@Icons.Material.Rounded.HourglassEmpty">Timer</MudMenuItem>
             <MudDivider />
             <MudText Typo="Typo.overline" Class="px-4 muted">Library</MudText>
-            @foreach (var i in Store.ItemsByRecent())
+            @foreach (var i in Store.PiecesByRecent())
             {
-                <MudMenuItem Href="@($"timer/item/{i.Id}")" Icon="@i.Type.Icon()">@i.Name</MudMenuItem>
+                <MudMenuItem Href="@($"timer/piece/{i.Id}")" Icon="@i.Type.Icon()">@i.Name</MudMenuItem>
             }
         </MudMenu>
     </div>
@@ -110,7 +110,7 @@
 </MudGrid>
 
 @code {
-    [Parameter] public string? ItemId { get; set; }
+    [Parameter] public string? PieceId { get; set; }
     string? _lastPhase;
     int _flashKey;
     bool _dismissed;
@@ -177,11 +177,11 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (ItemId != null)
+        if (PieceId != null)
         {
-            var item = Store.GetItem(ItemId);
-            if (item == null) { Nav.NavigateTo("timer"); return; }
-            if (!Metro.IsRunning) await Metro.LoadItemAsync(item);
+            var piece = Store.GetPiece(PieceId);
+            if (piece == null) { Nav.NavigateTo("timer"); return; }
+            if (!Metro.IsRunning) await Metro.LoadPieceAsync(piece);
         }
         else if (Nav.Uri.EndsWith("/timer/free") && !Metro.IsRunning) await Metro.LoadFreeAsync();
         if (!Metro.IsRunning) await Metro.SetSilentAsync(true);

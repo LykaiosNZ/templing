@@ -15,7 +15,7 @@
                 <span class="plan-name">@plan.Name <span class="plan-left">· step @(Runner.Index + 1) of @plan.Steps.Count · about @Stats.Duration((int)(Runner.MinutesLeft * 60)) left</span></span>
                 <span class="plan-step">
                     <strong>@Runner.Describe(step)</strong>
-                    <span class="muted plan-step-meta"> · @step.IntervalText@(step.Kind == PlanStepKind.Item ? $" · {(step.Mode == StepMode.Timer ? "timer" : "metronome")}" : "")@(step.TempoText(Store.GetItem(step.ItemId)?.Unit ?? TempoUnit.Bpm) is { Length: > 0 } tt ? $" · {tt}" : "")</span>
+                    <span class="muted plan-step-meta"> · @step.IntervalText@(step.Kind == PlanStepKind.Piece ? $" · {(step.Mode == StepMode.Timer ? "timer" : "metronome")}" : "")@(step.TempoText(Store.GetPiece(step.PieceId)?.Unit ?? TempoUnit.Bpm) is { Length: > 0 } tt ? $" · {tt}" : "")</span>
                 </span>
                 <span class="plan-next muted">@(Runner.NextStep is { } next ? $"Next: {Runner.Describe(next)} · {next.IntervalText}" : "Last step")</span>
             </div>
@@ -25,7 +25,7 @@
                     <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.PlayArrow" OnClick="() => Runner.StartStepAsync()">
                         @(step.Kind == PlanStepKind.Rest ? "Start rest" : Metro.SessionActiveSec >= 1 ? "Resume" : "Start step")
                     </MudButton>
-                    @if (step.Kind == PlanStepKind.Item && Metro.SessionActiveSec >= 1)
+                    @if (step.Kind == PlanStepKind.Piece && Metro.SessionActiveSec >= 1)
                     {
                         <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Done" OnClick="FinishEarly">Finish step</MudButton>
                     }
@@ -81,7 +81,7 @@ else if (Runner.Summary is { } sum)
 
     async Task OnStepFinished(PlanStep step) => await InvokeAsync(() => LogAndAdvance(step));
 
-    bool HasUnlogged => Metro.SessionActiveSec >= 1 && Runner.Current is { Kind: PlanStepKind.Item };
+    bool HasUnlogged => Metro.SessionActiveSec >= 1 && Runner.Current is { Kind: PlanStepKind.Piece };
 
     /// <summary>Logs the current step's session (auto or via the dialog). Returns false if the user backed out of the dialog.</summary>
     async Task<bool> LogCurrent(PlanStep step, bool ask)

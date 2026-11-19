@@ -12,7 +12,7 @@
 }
 
 @code {
-    [Parameter, EditorRequired] public PracticeItem Item { get; set; } = default!;
+    [Parameter, EditorRequired] public Piece Piece { get; set; } = default!;
     PracticeLog? _last;
-    protected override void OnParametersSet() => _last = Stats.LastRated(Item, Store.Logs);
+    protected override void OnParametersSet() => _last = Stats.LastRated(Piece, Store.Logs);
 }

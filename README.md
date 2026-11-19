@@ -12,18 +12,18 @@ Then open http://localhost:5075. You need the .NET 11 SDK.
 
 ## Features
 
-- **Library**: songs, exercises and riffs. Each item measures progress in **BPM** or **% of song tempo**, and has a goal and a tempo map of **sections**. Each section has its own tempo, time signature, subdivision and bar count.
-- **Metronome**: a Web Audio look-ahead scheduler, so timing is sample-accurate. You can open it on its own (free mode), from an item, or as a saved **custom metronome** with its own tempo changes. It keeps playing while you browse other pages, and the app bar shows a mini player.
+- **Library**: songs, exercises and riffs. Each piece measures progress in **BPM** or **% of song tempo**, and has a goal and a tempo map of **sections**. Each section has its own tempo, time signature, subdivision and bar count.
+- **Metronome**: a Web Audio look-ahead scheduler, so timing is sample-accurate. You can open it on its own (free mode), from a piece, or as a saved **custom metronome** with its own tempo changes. It keeps playing while you browse other pages, and the app bar shows a mini player.
   - **Speed trainer**: goes from a start tempo to an end tempo, either over N minutes of playing or in steps every N bars. Tempo changes land on bar lines. It can hold at the end tempo or stop.
   - **Interval trainer**: work/rest/rounds (presets include 5·1·5). The click stops during rests, and audio cues sound before each change.
   - **Count-in**: optional, 1 or 2 bars, and it plays at every restart and every interval round.
   - **Play-through**: steps through the sections in order using their bar counts, with optional looping.
 - **Practice timer** (`/timer`, `g` then `t`): the interval trainer with no click, for playing along to Guitar Pro or a backing track. Intervals are optional (off = stopwatch). Audio cues and a colour change mark each work/rest switch. At the end you can log the time, add another block (e.g. +5 min after a 1 min rest), or start a rest countdown between pieces that isn't counted as practice.
-- **Plans** (`/plans`, `g` then `p`): ordered practice routines. Each step is an item (metronome or click-free timer, with work minutes, rounds and rests) or a rest. Metronome steps can set a start tempo, or a speed trainer for that step only (e.g. 65 → 145 over the step's 10 minutes). Your own trainer settings are left alone. Running a plan shows a bar across the top of the app with the current and next step. Each step opens with its intervals set, and when it finishes you're asked to log it before moving on. A setting logs steps automatically instead. You can skip, go back, finish a step early or end the plan.
+- **Plans** (`/plans`, `g` then `p`): ordered practice routines. Each step is a piece (metronome or click-free timer, with work minutes, rounds and rests) or a rest. Metronome steps can set a start tempo, or a speed trainer for that step only (e.g. 65 → 145 over the step's 10 minutes). Your own trainer settings are left alone. Running a plan shows a bar across the top of the app with the current and next step. Each step opens with its intervals set, and when it finishes you're asked to log it before moving on. A setting logs steps automatically instead. You can skip, go back, finish a step early or end the plan.
 - **Time tracking**: only *active* time counts, meaning time when the click plays in a work phase. Rests, count-ins and pauses are excluded, so a 5-1-5 interval session logs 10 minutes. **Log session** (`L`) saves the active time and the tempo range you played. You can also log entries manually (`N`) or edit them.
-- **Stats**: practice calendar heatmap, minutes per week against a weekly goal, streaks, practice by weekday, time per item and type, biggest tempo gains, and goal progress. Each item has a tempo-over-time chart, with whiskers for ranged sessions like `65 - 145`.
-- **Guitar Pro import + tab view**: *Import Guitar Pro* (Library) or *Import parts from Guitar Pro* (item editor) reads .gp/.gpx/.gp5/.gp4/.gp3 and MusicXML via [alphaTab](https://alphatab.net) (MPL-2.0, vendored in `wwwroot/lib/alphatab`). Section markers and tempo changes become song parts; repeats are expanded and time-signature changes are kept bar by bar, so the metronome follows the real meter. The score file is kept in IndexedDB and rendered on the item and metronome pages, with the current bar and beat highlighted in sync with the click. Tempo is quarter-note based, as in Guitar Pro (x/8 bars click eighths).
-- **Backup**: JSON backup/restore (items, logs, plans, custom metronomes) and CSV export of the practice log, in Settings & data.
+- **Stats**: practice calendar heatmap, minutes per week against a weekly goal, streaks, practice by weekday, time per piece and type, biggest tempo gains, and goal progress. Each piece has a tempo-over-time chart, with whiskers for ranged sessions like `65 - 145`.
+- **Guitar Pro import + tab view**: *Import from Guitar Pro* (Library) or *Import from Guitar Pro* (piece editor) reads .gp/.gpx/.gp5/.gp4/.gp3 and MusicXML via [alphaTab](https://alphatab.net) (MPL-2.0, vendored in `wwwroot/lib/alphatab`). Section markers and tempo changes become song parts; repeats are expanded and time-signature changes are kept bar by bar, so the metronome follows the real meter. The score file is kept in IndexedDB and rendered on the item and metronome pages, with the current bar and beat highlighted in sync with the click. Tempo is quarter-note based, as in Guitar Pro (x/8 bars click eighths).
+- **Backup**: JSON backup/restore (pieces, logs, plans, custom metronomes) and CSV export of the practice log, in Settings & data.
 
 ## Keyboard shortcuts
 
@@ -46,7 +46,7 @@ Shortcuts are ignored while you type in a field.
 
 ## Layout
 
-- `src/Songler/Models`: data model (items, sections, logs, presets, settings)
+- `src/Songler/Models`: data model (pieces, sections, logs, presets, settings)
 - `src/Songler/Services`: `DataStore` (IndexedDB cache), `MetronomeService`, `Shortcuts`, `Stats`, `LogCsv`, `ScoreImport`, `PlanRunner`
 - `src/Songler/wwwroot/js`: `metronome.js` (audio engine), `db.js` (IndexedDB), `keys.js` (global shortcuts)
 - `src/Songler/Components/Charts`: hand-rolled SVG charts (tempo line, bars, heatmap, ranked bars)

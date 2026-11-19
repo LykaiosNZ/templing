@@ -18,7 +18,7 @@ dotnet run --project src/Songler/Songler.csproj --launch-profile http   # http:/
 
 | Path | What |
 | --- | --- |
-| `Models/Models.cs` | All persisted types: `PracticeItem`/`Section`, `PracticeLog`, `MetronomePreset`, `PracticePlan`/`PlanStep`, `AppSettings` |
+| `Models/Models.cs` | All persisted types: `Piece`/`Section`, `PracticeLog`, `MetronomePreset`, `PracticePlan`/`PlanStep`, `AppSettings` |
 | `Services/DataStore.cs` | In-memory cache over IndexedDB: load once, write-through, `Changed` event |
 | `Services/Backup.cs` | JSON backup export/restore (**single source of truth for what's backed up**) |
 | `Services/MetronomeService.cs` | App-wide metronome/timer state, session tracking, interval/trainer overrides |
@@ -37,7 +37,7 @@ Every new piece of user data has to be wired through **storage, backup/restore a
 2. `DataStore.cs`: add the list, load it in `LoadAsync`, add save/delete methods that call `Changed`, include it in `ImportAsync` and in `ClearAllAsync` (both the store-name array and the in-memory `.Clear()`).
 3. `Backup.cs`: add a **nullable field with a default** to `BackupFile` (old backups must still load), fill it in `Export`, restore it in `RestoreAsync`, add it to the summary text, **bump `Backup.Version`** and extend the format-history comment.
 4. `SettingsPage.razor`: add it to the "Delete all data" confirmation wording. `RestoreDialog.razor`: mention it in the "Songs & data only" description if it's data, or in the settings line if it's a preference.
-5. If other entities reference it by id (e.g. plan steps → items), decide what happens on delete (see `DataStore.DeleteItemAsync`) and handle missing references in the UI.
+5. If other entities reference it by id (e.g. plan steps → pieces), decide what happens on delete (see `DataStore.DeletePieceAsync`) and handle missing references in the UI.
 
 **Adding a field to an existing persisted type:**
 - Give it a sensible default in the model, because old IndexedDB rows and old backups won't have it. Nullable is fine.
@@ -45,7 +45,7 @@ Every new piece of user data has to be wired through **storage, backup/restore a
 - If it's a user preference on `AppSettings`: settings are backed up as one object, and restoring them is the user's choice in `RestoreDialog` ("Songs & data only" or "Everything, including settings"). If the new setting changes what that choice means, update the dialog's description. Restoring settings reloads the app, because services hold references into the settings object.
 
 **Deliberately not in the backup:**
-- Score files (Guitar Pro) are binary blobs in the `files` store, too large for a JSON backup. Items keep `ScoreFileId`, and the tab view shows a "re-import" message if the file is missing. If you change this, update the Settings > Backup text.
+- Score files (Guitar Pro) are binary blobs in the `files` store, too large for a JSON backup. Pieces keep `ScoreFileId`, and the tab view shows a "re-import" message if the file is missing. If you change this, update the Settings > Backup text.
 - The `session` store holds transient state that should survive a refresh but not a device move, e.g. the running plan (`PlanRunner`, key `planrun`). It's cleared by "Delete all data" and never backed up.
 - `localStorage` isn't used for app data. Don't start.
 
@@ -53,7 +53,7 @@ Serialisation uses `DataStore.Json` (PascalCase property names, string enums via
 
 ## Gotchas learned the hard way
 
-- **Naming:** the UI says "piece" (and "section"); the code says `PracticeItem` / `Section`. Keep code names as they are and write UI text per DESIGN.md.
+- **Naming:** a thing in the library is a **piece** everywhere: UI text, code (`Piece`, `PieceId`, `PieceDialog`, `PieceDetail`), routes (`/metronome/piece/{id}`), CSS (`.piece-card`) and the IndexedDB store (`pieces`). Never "item" (MudBlazor's `MudSelectItem` etc. aside).
 
 - **SVG `<text>` in Razor:** Razor reserves `<text>`, so use the `<SvgText>` component (`Components/Charts/SvgText.cs`).
 - **Render fragments capture lazily:** inside `@for` loops, child content (e.g. `<SvgText>@x</SvgText>`) is evaluated later. Copy values to locals in the loop body (`var label = Labels[i];`) instead of indexing parameters or loop variables inside the fragment.

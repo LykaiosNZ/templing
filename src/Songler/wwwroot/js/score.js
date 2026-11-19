@@ -92,7 +92,7 @@ export async function mount(hostId, fileId, opts) {
     if (!host) return false;
     const at = await loadAlphaTab();
     const bytes = await getFile(fileId);
-    if (!bytes) { host.innerHTML = '<div class="tab-missing">Score file not found. Re-import it from the item editor.</div>'; return false; }
+    if (!bytes) { host.innerHTML = '<div class="tab-missing">Score file not found. Re-import it from the piece editor.</div>'; return false; }
 
     host.innerHTML = '';
     const scroller = document.createElement('div'); scroller.className = 'tab-scroll';

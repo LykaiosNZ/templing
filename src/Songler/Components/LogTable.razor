@@ -12,7 +12,7 @@ else
             <thead>
                 <tr>
                     <th scope="col">Date</th>
-                    @if (ShowItem) { <th scope="col">Piece</th> }
+                    @if (ShowPiece) { <th scope="col">Piece</th> }
                     else if (_hasParts) { <th scope="col">Section</th> }
                     <th scope="col" class="num">Tempo</th>
                     <th scope="col" class="num">Time</th>
@@ -27,8 +27,8 @@ else
                 {
                     var newDay = prev != l.Date.Date;
                     prev = l.Date.Date;
-                    var item = Store.GetItem(l.ItemId);
-                    var section = item?.Sections.Count > 1 ? item.Sections.FirstOrDefault(s => s.Id == l.SectionId)?.Name : null;
+                    var piece = Store.GetPiece(l.PieceId);
+                    var section = piece?.Sections.Count > 1 ? piece.Sections.FirstOrDefault(s => s.Id == l.SectionId)?.Name : null;
                     var log = l;
                     var dayTotal = _dayTotals.GetValueOrDefault(l.Date.Date);
                     <tr class="clickable @(newDay ? "day-start" : "")" @onclick="() => Edit(log)">
@@ -39,10 +39,10 @@ else
                                 @if (dayTotal > 0) { <div class="day-total">@Stats.Duration(dayTotal)</div> }
                             }
                         </td>
-                        @if (ShowItem)
+                        @if (ShowPiece)
                         {
                             <td>
-                                @if (item != null) { <a href="library/@item.Id" @onclick:stopPropagation="true">@l.ItemName</a> } else { <span>@l.ItemName</span> }
+                                @if (piece != null) { <a href="library/@piece.Id" @onclick:stopPropagation="true">@l.PieceName</a> } else { <span>@l.PieceName</span> }
                                 @if (section != null) { <span class="muted small"> · @section</span> }
                             </td>
                         }
@@ -59,7 +59,7 @@ else
                             }
                         </td>
                         <td class="notes">@l.Notes</td>
-                        <td class="act" @onclick:stopPropagation="true"><MudTooltip Text="Edit entry"><MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" Class="row-edit" aria-label="@($"Edit entry {l.ItemName} {l.Date:d MMM}")" OnClick="() => Edit(log)" /></MudTooltip></td>
+                        <td class="act" @onclick:stopPropagation="true"><MudTooltip Text="Edit entry"><MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" Class="row-edit" aria-label="@($"Edit entry {l.PieceName} {l.Date:d MMM}")" OnClick="() => Edit(log)" /></MudTooltip></td>
                     </tr>
                 }
             </tbody>
@@ -74,16 +74,16 @@ else
                 <div class="log-day-head">@Stats.Day(day.Key)@if (dt > 0) { <span class="day-total"> · @Stats.Duration(dt)</span> }</div>
                 @foreach (var l in day)
                 {
-                    var item = Store.GetItem(l.ItemId);
-                    var section = item?.Sections.Count > 1 ? item.Sections.FirstOrDefault(s => s.Id == l.SectionId)?.Name : null;
-                    var what = ShowItem ? l.ItemName + (section != null ? $" · {section}" : "") : _hasParts ? section ?? "Full run-through" : null;
+                    var piece = Store.GetPiece(l.PieceId);
+                    var section = piece?.Sections.Count > 1 ? piece.Sections.FirstOrDefault(s => s.Id == l.SectionId)?.Name : null;
+                    var what = ShowPiece ? l.PieceName + (section != null ? $" · {section}" : "") : _hasParts ? section ?? "Full run-through" : null;
                     var log = l;
                     <div class="log-row clickable" @onclick="() => Edit(log)">
                         <div class="log-row-main">
                             @if (what != null) { <span class="log-what">@what</span> }
                             <span class="mono">@l.ValueText</span>
                             <span class="mono muted">@(l.DurationSec is { } d ? Stats.Duration(d) : "—")</span>
-                            <span class="log-edit" @onclick:stopPropagation="true"><MudTooltip Text="Edit entry"><MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit entry {l.ItemName} {l.Date:d MMM}")" OnClick="() => Edit(log)" /></MudTooltip></span>
+                            <span class="log-edit" @onclick:stopPropagation="true"><MudTooltip Text="Edit entry"><MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit entry {l.PieceName} {l.Date:d MMM}")" OnClick="() => Edit(log)" /></MudTooltip></span>
                         </div>
                         @if (Effort.Get(l.Effort) is { } feel || !string.IsNullOrWhiteSpace(l.Notes))
                         {
@@ -105,7 +105,7 @@ else
 
 @code {
     [Parameter] public List<PracticeLog> Logs { get; set; } = new();
-    [Parameter] public bool ShowItem { get; set; } = true;
+    [Parameter] public bool ShowPiece { get; set; } = true;
     [Parameter] public int PageSize { get; set; } = 40;
     /// <summary>Shown instead of the default "No entries yet" when the list is empty (e.g. filtered to nothing).</summary>
     [Parameter] public RenderFragment? Empty { get; set; }
@@ -118,11 +118,11 @@ else
 
     protected override void OnInitialized() => _shown = PageSize;
 
-    // single-item view: show a Part column when the item is split into sections
+    // single-piece view: show a Part column when the piece is split into sections
     protected override void OnParametersSet()
     {
-        _hasParts = !ShowItem && Logs.Select(l => l.ItemId).Distinct().Any(id => Store.GetItem(id)?.Sections.Count > 1);
-        _ordered = Logs.OrderByDescending(l => l.Date.Date).ThenBy(l => l.Logged ?? DateTime.MinValue).ThenBy(l => l.ItemName).ToList();
+        _hasParts = !ShowPiece && Logs.Select(l => l.PieceId).Distinct().Any(id => Store.GetPiece(id)?.Sections.Count > 1);
+        _ordered = Logs.OrderByDescending(l => l.Date.Date).ThenBy(l => l.Logged ?? DateTime.MinValue).ThenBy(l => l.PieceName).ToList();
         _dayTotals = Logs.GroupBy(l => l.Date.Date).ToDictionary(g => g.Key, g => g.Sum(l => l.DurationSec ?? 0));
     }
 

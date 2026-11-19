@@ -66,13 +66,13 @@ else
                     <MudText Typo="Typo.body2" Class="muted">Nothing in progress. Everything you've practised lately is at its goal.</MudText>
                 }
                 <ul class="goal-list">
-                    @foreach (var (item, st) in _goals)
+                    @foreach (var (piece, st) in _goals)
                     {
                         <li>
-                            <a href="library/@item.Id" class="goal-row">
+                            <a href="library/@piece.Id" class="goal-row">
                                 <div class="goal-top">
-                                    <span class="goal-name">@item.Name</span>
-                                    <span class="mono small">@(st.Last?.ToString("0"))/@item.Goal?.ToString("0")@item.Unit.Suffix()</span>
+                                    <span class="goal-name">@piece.Name</span>
+                                    <span class="mono small">@(st.Last?.ToString("0"))/@piece.Goal?.ToString("0")@piece.Unit.Suffix()</span>
                                 </div>
                                 <div class="progress-track"><div class="progress-fill @(st.Progress >= 1 ? "done" : "")" style="width:@Pct(st.Progress)%"></div></div>
                             </a>
@@ -90,10 +90,10 @@ else
                     {
                         <li>
                             <div class="recent-day">@Stats.Ago(day.Key, DateTime.Today) <span class="muted">· @Stats.Duration(day.Sum(l => l.DurationSec ?? 0))</span></div>
-                            <div class="recent-items">
+                            <div class="recent-pieces">
                                 @foreach (var l in day)
                                 {
-                                    <span class="recent-chip">@l.ItemName <span class="mono">@l.ValueText</span></span>
+                                    <span class="recent-chip">@l.PieceName <span class="mono">@l.ValueText</span></span>
                                 }
                             </div>
                         </li>
@@ -112,7 +112,7 @@ else
     HashSet<DateTime> _practiced = new();
     List<string> _weekLabels = new(), _weekTips = new();
     List<double> _weekValues = new();
-    List<(PracticeItem, ItemStats)> _goals = new();
+    List<(Piece, PieceStats)> _goals = new();
     List<IGrouping<DateTime, PracticeLog>> _recent = new();
     DateTime? _lastDay;
 
@@ -141,8 +141,8 @@ else
         _weekLabels = Stats.WeekLabels(weeks);
         _weekTips = Stats.WeekTips(weeks);
         _weekValues = weeks.Select(w => w.sec / 60.0).ToList();
-        _goals = Store.Items.Where(i => !i.Archived && i.Goal.HasValue)
-            .Select(i => (i, Stats.ForItem(i, logs)))
+        _goals = Store.Pieces.Where(i => !i.Archived && i.Goal.HasValue)
+            .Select(i => (i, Stats.ForPiece(i, logs)))
             .Where(x => x.Item2.LastDate >= today.AddDays(-30) && x.Item2.Progress is < 1)
             .OrderByDescending(x => x.Item2.Progress)
             .Take(8).ToList();

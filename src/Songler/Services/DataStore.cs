@@ -12,7 +12,7 @@ public class DataStore(IJSRuntime js)
     private IJSObjectReference? _db;
     private Task? _loading;
 
-    public List<PracticeItem> Items { get; private set; } = new();
+    public List<Piece> Pieces { get; private set; } = new();
     public List<PracticeLog> Logs { get; private set; } = new();
     public List<MetronomePreset> Presets { get; private set; } = new();
     public List<PracticePlan> Plans { get; private set; } = new();
@@ -27,13 +27,13 @@ public class DataStore(IJSRuntime js)
     private async Task LoadAsync()
     {
         _db = await js.InvokeAsync<IJSObjectReference>("import", "./js/db.js");
-        Items = await GetAll<PracticeItem>("items");
+        Pieces = await GetAll<Piece>("pieces");
         Logs = await GetAll<PracticeLog>("logs");
         Presets = await GetAll<MetronomePreset>("presets");
         Plans = await GetAll<PracticePlan>("plans");
         var settings = await GetAll<AppSettings>("settings");
         Settings = settings.FirstOrDefault() ?? new AppSettings();
-        Items.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+        Pieces.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
         Loaded = true;
         Changed?.Invoke();
     }
@@ -48,43 +48,43 @@ public class DataStore(IJSRuntime js)
     private Task PutMany<T>(string store, IEnumerable<T> values) => _db!.InvokeVoidAsync("putMany", store, JsonSerializer.Serialize(values, Json)).AsTask();
     private Task Remove(string store, string id) => _db!.InvokeVoidAsync("remove", store, id).AsTask();
 
-    // ---------- Items ----------
-    public PracticeItem? GetItem(string? id) => id is null ? null : Items.FirstOrDefault(i => i.Id == id);
+    // ---------- Pieces ----------
+    public Piece? GetPiece(string? id) => id is null ? null : Pieces.FirstOrDefault(i => i.Id == id);
 
-    public PracticeItem? FindItemByName(string name) =>
-        Items.FirstOrDefault(i => string.Equals(i.Name.Trim(), name.Trim(), StringComparison.OrdinalIgnoreCase));
+    public Piece? FindPieceByName(string name) =>
+        Pieces.FirstOrDefault(i => string.Equals(i.Name.Trim(), name.Trim(), StringComparison.OrdinalIgnoreCase));
 
-    public async Task SaveItemAsync(PracticeItem item)
+    public async Task SavePieceAsync(Piece piece)
     {
-        var idx = Items.FindIndex(i => i.Id == item.Id);
-        if (idx >= 0) Items[idx] = item; else Items.Add(item);
-        Items.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+        var idx = Pieces.FindIndex(i => i.Id == piece.Id);
+        if (idx >= 0) Pieces[idx] = piece; else Pieces.Add(piece);
+        Pieces.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
         // keep log name snapshots in sync after a rename
-        var renamed = Logs.Where(l => l.ItemId == item.Id && l.ItemName != item.Name).ToList();
-        foreach (var l in renamed) l.ItemName = item.Name;
-        await Put("items", item);
+        var renamed = Logs.Where(l => l.PieceId == piece.Id && l.PieceName != piece.Name).ToList();
+        foreach (var l in renamed) l.PieceName = piece.Name;
+        await Put("pieces", piece);
         if (renamed.Count > 0) await PutMany("logs", renamed);
         Changed?.Invoke();
     }
 
-    public async Task DeleteItemAsync(PracticeItem item, bool deleteLogs)
+    public async Task DeletePieceAsync(Piece piece, bool deleteLogs)
     {
-        if (item.ScoreFileId != null && !Items.Any(i => i.Id != item.Id && i.ScoreFileId == item.ScoreFileId))
-            await _db!.InvokeVoidAsync("removeFile", item.ScoreFileId);
-        Items.RemoveAll(i => i.Id == item.Id);
-        await Remove("items", item.Id);
-        var logs = Logs.Where(l => l.ItemId == item.Id).ToList();
+        if (piece.ScoreFileId != null && !Pieces.Any(i => i.Id != piece.Id && i.ScoreFileId == piece.ScoreFileId))
+            await _db!.InvokeVoidAsync("removeFile", piece.ScoreFileId);
+        Pieces.RemoveAll(i => i.Id == piece.Id);
+        await Remove("pieces", piece.Id);
+        var logs = Logs.Where(l => l.PieceId == piece.Id).ToList();
         foreach (var l in logs)
         {
             if (deleteLogs) { Logs.Remove(l); await Remove("logs", l.Id); }
-            else l.ItemId = null;
+            else l.PieceId = null;
         }
         if (!deleteLogs && logs.Count > 0) await PutMany("logs", logs);
         Changed?.Invoke();
     }
 
     // ---------- Logs ----------
-    public IEnumerable<PracticeLog> LogsFor(string itemId) => Logs.Where(l => l.ItemId == itemId);
+    public IEnumerable<PracticeLog> LogsFor(string pieceId) => Logs.Where(l => l.PieceId == pieceId);
 
     public async Task SaveLogAsync(PracticeLog log)
     {
@@ -118,11 +118,11 @@ public class DataStore(IJSRuntime js)
         Changed?.Invoke();
     }
 
-    /// <summary>Items for pickers: most recently logged first, never-logged last (see DESIGN.md).</summary>
-    public List<PracticeItem> ItemsByRecent(bool includeArchived = false, string? keepId = null)
+    /// <summary>Pieces for pickers: most recently logged first, never-logged last (see DESIGN.md).</summary>
+    public List<Piece> PiecesByRecent(bool includeArchived = false, string? keepId = null)
     {
-        var last = Logs.Where(l => l.ItemId != null).GroupBy(l => l.ItemId!).ToDictionary(g => g.Key, g => g.Max(l => l.Date));
-        return Items.Where(i => includeArchived || !i.Archived || i.Id == keepId)
+        var last = Logs.Where(l => l.PieceId != null).GroupBy(l => l.PieceId!).ToDictionary(g => g.Key, g => g.Max(l => l.Date));
+        return Pieces.Where(i => includeArchived || !i.Archived || i.Id == keepId)
             .OrderByDescending(i => last.TryGetValue(i.Id, out var d) ? d : DateTime.MinValue).ThenBy(i => i.Name).ToList();
     }
 
@@ -167,16 +167,16 @@ public class DataStore(IJSRuntime js)
 
     // ---------- Bulk ----------
     /// <summary>Bulk upsert used by backup restore. New persisted entity? Add it here and in Backup.cs (see CLAUDE.md).</summary>
-    public async Task ImportAsync(IEnumerable<PracticeItem> items, IEnumerable<PracticeLog> logs,
+    public async Task ImportAsync(IEnumerable<Piece> pieces, IEnumerable<PracticeLog> logs,
         IEnumerable<MetronomePreset>? presets = null, IEnumerable<PracticePlan>? plans = null)
     {
-        var il = items.ToList(); var ll = logs.ToList(); var pl = presets?.ToList() ?? new(); var pp = plans?.ToList() ?? new();
-        foreach (var i in il) { Items.RemoveAll(x => x.Id == i.Id); Items.Add(i); }
+        var il = pieces.ToList(); var ll = logs.ToList(); var pl = presets?.ToList() ?? new(); var pp = plans?.ToList() ?? new();
+        foreach (var i in il) { Pieces.RemoveAll(x => x.Id == i.Id); Pieces.Add(i); }
         foreach (var l in ll) { Logs.RemoveAll(x => x.Id == l.Id); Logs.Add(l); }
         foreach (var p in pl) { Presets.RemoveAll(x => x.Id == p.Id); Presets.Add(p); }
         foreach (var p in pp) { Plans.RemoveAll(x => x.Id == p.Id); Plans.Add(p); }
-        Items.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
-        if (il.Count > 0) await PutMany("items", il);
+        Pieces.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+        if (il.Count > 0) await PutMany("pieces", il);
         if (ll.Count > 0) await PutMany("logs", ll);
         if (pl.Count > 0) await PutMany("presets", pl);
         if (pp.Count > 0) await PutMany("plans", pp);
@@ -185,8 +185,8 @@ public class DataStore(IJSRuntime js)
 
     public async Task ClearAllAsync()
     {
-        foreach (var s in new[] { "items", "logs", "presets", "files", "plans", "session" }) await _db!.InvokeVoidAsync("clear", s);
-        Items.Clear(); Logs.Clear(); Presets.Clear(); Plans.Clear();
+        foreach (var s in new[] { "pieces", "logs", "presets", "files", "plans", "session" }) await _db!.InvokeVoidAsync("clear", s);
+        Pieces.Clear(); Logs.Clear(); Presets.Clear(); Plans.Clear();
         Changed?.Invoke();
     }
 

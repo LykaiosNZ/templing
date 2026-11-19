@@ -1,4 +1,4 @@
-@* One-line summary of a plan step: number, mode icon, item (or Rest) and its timing/tempo.
+@* One-line summary of a plan step: number, mode icon, piece (or Rest) and its timing/tempo.
    Shared by the Plans list and the plan editor's collapsed rows so they read the same. *@
 @inject DataStore Store
 @inject PlanRunner Runner
@@ -12,10 +12,10 @@
     [Parameter, EditorRequired] public PlanStep Step { get; set; } = default!;
     [Parameter] public int Index { get; set; }
 
-    PracticeItem? Item => Store.GetItem(Step.ItemId);
+    Piece? Piece => Store.GetPiece(Step.PieceId);
 
-    /// <summary>A practice step whose item isn't set or no longer exists.</summary>
-    public static bool IsMissing(PlanStep s, DataStore store) => s.Kind == PlanStepKind.Item && store.GetItem(s.ItemId) == null;
+    /// <summary>A practice step whose piece isn't set or no longer exists.</summary>
+    public static bool IsMissing(PlanStep s, DataStore store) => s.Kind == PlanStepKind.Piece && store.GetPiece(s.PieceId) == null;
 
     bool Missing => IsMissing(Step, Store);
 
@@ -23,17 +23,17 @@
         : Step.Kind == PlanStepKind.Rest ? Icons.Material.Rounded.SelfImprovement
         : Step.Mode == StepMode.Timer ? Icons.Material.Rounded.HourglassBottom : Mdi.Metronome;
 
-    string IconLabel => Missing ? (Step.ItemId == null ? "No piece" : "Piece deleted")
+    string IconLabel => Missing ? (Step.PieceId == null ? "No piece" : "Piece deleted")
         : Step.Kind == PlanStepKind.Rest ? "Rest" : Step.Mode == StepMode.Timer ? "Timer" : "Metronome";
 
-    string Name => Step.Kind == PlanStepKind.Item && Step.ItemId == null ? "No piece" : Runner.Describe(Step);
+    string Name => Step.Kind == PlanStepKind.Piece && Step.PieceId == null ? "No piece" : Runner.Describe(Step);
 
     string Meta
     {
         get
         {
             var time = Step.Kind == PlanStepKind.Rest ? Stats.DurationMin(Step.Minutes) : Step.IntervalText;
-            var tempo = Step.TempoText(Item?.Unit ?? TempoUnit.Bpm);
+            var tempo = Step.TempoText(Piece?.Unit ?? TempoUnit.Bpm);
             return tempo.Length > 0 ? $"{time} · {tempo}" : time;
         }
     }

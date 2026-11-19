@@ -1,7 +1,7 @@
 @page "/metronome"
 @page "/metronome/free"
-@page "/metronome/item/{ItemId}"
-@page "/metronome/item/{ItemId}/{SectionId}"
+@page "/metronome/piece/{PieceId}"
+@page "/metronome/piece/{PieceId}/{SectionId}"
 @page "/metronome/preset/{PresetId}"
 @implements IDisposable
 @inject MetronomeService Metro
@@ -19,15 +19,15 @@
             <MudText Typo="Typo.overline" Class="muted">@SourceLabel</MudText>
         }
         <h1 class="page-title" tabindex="-1">@(Metro.Source == MetronomeSource.Free ? "Free metronome" : Metro.Title)</h1>
-        @if (Metro.Item is { } item && Metro.Source == MetronomeSource.Item)
+        @if (Metro.Piece is { } piece && Metro.Source == MetronomeSource.Piece)
         {
-            var st = Stats.ForItem(item, Store.Logs);
+            var st = Stats.ForPiece(piece, Store.Logs);
             <MudText Typo="Typo.body2" Class="muted">
-                Last @(st.Last?.ToString("0") ?? "—")@item.Unit.Suffix() · Best @(st.Best?.ToString("0") ?? "—")@item.Unit.Suffix()
-                @if (item.Goal is { } g) { <span> · Goal @g.ToString("0")@item.Unit.Suffix()</span> }
-                · <a href="library/@item.Id">View progress</a>
+                Last @(st.Last?.ToString("0") ?? "—")@piece.Unit.Suffix() · Best @(st.Best?.ToString("0") ?? "—")@piece.Unit.Suffix()
+                @if (piece.Goal is { } g) { <span> · Goal @g.ToString("0")@piece.Unit.Suffix()</span> }
+                · <a href="library/@piece.Id">View progress</a>
             </MudText>
-            <FeelHint Item="item" />
+            <FeelHint Piece="piece" />
         }
     </div>
     <div class="d-flex gap-2 flex-wrap">
@@ -44,9 +44,9 @@
             }
             <MudDivider />
             <MudText Typo="Typo.overline" Class="px-4 muted">Library</MudText>
-            @foreach (var i in Store.ItemsByRecent())
+            @foreach (var i in Store.PiecesByRecent())
             {
-                <MudMenuItem Href="@($"metronome/item/{i.Id}")" Icon="@i.Type.Icon()">@i.Name</MudMenuItem>
+                <MudMenuItem Href="@($"metronome/piece/{i.Id}")" Icon="@i.Type.Icon()">@i.Name</MudMenuItem>
             }
         </MudMenu>
         @if (Metro.Source == MetronomeSource.Preset)
@@ -111,7 +111,7 @@
                         }
                         <span> · @Metro.PlayingSection.Meter</span>
                         <span> · @SubName(Metro.PlayingSection.Subdivision)</span>
-                        @if (Metro.Source != MetronomeSource.Item && Metro.Sections.Count > 1 && Math.Abs(Metro.Factor - 1) > 0.001 && !Metro.IsRunning)
+                        @if (Metro.Source != MetronomeSource.Piece && Metro.Sections.Count > 1 && Math.Abs(Metro.Factor - 1) > 0.001 && !Metro.IsRunning)
                         {
                             <MudLink Class="ml-2" OnClick="() => Metro.ResetFactorAsync()" Typo="Typo.body2">reset ×@Metro.Factor.ToString("0.00")</MudLink>
                         }
@@ -313,15 +313,15 @@
     </MudItem>
 </MudGrid>
 
-@if (Metro.Source == MetronomeSource.Item && Metro.Item is { ScoreFileId: not null } scoreItem)
+@if (Metro.Source == MetronomeSource.Piece && Metro.Piece is { ScoreFileId: not null } scorePiece)
 {
     <div class="mt-4">
-        <TabView Item="scoreItem" Part="Metro.PlayingSection" Dark="Store.Settings.DarkMode" />
+        <TabView Piece="scorePiece" Part="Metro.PlayingSection" Dark="Store.Settings.DarkMode" />
     </div>
 }
 
 @code {
-    [Parameter] public string? ItemId { get; set; }
+    [Parameter] public string? PieceId { get; set; }
     [Parameter] public string? SectionId { get; set; }
     [Parameter] public string? PresetId { get; set; }
     string _panel = "trainer";
@@ -337,7 +337,7 @@
 
     string SourceLabel => Metro.Source switch
     {
-        MetronomeSource.Item => Metro.Item?.Type.Label() ?? "",
+        MetronomeSource.Piece => Metro.Piece?.Type.Label() ?? "",
         MetronomeSource.Preset => "Custom",
         _ => "Free"
     };
@@ -387,11 +387,11 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (ItemId != null)
+        if (PieceId != null)
         {
-            var item = Store.GetItem(ItemId);
-            if (item == null) { Nav.NavigateTo("metronome"); return; }
-            await Metro.LoadItemAsync(item, SectionId);
+            var piece = Store.GetPiece(PieceId);
+            if (piece == null) { Nav.NavigateTo("metronome"); return; }
+            await Metro.LoadPieceAsync(piece, SectionId);
         }
         else if (PresetId != null)
         {

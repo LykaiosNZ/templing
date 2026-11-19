@@ -28,12 +28,12 @@ public static partial class LogCsv
         var sb = new StringBuilder("Date,Exercise,Section,BPM/Speed,Time (min),Feel,Notes\n");
         foreach (var l in store.Logs.OrderBy(l => l.Date))
         {
-            var item = store.GetItem(l.ItemId);
-            var section = item?.Sections.FirstOrDefault(s => s.Id == l.SectionId)?.Name;
+            var piece = store.GetPiece(l.PieceId);
+            var section = piece?.Sections.FirstOrDefault(s => s.Id == l.SectionId)?.Name;
             var suf = l.Unit == TempoUnit.Percent ? "%" : "";
             var speed = l.Value is null ? "" : l.ValueMin is { } mn && mn != l.Value ? $"{mn:0} - {l.Value:0}{suf}" : $"{l.Value:0}{suf}";
             var mins = l.DurationSec is { } d ? (d / 60.0).ToString("0.#", CultureInfo.InvariantCulture) : "";
-            sb.Append($"{l.Date:dd/MM/yyyy},{Q(l.ItemName)},{Q(section)},{Q(speed)},{mins},{Q(Effort.Get(l.Effort)?.Label)},{Q(l.Notes)}\n");
+            sb.Append($"{l.Date:dd/MM/yyyy},{Q(l.PieceName)},{Q(section)},{Q(speed)},{mins},{Q(Effort.Get(l.Effort)?.Label)},{Q(l.Notes)}\n");
         }
         return sb.ToString();
     }

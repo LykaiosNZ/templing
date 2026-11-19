@@ -11,7 +11,7 @@
             <div class="d-flex justify-space-between align-center flex-wrap gap-2">
                 <MudText Typo="Typo.subtitle2">Steps (@_m.Steps.Count) · @Stats.Duration((int)(_m.TotalMinutes * 60)) total</MudText>
                 <div class="d-flex gap-2">
-                    <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Add" OnClick="AddItem">Add practice step</MudButton>
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Add" OnClick="AddPiece">Add practice step</MudButton>
                     <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.SelfImprovement" OnClick="AddRest">Add rest</MudButton>
                 </div>
             </div>
@@ -22,7 +22,7 @@
                 {
                     var idx = i;
                     var s = _m.Steps[i];
-                    var item = Store.GetItem(s.ItemId);
+                    var piece = Store.GetPiece(s.PieceId);
                     var open = _open.Contains(s.Id);
                     var missing = PlanStepSummary.IsMissing(s, Store);
                     <div class="plan-step-row @(s.Kind == PlanStepKind.Rest ? "rest" : "") @(open ? "open" : "") @(missing ? "missing" : "") @(s.Id == _dragId ? "dragging" : "")" role="listitem" @key="s.Id"
@@ -60,10 +60,10 @@
                                 }
                                 else
                                 {
-                                    <MudSelect T="string" @bind-Value="s.ItemId" @bind-Value:after="() => s.SectionId = null" Label="Piece" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="ps-item">
-                                        @foreach (var it in Store.ItemsByRecent(keepId: s.ItemId)) { <MudSelectItem T="string" Value="@it.Id">@it.Name</MudSelectItem> }
+                                    <MudSelect T="string" @bind-Value="s.PieceId" @bind-Value:after="() => s.SectionId = null" Label="Piece" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="ps-piece">
+                                        @foreach (var it in Store.PiecesByRecent(keepId: s.PieceId)) { <MudSelectItem T="string" Value="@it.Id">@it.Name</MudSelectItem> }
                                     </MudSelect>
-                                    @if (item is { } it2 && it2.Sections.Count > 1)
+                                    @if (piece is { } it2 && it2.Sections.Count > 1)
                                     {
                                         <MudSelect T="string" Value="@(s.SectionId ?? "")" ValueChanged="v => s.SectionId = string.IsNullOrEmpty(v) ? null : v" Label="Section" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="ps-part">
                                             <MudSelectItem T="string" Value="@("")">Full run-through</MudSelectItem>
@@ -82,7 +82,7 @@
                                     }
                                     @if (s.Mode == StepMode.Metronome)
                                     {
-                                        var u = item?.Unit == TempoUnit.Percent ? "%" : "bpm";
+                                        var u = piece?.Unit == TempoUnit.Percent ? "%" : "bpm";
                                         <div class="ps-tempo">
                                             <MudTooltip Text="@($"Speed trainer: {(s.Trainer ? "on" : "off")}")">
                                                 <MudIconButton Icon="@Icons.Material.Rounded.TrendingUp" Size="Size.Small" Class="@(s.Trainer ? "opt-toggle on" : "opt-toggle")" aria-label="Speed trainer"
@@ -137,12 +137,12 @@
         {
             if (string.IsNullOrWhiteSpace(_m.Name)) return "Add a name";
             if (_m.Steps.Count == 0) return "Add a step";
-            var noItem = _m.Steps.Select((s, i) => (s, i)).Where(x => x.s.Kind == PlanStepKind.Item && x.s.ItemId == null).Select(x => x.i + 1).ToList();
-            return noItem.Count switch
+            var noPiece = _m.Steps.Select((s, i) => (s, i)).Where(x => x.s.Kind == PlanStepKind.Piece && x.s.PieceId == null).Select(x => x.i + 1).ToList();
+            return noPiece.Count switch
             {
                 0 => null,
-                1 => $"Select a piece for step {noItem[0]}",
-                _ => $"Select a piece for steps {string.Join(", ", noItem.SkipLast(1))} and {noItem[^1]}"
+                1 => $"Select a piece for step {noPiece[0]}",
+                _ => $"Select a piece for steps {string.Join(", ", noPiece.SkipLast(1))} and {noPiece[^1]}"
             };
         }
     }
@@ -208,10 +208,10 @@
         if (IsNew) _m.Name = "";
     }
 
-    void AddItem()
+    void AddPiece()
     {
-        var last = _m.Steps.LastOrDefault(s => s.Kind == PlanStepKind.Item);
-        var step = new PlanStep { Kind = PlanStepKind.Item, Mode = last?.Mode ?? StepMode.Metronome, Minutes = last?.Minutes ?? 10, Rounds = last?.Rounds ?? 1, RestMin = last?.RestMin ?? 0 };
+        var last = _m.Steps.LastOrDefault(s => s.Kind == PlanStepKind.Piece);
+        var step = new PlanStep { Kind = PlanStepKind.Piece, Mode = last?.Mode ?? StepMode.Metronome, Minutes = last?.Minutes ?? 10, Rounds = last?.Rounds ?? 1, RestMin = last?.RestMin ?? 0 };
         _m.Steps.Add(step);
         OpenOnly(step);
     }
@@ -234,7 +234,7 @@
         var s = _m.Steps[i];
         var copy = new PlanStep
         {
-            Kind = s.Kind, ItemId = s.ItemId, SectionId = s.SectionId, Mode = s.Mode, Minutes = s.Minutes, Rounds = s.Rounds, RestMin = s.RestMin,
+            Kind = s.Kind, PieceId = s.PieceId, SectionId = s.SectionId, Mode = s.Mode, Minutes = s.Minutes, Rounds = s.Rounds, RestMin = s.RestMin,
             StartTempo = s.StartTempo, Trainer = s.Trainer, TrainerStart = s.TrainerStart, TrainerEnd = s.TrainerEnd
         };
         _m.Steps.Insert(i + 1, copy);

@@ -9,7 +9,7 @@ The house rules for how screens look and read. Follow them when building or chan
 - **Empty states:** a heading and the primary action, no explanatory sentence ("No plans yet" + "Create a plan").
 - **Filtered to nothing:** "No matching entries" + a "Clear filters" button. Keep "No … yet" for when there's no data at all.
 - **Pluralise** counts ("1 step", "2 steps").
-- **"Piece", never "item".** A thing in the library is a *piece* in every bit of UI text ("Add piece", "All pieces", "Select a piece for step 2"). Code and stored data keep `PracticeItem` / `ItemId`; only the words change.
+- **"Piece", never "item".** A thing in the library is a *piece* in every bit of UI text ("Add piece", "All pieces", "Select a piece for step 2"). The code, routes and stored data say piece too (`Piece`, `PieceId`).
 - **"Section", never "part".** A song is just another type of piece; don't word anything differently for songs.
 - Sentence case everywhere ("Log practice", not "Log Practice").
 
@@ -60,14 +60,14 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
   - In toolbars and compact editor rows (plan steps, sections): `Variant.Outlined`, `Margin.Dense`, `Dense="true"`, fixed width via `toolbar-select` (ellipsis on overflow).
   - In forms (dialogs, settings panels): the default variant, matching the text fields beside them.
   - **Selects whose empty value means something** ("Free practice", "Full run-through") show it as an explicit first option, not as an empty field with helper text.
-  - **Filter selects always show a value**: an explicit "All items" / "All parts" / "All time" option rather than an empty, clearable select. Empty outlined selects render their label as a placeholder, which looks different from their filled neighbours.
+  - **Filter selects always show a value**: an explicit "All pieces" / "All sections" / "All time" option rather than an empty, clearable select. Empty outlined selects render their label as a placeholder, which looks different from their filled neighbours.
   - **Period pickers are selects** (label "Period", options "Last 30 days" … "All time"), not toggle groups. Segmented toggles are for switching a panel or a mode, not for ranges.
-  - Option order: most relevant first (e.g. items by most recently logged), not alphabetical, unless the list is a fixed set.
+  - Option order: most relevant first (e.g. pieces by most recently logged), not alphabetical, unless the list is a fixed set.
 - **Hide controls that don't apply; don't disable them.** A greyed-out field ("Rest" with 1 round) makes you work out why. Show it once it applies. Disable only when the control's presence matters (e.g. Move up on the first row), and then make the reason obvious.
 - **A disabled primary button says why** next to it, phrased as what to do ("Select a piece for step 2", "Add a name"), so nothing is blocked silently.
 - **Placeholders, not defaults:** example names ("My routine") are placeholders. Don't pre-fill a value the user has to delete.
 - **Reorderable lists drag** by a grip handle (`DragIndicator`, `data-drag-handle` / `data-drag-row`, see `js/drag.js`). The list reorders live while dragging and the dragged row is outlined in accent (no browser ghost); Esc puts it back, and keep Move up / Move down buttons for keyboard and touch. Never attach a Blazor handler to `dragover` (it fires continuously and re-renders on every call); use `@ondragover:preventDefault` alone and update state on `dragenter` / `drop`.
-- **Dialogs whose content grows** (editors with add buttons: item, plan, sections, score import) open at the top (`Position = DialogPosition.TopCenter`), so adding rows grows them downwards and the add buttons stay under the pointer. Short dialogs stay centred.
+- **Dialogs whose content grows** (editors with add buttons: piece, plan, sections, score import) open at the top (`Position = DialogPosition.TopCenter`), so adding rows grows them downwards and the add buttons stay under the pointer. Short dialogs stay centred.
 - **Long editable lists collapse:** each row is a one-line summary that expands to its fields (plan steps). New rows open expanded; the summary uses the same component as the read-only view (`PlanStepSummary`).
 - **Rows that open something:** the whole row is clickable with a hover highlight. A pencil appears on hover and stays reachable by keyboard. Links inside the row still work.
 
@@ -79,7 +79,7 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 ## Colour
 
 - Use the CSS tokens (`--ink`, `--ink-2`, `--muted`, `--accent`, `--accent-soft`, `--ring`, `--card-2`, MudBlazor palette vars). No literal colours in pages.
-- Accent (orange) means primary action, current or active state. Warning (amber) means something needs attention, e.g. a step whose item was deleted. Blue is for data (chart bars, ranked bars, the practice heatmap) and for rest phases.
+- Accent (orange) means primary action, current or active state. Warning (amber) means something needs attention, e.g. a step whose piece was deleted. Blue is for data (chart bars, ranked bars, the practice heatmap) and for rest phases.
 
 ## Shared components
 
@@ -91,7 +91,7 @@ Reuse these instead of rebuilding them. When two screens show the same thing, th
 | `IntervalsEditor` | Work / rest / rounds + presets (Metronome intervals, Timer countdown) |
 | `DurationInput` | Any duration field |
 | `PlanStepSummary` | One-line plan step (Plans list, plan editor rows) |
-| `LogTable` | Practice log lists (History, Item detail) |
+| `LogTable` | Practice log lists (History, Piece detail) |
 | `StatTile` | Headline numbers (pass `Seconds` for durations so the unit words render small) |
 | `FeelHint`, `EffortSlider` | Feel / effort display and input |
 | `Charts/*` | Tempo line, bar chart, heatmap, ranked bars (`HBars Limit` for long lists with "Show all"; `BarChart Minutes` for minute values: ticks in min, whole hr once the scale is large) |

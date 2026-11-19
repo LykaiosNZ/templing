@@ -8,31 +8,31 @@
     <DialogContent>
         <MudForm @ref="_form" Class="d-flex flex-column gap-3">
             <div class="d-flex gap-3">
-                <MudSelect T="string" Label="Piece" @bind-Value="ItemPick" @bind-Value:after="OnItemChanged" AnchorOrigin="Origin.BottomCenter" Style="flex:2 1 0">
+                <MudSelect T="string" Label="Piece" @bind-Value="PiecePick" @bind-Value:after="OnPieceChanged" AnchorOrigin="Origin.BottomCenter" Style="flex:2 1 0">
                     <MudSelectItem T="string" Value="@("")">Free practice</MudSelectItem>
-                    @foreach (var i in Store.ItemsByRecent(keepId: _itemId))
+                    @foreach (var i in Store.PiecesByRecent(keepId: _pieceId))
                     {
                         <MudSelectItem T="string" Value="@i.Id">@i.Name</MudSelectItem>
                     }
                 </MudSelect>
                 <MudDatePicker Label="Date" @bind-Date="_date" DateFormat="ddd d MMM yyyy" Editable="true" MaxDate="DateTime.Today" Style="flex:1 1 0; min-width:150px" />
             </div>
-            @if (_item == null)
+            @if (_piece == null)
             {
                 <MudTextField @bind-Value="_name" Label="What did you practise?" />
             }
-            else if (_item.Sections.Count > 1)
+            else if (_piece.Sections.Count > 1)
             {
                 <MudSelect T="string" Label="Section" @bind-Value="SectionPick">
                     <MudSelectItem T="string" Value="@("")">Full run-through</MudSelectItem>
-                    @foreach (var s in _item.Sections)
+                    @foreach (var s in _piece.Sections)
                     {
                         <MudSelectItem T="string" Value="@s.Id">@s.Name (@s.Bpm.ToString("0") bpm, @s.Meter)</MudSelectItem>
                     }
                 </MudSelect>
             }
             <div class="d-flex gap-3">
-                <MudTextField @bind-Value="_tempo" Label="@($"Tempo reached{(_item != null ? $" ({(_item.Unit == TempoUnit.Percent ? "%" : "bpm")})" : "")}")"
+                <MudTextField @bind-Value="_tempo" Label="@($"Tempo reached{(_piece != null ? $" ({(_piece.Unit == TempoUnit.Percent ? "%" : "bpm")})" : "")}")"
                               Placeholder="120, 65–145 or 85%" Class="flex-1" Immediate="true" AutoFocus="true" />
                 <DurationInput Seconds="_seconds" SecondsChanged="v => _seconds = v" Nullable="true" Label="Active time" Class="flex-1" />
             </div>
@@ -47,7 +47,7 @@
             <MudSpacer />
         }
         <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save" Disabled="@(_item == null && string.IsNullOrWhiteSpace(_name))">Save</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save" Disabled="@(_piece == null && string.IsNullOrWhiteSpace(_name))">Save</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -58,12 +58,12 @@
 
     MudForm? _form;
     DateTime? _date;
-    string? _itemId, _sectionId, _name, _tempo, _notes;
+    string? _pieceId, _sectionId, _name, _tempo, _notes;
     double? _seconds;
     int? _effort;
-    PracticeItem? _item;
+    Piece? _piece;
     // selects show "Free practice" / "Full run-through" as an explicit "" option rather than an empty field
-    string ItemPick { get => _itemId ?? ""; set => _itemId = string.IsNullOrEmpty(value) ? null : value; }
+    string PiecePick { get => _pieceId ?? ""; set => _pieceId = string.IsNullOrEmpty(value) ? null : value; }
     string SectionPick { get => _sectionId ?? ""; set => _sectionId = string.IsNullOrEmpty(value) ? null : value; }
 
     public static async Task<bool> ShowAsync(IDialogService dialogs, PracticeLog log, bool isNew)
@@ -78,10 +78,10 @@
     protected override void OnInitialized()
     {
         _date = Log.Date;
-        _itemId = Log.ItemId;
-        _item = Store.GetItem(_itemId);
+        _pieceId = Log.PieceId;
+        _piece = Store.GetPiece(_pieceId);
         _sectionId = Log.SectionId;
-        _name = Log.ItemName;
+        _name = Log.PieceName;
         _notes = Log.Notes;
         _effort = Log.Effort;
         _seconds = Log.DurationSec;
@@ -92,22 +92,22 @@
         }
     }
 
-    void OnItemChanged()
+    void OnPieceChanged()
     {
-        _item = Store.GetItem(_itemId);
+        _piece = Store.GetPiece(_pieceId);
         _sectionId = null;
-        if (_item != null) _name = _item.Name;
+        if (_piece != null) _name = _piece.Name;
     }
 
     async Task Save()
     {
         var (min, max, unit) = LogCsv.ParseSpeed(_tempo);
-        if (_item != null && !(_tempo ?? "").Contains('%') && !(_tempo ?? "").Contains("bpm", StringComparison.OrdinalIgnoreCase))
-            unit = _item.Unit;
+        if (_piece != null && !(_tempo ?? "").Contains('%') && !(_tempo ?? "").Contains("bpm", StringComparison.OrdinalIgnoreCase))
+            unit = _piece.Unit;
         Log.Date = (_date ?? DateTime.Today).Date;
-        Log.ItemId = _item?.Id;
-        Log.ItemName = _item?.Name ?? _name?.Trim() ?? "Practice";
-        Log.SectionId = _item != null ? _sectionId : null;
+        Log.PieceId = _piece?.Id;
+        Log.PieceName = _piece?.Name ?? _name?.Trim() ?? "Practice";
+        Log.SectionId = _piece != null ? _sectionId : null;
         Log.Unit = unit;
         Log.Value = max;
         Log.ValueMin = min;
@@ -120,7 +120,7 @@
 
     async Task Delete()
     {
-        var ok = await Dialogs.ShowMessageBoxAsync("Delete entry?", $"{Log.ItemName} on {Stats.Day(Log.Date)} will be removed.", "Delete", cancelText: "Cancel");
+        var ok = await Dialogs.ShowMessageBoxAsync("Delete entry?", $"{Log.PieceName} on {Stats.Day(Log.Date)} will be removed.", "Delete", cancelText: "Cancel");
         if (ok != true) return;
         await Store.DeleteLogAsync(Log);
         Dialog.Close(DialogResult.Ok(Log));

@@ -10,7 +10,7 @@ public enum StepState { Ready, Running, Finished }
 public record PlanSummary(string Name, int Steps, int Done, int Logs, int LoggedSec);
 
 /// <summary>
-/// Walks through a practice plan one step at a time. Each step loads its item into the metronome
+/// Walks through a practice plan one step at a time. Each step loads its piece into the metronome
 /// (or the click-free timer) with the step's intervals pinned; rest steps run a rest countdown.
 /// When a step finishes, <see cref="StepFinished"/> fires so the UI can log it (ask or auto) and move on.
 /// The run (plan, step, progress) is saved in the "session" store so a page refresh resumes it.
@@ -51,16 +51,16 @@ public class PlanRunner
         : Plan.Steps.Skip(Index).Where(s => !Completed.Contains(s.Id)).Sum(s => s.TotalMinutes);
 
     public event Action? Changed;
-    /// <summary>An item step finished on its own; the handler should log it and then call <see cref="AdvanceAsync"/>.</summary>
+    /// <summary>An piece step finished on its own; the handler should log it and then call <see cref="AdvanceAsync"/>.</summary>
     public event Func<PlanStep, Task>? StepFinished;
 
     public string Describe(PlanStep? s)
     {
         if (s == null) return "";
         if (s.Kind == PlanStepKind.Rest) return "Rest";
-        var item = _store.GetItem(s.ItemId);
-        var part = item?.Sections.FirstOrDefault(x => x.Id == s.SectionId)?.Name;
-        return (item?.Name ?? "Missing piece") + (part != null ? $" · {part}" : "");
+        var piece = _store.GetPiece(s.PieceId);
+        var part = piece?.Sections.FirstOrDefault(x => x.Id == s.SectionId)?.Name;
+        return (piece?.Name ?? "Missing piece") + (part != null ? $" · {part}" : "");
     }
 
     public async Task StartAsync(PracticePlan plan)
@@ -162,9 +162,9 @@ public class PlanRunner
             if (autoStartRest) await StartStepAsync(); // rests start straight away
             return;
         }
-        var item = _store.GetItem(s.ItemId);
-        if (item == null) { Changed?.Invoke(); return; } // item deleted: user can skip
-        await _metro.LoadItemAsync(item, s.SectionId);
+        var piece = _store.GetPiece(s.PieceId);
+        if (piece == null) { Changed?.Invoke(); return; } // piece deleted: user can skip
+        await _metro.LoadPieceAsync(piece, s.SectionId);
         _metro.ResetSession();
         await _metro.SetStepIntervalsAsync(s.Minutes, s.RestMin, s.Rounds);
         if (s.Mode == StepMode.Metronome)
@@ -175,8 +175,8 @@ public class PlanRunner
             });
         if (navigate)
         {
-            var url = s.Mode == StepMode.Timer ? $"timer/item/{item.Id}"
-                : s.SectionId != null ? $"metronome/item/{item.Id}/{s.SectionId}" : $"metronome/item/{item.Id}";
+            var url = s.Mode == StepMode.Timer ? $"timer/piece/{piece.Id}"
+                : s.SectionId != null ? $"metronome/piece/{piece.Id}/{s.SectionId}" : $"metronome/piece/{piece.Id}";
             _nav.NavigateTo(url);
         }
         Changed?.Invoke();

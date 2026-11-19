@@ -2,7 +2,7 @@ using Songler.Models;
 
 namespace Songler.Services;
 
-public record ItemStats(
+public record PieceStats(
     int DaysPracticed,
     int TotalSec,
     int Sessions,
@@ -26,21 +26,21 @@ public static class Stats
         return d.Date.AddDays(-diff);
     }
 
-    public static ItemStats ForItem(PracticeItem item, IEnumerable<PracticeLog> allLogs, string? sectionId = null)
+    public static PieceStats ForPiece(Piece piece, IEnumerable<PracticeLog> allLogs, string? sectionId = null)
     {
-        var logs = allLogs.Where(l => l.ItemId == item.Id && (sectionId == null || l.SectionId == sectionId))
+        var logs = allLogs.Where(l => l.PieceId == piece.Id && (sectionId == null || l.SectionId == sectionId))
             .OrderBy(l => l.Date).ToList();
-        var valued = logs.Where(l => l.Value.HasValue && l.Unit == item.Unit).ToList();
+        var valued = logs.Where(l => l.Value.HasValue && l.Unit == piece.Unit).ToList();
         var last = valued.LastOrDefault();
         var first = valued.FirstOrDefault();
-        double? progress = item.Goal is > 0 && last?.Value is { } v ? v / item.Goal.Value : null;
-        // multi-part items: overall progress is the average across parts (an unpractised part counts as 0)
-        if (sectionId == null && item.HasParts())
+        double? progress = piece.Goal is > 0 && last?.Value is { } v ? v / piece.Goal.Value : null;
+        // multi-part pieces: overall progress is the average across parts (an unpractised part counts as 0)
+        if (sectionId == null && piece.HasParts())
         {
-            var parts = ForSections(item, allLogs);
+            var parts = ForSections(piece, allLogs);
             if (parts.Any(p => p.Progress.HasValue)) progress = parts.Average(p => Math.Min(1, p.Progress ?? 0));
         }
-        return new ItemStats(
+        return new PieceStats(
             logs.Select(l => l.Date.Date).Distinct().Count(),
             logs.Sum(l => l.DurationSec ?? 0),
             logs.Count,
@@ -56,26 +56,26 @@ public static class Stats
     /// Per-section status. A section's latest tempo comes from its own logs or from a whole-piece
     /// run-through (no section), whichever is more recent: playing the full song at 90% means each part was at 90%.
     /// </summary>
-    public static List<SectionStats> ForSections(PracticeItem item, IEnumerable<PracticeLog> allLogs)
+    public static List<SectionStats> ForSections(Piece piece, IEnumerable<PracticeLog> allLogs)
     {
-        var logs = allLogs.Where(l => l.ItemId == item.Id).OrderBy(l => l.Date).ToList();
-        var known = item.Sections.Select(s => s.Id).ToHashSet();
-        return item.Sections.Select(s =>
+        var logs = allLogs.Where(l => l.PieceId == piece.Id).OrderBy(l => l.Date).ToList();
+        var known = piece.Sections.Select(s => s.Id).ToHashSet();
+        return piece.Sections.Select(s =>
         {
             var own = logs.Where(l => l.SectionId == s.Id).ToList();
             var relevant = logs.Where(l => l.SectionId == s.Id || l.SectionId == null || !known.Contains(l.SectionId)).ToList();
-            var valued = relevant.Where(l => l.Value.HasValue && l.Unit == item.Unit).ToList();
+            var valued = relevant.Where(l => l.Value.HasValue && l.Unit == piece.Unit).ToList();
             var last = valued.LastOrDefault();
-            double? progress = item.Goal is > 0 && last?.Value is { } v ? v / item.Goal.Value : null;
+            double? progress = piece.Goal is > 0 && last?.Value is { } v ? v / piece.Goal.Value : null;
             return new SectionStats(s, last?.Value, valued.Count > 0 ? valued.Max(l => l.Value!.Value) : null,
                 own.LastOrDefault()?.Date, own.Count, own.Sum(l => l.DurationSec ?? 0), progress,
                 relevant.LastOrDefault(l => l.Effort.HasValue)?.Effort);
         }).ToList();
     }
 
-    /// <summary>Daily tempo points (max of the day) for an item, in the item's unit.</summary>
-    public static List<TempoPoint> TempoHistory(PracticeItem item, IEnumerable<PracticeLog> allLogs, string? sectionId = null) =>
-        allLogs.Where(l => l.ItemId == item.Id && l.Value.HasValue && l.Unit == item.Unit && (sectionId == null || l.SectionId == sectionId))
+    /// <summary>Daily tempo points (max of the day) for an piece, in the piece's unit.</summary>
+    public static List<TempoPoint> TempoHistory(Piece piece, IEnumerable<PracticeLog> allLogs, string? sectionId = null) =>
+        allLogs.Where(l => l.PieceId == piece.Id && l.Value.HasValue && l.Unit == piece.Unit && (sectionId == null || l.SectionId == sectionId))
             .GroupBy(l => l.Date.Date)
             .OrderBy(g => g.Key)
             .Select(g =>
@@ -85,9 +85,9 @@ public static class Stats
                     top.Effort ?? g.LastOrDefault(x => x.Effort.HasValue)?.Effort);
             }).ToList();
 
-    /// <summary>Most recent rated session for an item, if any.</summary>
-    public static PracticeLog? LastRated(PracticeItem item, IEnumerable<PracticeLog> allLogs) =>
-        allLogs.Where(l => l.ItemId == item.Id && l.Effort.HasValue).OrderBy(l => l.Date).LastOrDefault();
+    /// <summary>Most recent rated session for an piece, if any.</summary>
+    public static PracticeLog? LastRated(Piece piece, IEnumerable<PracticeLog> allLogs) =>
+        allLogs.Where(l => l.PieceId == piece.Id && l.Effort.HasValue).OrderBy(l => l.Date).LastOrDefault();
 
     public static Dictionary<DateTime, int> SecondsByDay(IEnumerable<PracticeLog> logs) =>
         logs.GroupBy(l => l.Date.Date).ToDictionary(g => g.Key, g => g.Sum(l => l.DurationSec ?? 0));

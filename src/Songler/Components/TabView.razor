@@ -1,4 +1,4 @@
-@* Renders an item's attached score with alphaTab. The metronome engine broadcasts each click
+@* Renders an piece's attached score with alphaTab. The metronome engine broadcasts each click
    (score bar + beat), and js/score.js moves the bar highlight and beat cursor. *@
 @implements IAsyncDisposable
 @inject ScoreImport Importer
@@ -10,11 +10,11 @@
         <div class="d-flex gap-2 align-center flex-wrap">
             @if (_tracks.Count > 1)
             {
-                <MudSelect T="int" Value="Item.ScoreTrack" ValueChanged="TrackChanged" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Label="Track" Class="toolbar-select">
+                <MudSelect T="int" Value="Piece.ScoreTrack" ValueChanged="TrackChanged" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Label="Track" Class="toolbar-select">
                     @foreach (var t in _tracks) { <MudSelectItem T="int" Value="t.Index">@t.Name</MudSelectItem> }
                 </MudSelect>
             }
-            <MudToggleGroup T="string" Value="Item.ScoreStave" ValueChanged="StaveChanged" Size="Size.Small" Outlined="true" Color="Color.Primary" aria-label="Notation">
+            <MudToggleGroup T="string" Value="Piece.ScoreStave" ValueChanged="StaveChanged" Size="Size.Small" Outlined="true" Color="Color.Primary" aria-label="Notation">
                 <MudToggleItem Value="@("tab")" Text="Tab" />
                 <MudToggleItem Value="@("score")" Text="Notation + tab" />
             </MudToggleGroup>
@@ -32,7 +32,7 @@
 </section>
 
 @code {
-    [Parameter, EditorRequired] public PracticeItem Item { get; set; } = default!;
+    [Parameter, EditorRequired] public Piece Piece { get; set; } = default!;
     /// <summary>The selected part; when it changes the tab scrolls to where that part starts.</summary>
     [Parameter] public Section? Part { get; set; }
     [Parameter] public bool Dark { get; set; } = true;
@@ -47,15 +47,15 @@
 
     protected override async Task OnAfterRenderAsync(bool first)
     {
-        if (Item.ScoreFileId == null) return;
+        if (Piece.ScoreFileId == null) return;
         try
         {
             _mod ??= await Importer.ModuleAsync();
-            if (_mountedFile != Item.ScoreFileId)
+            if (_mountedFile != Piece.ScoreFileId)
             {
-                _mountedFile = Item.ScoreFileId;
+                _mountedFile = Piece.ScoreFileId;
                 _lastOpts = "";
-                var ok = await _mod.InvokeAsync<bool>("mount", _hostId, Item.ScoreFileId, Opts());
+                var ok = await _mod.InvokeAsync<bool>("mount", _hostId, Piece.ScoreFileId, Opts());
                 _tracks = ok ? await TrackList() : new();
                 _ready = ok;
                 _error = ok ? null : "The score file for this piece wasn't found in this browser. Re-import it from the piece editor.";
@@ -78,7 +78,7 @@
         return System.Text.Json.JsonSerializer.Deserialize<List<ScoreTrackInfo>>(json, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
     }
 
-    object Opts() => new { track = Item.ScoreTrack, stave = Item.ScoreStave, start = 0, count = -1, dark = Dark };
+    object Opts() => new { track = Piece.ScoreTrack, stave = Piece.ScoreStave, start = 0, count = -1, dark = Dark };
 
     async Task Push()
     {
@@ -88,15 +88,15 @@
         await _mod.InvokeVoidAsync("update", _hostId, Opts());
     }
 
-    async Task TrackChanged(int t) { Item.ScoreTrack = t; await Save(); }
-    async Task StaveChanged(string s) { Item.ScoreStave = s; await Save(); }
+    async Task TrackChanged(int t) { Piece.ScoreTrack = t; await Save(); }
+    async Task StaveChanged(string s) { Piece.ScoreStave = s; await Save(); }
 
     async Task Save()
     {
-        // persist the viewing preference on the stored item too (the metronome may hold a copy)
-        var stored = Store.GetItem(Item.Id);
-        if (stored != null && !ReferenceEquals(stored, Item)) { stored.ScoreTrack = Item.ScoreTrack; stored.ScoreStave = Item.ScoreStave; }
-        await Store.SaveItemAsync(stored ?? Item);
+        // persist the viewing preference on the stored piece too (the metronome may hold a copy)
+        var stored = Store.GetPiece(Piece.Id);
+        if (stored != null && !ReferenceEquals(stored, Piece)) { stored.ScoreTrack = Piece.ScoreTrack; stored.ScoreStave = Piece.ScoreStave; }
+        await Store.SavePieceAsync(stored ?? Piece);
     }
 
     public async ValueTask DisposeAsync()

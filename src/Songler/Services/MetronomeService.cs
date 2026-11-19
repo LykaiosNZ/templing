@@ -4,7 +4,7 @@ using Songler.Models;
 
 namespace Songler.Services;
 
-public enum MetronomeSource { Free, Item, Preset }
+public enum MetronomeSource { Free, Piece, Preset }
 
 public class EngineState
 {
@@ -46,14 +46,14 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     private readonly List<DateTime> _taps = new();
 
     public MetronomeSource Source { get; private set; } = MetronomeSource.Free;
-    public PracticeItem? Item { get; private set; }
+    public Piece? Piece { get; private set; }
     public MetronomePreset? Preset { get; private set; }
     public List<Section> Sections { get; private set; } = new() { new Section { Name = "Click", Bpm = 100 } };
     public bool PlayThrough { get; set; }
     public bool Loop { get; set; } = true;
     public int CurrentStep { get; private set; }
     public double Factor { get; private set; } = 1;
-    public TempoUnit Unit => Source == MetronomeSource.Item && Item != null ? Item.Unit : TempoUnit.Bpm;
+    public TempoUnit Unit => Source == MetronomeSource.Piece && Piece != null ? Piece.Unit : TempoUnit.Bpm;
     public MetronomeSettings Settings => store.Settings.Metronome;
     public EngineState State { get; private set; } = new();
     public bool IsRunning => State.running;
@@ -155,7 +155,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
 
     public string Title => Source switch
     {
-        MetronomeSource.Item => Item?.Name ?? "Piece",
+        MetronomeSource.Piece => Piece?.Name ?? "Piece",
         MetronomeSource.Preset => Preset?.Name ?? "Preset",
         _ => "Metronome"
     };
@@ -186,8 +186,8 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     // ------------------------------------------------------------ loading
     private void LoadFreeInternal()
     {
-        Source = MetronomeSource.Free; Item = null; Preset = null;
-        // the free metronome is a single click: tempo maps belong to custom metronomes and items
+        Source = MetronomeSource.Free; Piece = null; Preset = null;
+        // the free metronome is a single click: tempo maps belong to custom metronomes and pieces
         Sections = [store.Settings.FreeSections.FirstOrDefault() ?? new Section { Name = "Click", Bpm = 100 }];
         PlayThrough = false;
         CurrentStep = 0; Factor = 1;
@@ -202,23 +202,23 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         await PushConfig();
     }
 
-    public async Task LoadItemAsync(PracticeItem item, string? sectionId = null)
+    public async Task LoadPieceAsync(Piece piece, string? sectionId = null)
     {
-        if (Source == MetronomeSource.Item && Item?.Id == item.Id)
+        if (Source == MetronomeSource.Piece && Piece?.Id == piece.Id)
         {
-            if (sectionId != null) await SetStepAsync(Math.Max(0, Item.Sections.FindIndex(s => s.Id == sectionId)));
+            if (sectionId != null) await SetStepAsync(Math.Max(0, Piece.Sections.FindIndex(s => s.Id == sectionId)));
             return;
         }
         await StopAsync();
-        Source = MetronomeSource.Item; Item = item; Preset = null;
-        Sections = item.Sections.Count > 0 ? item.Sections.Select(s => s.Clone()).ToList() : [new Section()];
+        Source = MetronomeSource.Piece; Piece = piece; Preset = null;
+        Sections = piece.Sections.Count > 0 ? piece.Sections.Select(s => s.Clone()).ToList() : [new Section()];
         PlayThrough = false;
         CurrentStep = sectionId == null ? 0 : Math.Max(0, Sections.FindIndex(s => s.Id == sectionId));
-        var stats = Stats.ForItem(item, store.Logs);
-        var start = stats.Last ?? (item.Unit == TempoUnit.Percent ? 80 : RefSection.Bpm);
+        var stats = Stats.ForPiece(piece, store.Logs);
+        var start = stats.Last ?? (piece.Unit == TempoUnit.Percent ? 80 : RefSection.Bpm);
         Factor = ToFactor(start);
         var tr = Training;
-        tr.End = Math.Round(stats.Last ?? item.Goal ?? start);
+        tr.End = Math.Round(stats.Last ?? piece.Goal ?? start);
         tr.Start = Math.Round(tr.End * 0.85);
         ResetSession();
         await PushConfig();
@@ -227,7 +227,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     public async Task LoadPresetAsync(MetronomePreset p)
     {
         await StopAsync();
-        Source = MetronomeSource.Preset; Preset = p; Item = null;
+        Source = MetronomeSource.Preset; Preset = p; Piece = null;
         Sections = p.Sections.Select(s => s.Clone()).ToList();
         if (Sections.Count == 0) Sections.Add(new Section());
         PlayThrough = p.PlayThrough;
@@ -288,7 +288,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     public async Task SetValueAsync(double value)
     {
         value = Math.Clamp(Math.Round(value), Min, Max);
-        if (Source != MetronomeSource.Item && Sections.Count == 1)
+        if (Source != MetronomeSource.Piece && Sections.Count == 1)
         {
             // single-section free metronome: tempo *is* the section tempo
             Sections[0].Bpm = value; Factor = 1;
@@ -312,7 +312,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         var avg = (_taps[^1] - _taps[0]).TotalSeconds / (_taps.Count - 1);
         var bpm = 60 / avg;
         var value = Unit == TempoUnit.Percent ? bpm / RefSection.Bpm * 100 : bpm;
-        if (Source != MetronomeSource.Item && Sections.Count > 1) value = bpm; // relative to ref section
+        if (Source != MetronomeSource.Piece && Sections.Count > 1) value = bpm; // relative to ref section
         await SetValueAsync(value);
     }
 
@@ -411,7 +411,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
             if (Training.Enabled)
             {
                 // keep where the ramp got to
-                if (Source != MetronomeSource.Item && Sections.Count == 1)
+                if (Source != MetronomeSource.Piece && Sections.Count == 1)
                 {
                     Sections[0].Bpm = Math.Round(Sections[0].Bpm * s.factor);
                     Factor = 1;
@@ -437,16 +437,16 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
 
     public PracticeLog BuildSessionLog()
     {
-        var item = Source == MetronomeSource.Item ? Item : null;
+        var piece = Source == MetronomeSource.Piece ? Piece : null;
         var max = SessionMax ?? Value;
         var min = SessionMin;
         return new PracticeLog
         {
             Date = DateTime.Today,
-            ItemId = item?.Id,
-            ItemName = item?.Name ?? (Preset?.Name ?? "Metronome"),
+            PieceId = piece?.Id,
+            PieceName = piece?.Name ?? (Preset?.Name ?? "Metronome"),
             // timer mode usually means playing along to the whole song: default to a full run-through
-            SectionId = item != null && item.Sections.Count > 1 && !PlayThrough && !Silent ? RefSection.Id : null,
+            SectionId = piece != null && piece.Sections.Count > 1 && !PlayThrough && !Silent ? RefSection.Id : null,
             Unit = Unit,
             // timer mode has no click, so there's no tempo to record (type it in if you know it)
             Value = Silent ? null : Math.Round(max),

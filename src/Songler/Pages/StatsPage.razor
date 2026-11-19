@@ -19,8 +19,8 @@
 <div class="tiles">
     <StatTile Label="Practice time" Seconds="_totalSec" Icon="@Icons.Material.Rounded.Timer" Sub="@($"avg {Stats.Duration((int)(_totalSec / Math.Max(1, _spanDays / 7.0)))} a week")" />
     <StatTile Label="Days practised" Value="@_days.ToString()" Icon="@Icons.Material.Rounded.CalendarMonth" Sub="@(_spanDays > 0 ? $"{(double)_days / _spanDays:P0} of days" : null)" />
-    <StatTile Label="Avg per day" Seconds="_timedDays > 0 ? _totalSec / _timedDays : 0" Icon="@Icons.Material.Rounded.AvTimer" Sub="@(_days > 0 ? $"{_itemsPerDay:0.#} piece{(Math.Round(_itemsPerDay, 1) == 1 ? "" : "s")} a day" : null)" />
-    <StatTile Label="Pieces practised" Value="@_itemCount.ToString()" Icon="@Icons.Material.Rounded.LibraryMusic" Sub="@($"{_logs.Count} entries")" />
+    <StatTile Label="Avg per day" Seconds="_timedDays > 0 ? _totalSec / _timedDays : 0" Icon="@Icons.Material.Rounded.AvTimer" Sub="@(_days > 0 ? $"{_piecesPerDay:0.#} piece{(Math.Round(_piecesPerDay, 1) == 1 ? "" : "s")} a day" : null)" />
+    <StatTile Label="Pieces practised" Value="@_pieceCount.ToString()" Icon="@Icons.Material.Rounded.LibraryMusic" Sub="@($"{_logs.Count} entries")" />
     <StatTile Label="Longest streak" Value="@_streak.longest.ToString()" Unit=" days" Icon="@Icons.Material.Rounded.LocalFireDepartment" Sub="@($"Current {_streak.current} day{(_streak.current == 1 ? "" : "s")}")" />
 </div>
 
@@ -47,7 +47,7 @@
     <MudItem xs="12" md="6" lg="4">
         <section class="card">
             <h2 class="card-title">Time by piece</h2>
-            <HBars Rows="_byItem" Limit="8" AriaLabel="Practice time by piece" />
+            <HBars Rows="_byPiece" Limit="8" AriaLabel="Practice time by piece" />
         </section>
     </MudItem>
     <MudItem xs="12" md="6" lg="4">
@@ -75,15 +75,15 @@
 @code {
     int _period = 90;
     List<PracticeLog> _logs = new();
-    int _totalSec, _days, _timedDays, _itemCount, _spanDays, _goalsReached;
+    int _totalSec, _days, _timedDays, _pieceCount, _spanDays, _goalsReached;
     DateTime _from = DateTime.Today;
     (int current, int longest) _streak;
     Dictionary<DateTime, int> _byDayAll = new();
     HashSet<DateTime> _practicedAll = new();
-    double _itemsPerDay;
+    double _piecesPerDay;
     List<string> _weekLabels = new(), _weekTips = new(), _dowLabels = new();
     List<double> _weekValues = new(), _dowValues = new();
-    List<HBars.Row> _byItem = new(), _gains = new(), _progress = new(), _byType = new();
+    List<HBars.Row> _byPiece = new(), _gains = new(), _progress = new(), _byType = new();
 
     protected override void OnInitialized() { Store.Changed += OnChanged; Refresh(); }
     void OnChanged() { Refresh(); InvokeAsync(StateHasChanged); }
@@ -98,12 +98,12 @@
         var days = Stats.DaysPracticed(_logs);
         _days = days.Count;
         _timedDays = _logs.Where(l => l.DurationSec > 0).Select(l => l.Date.Date).Distinct().Count();
-        _itemCount = _logs.Select(l => l.ItemName).Distinct().Count();
+        _pieceCount = _logs.Select(l => l.PieceName).Distinct().Count();
         _streak = Stats.Streaks(Store.Logs, today);
         _from = from.Date;
         _byDayAll = Stats.SecondsByDay(Store.Logs);
         _practicedAll = Stats.DaysPracticed(Store.Logs);
-        _itemsPerDay = _logs.GroupBy(l => l.Date.Date).Select(g => g.Select(l => l.ItemName).Distinct().Count()).DefaultIfEmpty(0).Average();
+        _piecesPerDay = _logs.GroupBy(l => l.Date.Date).Select(g => g.Select(l => l.PieceName).Distinct().Count()).DefaultIfEmpty(0).Average();
 
         var weeks = Stats.WeeklySeconds(_logs, today, Math.Clamp((int)Math.Ceiling(_spanDays / 7.0), 4, 104));
         _weekLabels = Stats.WeekLabels(weeks);
@@ -114,32 +114,32 @@
         _dowLabels = order.Select(d => d.ToString()[..3]).ToList();
         _dowValues = order.Select(d => (double)days.Count(x => x.DayOfWeek == d)).ToList();
 
-        _byItem = _logs.GroupBy(l => (l.ItemId, l.ItemName))
+        _byPiece = _logs.GroupBy(l => (l.PieceId, l.PieceName))
             .Select(g => (g.Key, sec: g.Sum(l => l.DurationSec ?? 0)))
             .Where(x => x.sec > 0).OrderByDescending(x => x.sec).Take(12)
-            .Select(x => new HBars.Row(x.Key.ItemName, x.sec, Stats.Duration(x.sec), x.Key.ItemId != null ? $"library/{x.Key.ItemId}" : null)).ToList();
+            .Select(x => new HBars.Row(x.Key.PieceName, x.sec, Stats.Duration(x.sec), x.Key.PieceId != null ? $"library/{x.Key.PieceId}" : null)).ToList();
 
-        _byType = _logs.GroupBy(l => Store.GetItem(l.ItemId)?.Type.Label() ?? "Free practice")
+        _byType = _logs.GroupBy(l => Store.GetPiece(l.PieceId)?.Type.Label() ?? "Free practice")
             .Select(g => (g.Key, sec: g.Sum(l => l.DurationSec ?? 0))).Where(x => x.sec > 0).OrderByDescending(x => x.sec)
             .Select(x => new HBars.Row(x.Key, x.sec, Stats.Duration(x.sec))).ToList();
 
         _gains = new();
         _progress = new();
         _goalsReached = 0;
-        foreach (var item in Store.Items)
+        foreach (var piece in Store.Pieces)
         {
-            var pts = _logs.Where(l => l.ItemId == item.Id && l.Unit == item.Unit && l.Value.HasValue).OrderBy(l => l.Date).ToList();
+            var pts = _logs.Where(l => l.PieceId == piece.Id && l.Unit == piece.Unit && l.Value.HasValue).OrderBy(l => l.Date).ToList();
             if (pts.Count >= 2)
             {
                 var first = pts[0].Value!.Value; var best = pts.Max(p => p.Value!.Value);
                 var gain = best - first;
-                if (gain > 0) _gains.Add(new HBars.Row(item.Name, first > 0 ? gain / first : 0, $"{first:0} → {best:0}{item.Unit.Suffix()} (+{(first > 0 ? gain / first : 0):P0})", $"library/{item.Id}"));
+                if (gain > 0) _gains.Add(new HBars.Row(piece.Name, first > 0 ? gain / first : 0, $"{first:0} → {best:0}{piece.Unit.Suffix()} (+{(first > 0 ? gain / first : 0):P0})", $"library/{piece.Id}"));
             }
-            var st = Stats.ForItem(item, Store.Logs);
-            if (!item.Archived && st.Progress is { } p && st.LastDate >= from)
+            var st = Stats.ForPiece(piece, Store.Logs);
+            if (!piece.Archived && st.Progress is { } p && st.LastDate >= from)
             {
                 if (p >= 1) _goalsReached++;
-                else _progress.Add(new HBars.Row(item.Name, p, $"{p:P0}", $"library/{item.Id}"));
+                else _progress.Add(new HBars.Row(piece.Name, p, $"{p:P0}", $"library/{piece.Id}"));
             }
         }
         _gains = _gains.OrderByDescending(g => g.Value).Take(10).ToList();

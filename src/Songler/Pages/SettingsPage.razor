@@ -67,7 +67,7 @@
     {
         if (Restored == 1)
         {
-            Snackbar.Add($"Backup restored, including settings. You now have {Store.Items.Count} pieces and {Store.Logs.Count} log entries.", Severity.Success);
+            Snackbar.Add($"Backup restored, including settings. You now have {Store.Pieces.Count} pieces and {Store.Logs.Count} log entries.", Severity.Success);
             Nav.NavigateTo("settings", replace: true);
         }
     }

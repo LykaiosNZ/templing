@@ -24,7 +24,7 @@
                   Immediate="true" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="search-box" InputId="library-search" aria-label="Search library" />
     <MudChipSet T="string" @bind-SelectedValue="_type" @bind-SelectedValue:after="Refresh" SelectionMode="SelectionMode.SingleSelection" CheckMark="false" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" aria-label="Filter by type">
         <MudChip T="string" Value="@("all")" Default="true">All</MudChip>
-        @foreach (var t in ItemTypeExt.Ordered)
+        @foreach (var t in PieceTypeExt.Ordered)
         {
             <MudChip T="string" Value="@t.ToString()" Icon="@t.Icon()">@t.Label()</MudChip>
         }
@@ -41,7 +41,7 @@
     </div>
 </div>
 
-@if (Store.Items.Count == 0)
+@if (Store.Pieces.Count == 0)
 {
     <div class="empty-state">
         <MudIcon Icon="@Icons.Material.Rounded.LibraryMusic" Style="font-size:3rem" />
@@ -52,14 +52,14 @@
 }
 else
 {
-    <div class="item-grid" role="list">
+    <div class="piece-grid" role="list">
         @foreach (var row in _rows)
         {
-            var item = row.Item; var st = row.Stats;
-            <article class="item-card @(item.Archived ? "archived" : "")" role="listitem">
-                <a class="item-card-link" href="library/@item.Id" aria-label="@($"{item.Name} details")">
-                    <div class="item-card-top">
-                        <span class="type-pill type-@item.Type"><MudIcon Icon="@item.Type.Icon()" Size="Size.Small" />@item.Type.Label()</span>
+            var piece = row.Piece; var st = row.Stats;
+            <article class="piece-card @(piece.Archived ? "archived" : "")" role="listitem">
+                <a class="piece-card-link" href="library/@piece.Id" aria-label="@($"{piece.Name} details")">
+                    <div class="piece-card-top">
+                        <span class="type-pill type-@piece.Type"><MudIcon Icon="@piece.Type.Icon()" Size="Size.Small" />@piece.Type.Label()</span>
                         <span class="card-top-right">
                             @if (Effort.Get(row.Feel?.Effort) is { } feel)
                             {
@@ -73,22 +73,22 @@ else
                             }
                         </span>
                     </div>
-                    <h2 class="item-name">@item.Name</h2>
-                    <div class="item-tempo">
+                    <h2 class="piece-name">@piece.Name</h2>
+                    <div class="piece-tempo">
                         @if (st.Sessions == 0)
                         {
                             <span class="not-started">Not started yet</span>
-                            @if (item.Goal is { } g0)
+                            @if (piece.Goal is { } g0)
                             {
-                                <span class="muted"> · goal @g0.ToString("0")@item.Unit.Suffix()</span>
+                                <span class="muted"> · goal @g0.ToString("0")@piece.Unit.Suffix()</span>
                             }
                         }
                         else
                         {
-                            <span class="big">@(st.Last?.ToString("0") ?? "—")</span><span class="muted">@(st.Last.HasValue ? item.Unit.Suffix() : "")</span>
-                            @if (item.Goal is { } g)
+                            <span class="big">@(st.Last?.ToString("0") ?? "—")</span><span class="muted">@(st.Last.HasValue ? piece.Unit.Suffix() : "")</span>
+                            @if (piece.Goal is { } g)
                             {
-                                <span class="muted"> / @g.ToString("0")@item.Unit.Suffix()</span>
+                                <span class="muted"> / @g.ToString("0")@piece.Unit.Suffix()</span>
                             }
                         }
                     </div>
@@ -109,25 +109,25 @@ else
                     }
                     @if (st.Sessions > 0)
                     {
-                        <div class="item-meta">
+                        <div class="piece-meta">
                             <span>@(st.Progress is { } p ? $"{p:P0}" : "No goal")@(row.Parts is { Count: > 1 } pc ? $" · {pc.Count} sections" : "")</span>
                             <span>@(st.Sessions == 1 ? "1 session" : $"{st.Sessions} sessions") · @Stats.Duration(st.TotalSec)</span>
                         </div>
                     }
                 </a>
-                <div class="item-card-actions">
+                <div class="piece-card-actions">
                     <MudTooltip Text="Practise with metronome">
-                        <MudIconButton Size="Size.Small" Icon="@Mdi.Metronome" Color="Color.Primary" Href="@($"metronome/item/{item.Id}")" aria-label="@($"Practise {item.Name} with the metronome")" />
+                        <MudIconButton Size="Size.Small" Icon="@Mdi.Metronome" Color="Color.Primary" Href="@($"metronome/piece/{piece.Id}")" aria-label="@($"Practise {piece.Name} with the metronome")" />
                     </MudTooltip>
                     <MudTooltip Text="Practise with timer (no click)">
-                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.HourglassBottom" Color="Color.Primary" Href="@($"timer/item/{item.Id}")" aria-label="@($"Practise {item.Name} with the timer")" />
+                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.HourglassBottom" Color="Color.Primary" Href="@($"timer/piece/{piece.Id}")" aria-label="@($"Practise {piece.Name} with the timer")" />
                     </MudTooltip>
                     <MudSpacer />
                     <MudTooltip Text="Log practice">
-                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.AddTask" aria-label="@($"Log practice for {item.Name}")" OnClick="() => Log(item)" />
+                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.AddTask" aria-label="@($"Log practice for {piece.Name}")" OnClick="() => Log(piece)" />
                     </MudTooltip>
                     <MudTooltip Text="Edit">
-                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit {item.Name}")" OnClick="() => Edit(item)" />
+                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit {piece.Name}")" OnClick="() => Edit(piece)" />
                     </MudTooltip>
                 </div>
             </article>
@@ -142,7 +142,7 @@ else
     string? _type = "all";
     string _sort = "recent";
     bool _showArchived;
-    record Row(PracticeItem Item, ItemStats Stats, PracticeLog? Feel, List<SectionStats>? Parts);
+    record Row(Piece Piece, PieceStats Stats, PracticeLog? Feel, List<SectionStats>? Parts);
     List<Row> _rows = new();
     IDisposable? _keys;
 
@@ -157,44 +157,44 @@ else
 
     void Refresh()
     {
-        var q = Store.Items.Where(i => _showArchived || !i.Archived);
+        var q = Store.Pieces.Where(i => _showArchived || !i.Archived);
         if (!string.IsNullOrWhiteSpace(_search)) q = q.Where(i => i.Name.Contains(_search, StringComparison.OrdinalIgnoreCase));
         if (_type is { } t && t != "all") q = q.Where(i => i.Type.ToString() == t);
-        var rows = q.Select(i => new Row(i, Stats.ForItem(i, Store.Logs), Stats.LastRated(i, Store.Logs),
+        var rows = q.Select(i => new Row(i, Stats.ForPiece(i, Store.Logs), Stats.LastRated(i, Store.Logs),
             i.HasParts() ? Stats.ForSections(i, Store.Logs) : null));
         _rows = (_sort switch
         {
-            "name" => rows.OrderBy(r => r.Item.Name),
+            "name" => rows.OrderBy(r => r.Piece.Name),
             "progress" => rows.OrderByDescending(r => r.Stats.Progress ?? -1),
             "time" => rows.OrderByDescending(r => r.Stats.TotalSec),
-            _ => rows.OrderByDescending(r => r.Stats.LastDate ?? DateTime.MinValue).ThenBy(r => r.Item.Name)
+            _ => rows.OrderByDescending(r => r.Stats.LastDate ?? DateTime.MinValue).ThenBy(r => r.Piece.Name)
         }).ToList();
     }
 
     async Task Add()
     {
-        var item = await ItemDialog.ShowAsync(Dialogs);
-        if (item != null) Nav.NavigateTo($"library/{item.Id}");
+        var piece = await PieceDialog.ShowAsync(Dialogs);
+        if (piece != null) Nav.NavigateTo($"library/{piece.Id}");
     }
 
-    async Task Edit(PracticeItem item) => await ItemDialog.ShowAsync(Dialogs, item);
+    async Task Edit(Piece piece) => await PieceDialog.ShowAsync(Dialogs, piece);
 
     async Task ImportScore()
     {
         var r = await ScoreImportDialog.ShowAsync(Dialogs, forExisting: false);
         if (r == null) return;
-        var item = new PracticeItem
+        var piece = new Piece
         {
-            Name = r.Name, Type = ItemType.Song, Unit = TempoUnit.Percent, Goal = 100,
+            Name = r.Name, Type = PieceType.Song, Unit = TempoUnit.Percent, Goal = 100,
             Sections = r.Sections, ScoreFileId = r.FileId, ScoreFileName = r.FileName, ScoreTrack = r.Track,
             Notes = string.IsNullOrWhiteSpace(r.Artist) ? null : r.Artist.Trim()
         };
-        await Store.SaveItemAsync(item);
-        Nav.NavigateTo($"library/{item.Id}");
+        await Store.SavePieceAsync(piece);
+        Nav.NavigateTo($"library/{piece.Id}");
     }
 
-    async Task Log(PracticeItem item) =>
-        await LogDialog.ShowAsync(Dialogs, new PracticeLog { ItemId = item.Id, ItemName = item.Name, Unit = item.Unit }, true);
+    async Task Log(Piece piece) =>
+        await LogDialog.ShowAsync(Dialogs, new PracticeLog { PieceId = piece.Id, PieceName = piece.Name, Unit = piece.Unit }, true);
 
     public void Dispose() { Store.Changed -= OnStoreChanged; _keys?.Dispose(); }
 }

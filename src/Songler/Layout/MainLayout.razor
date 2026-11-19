@@ -160,7 +160,7 @@
     private async Task QuickLog()
     {
         var log = new PracticeLog { Date = DateTime.Today };
-        if (Metro.Source == MetronomeSource.Item && Metro.Item != null) { log = Metro.BuildSessionLog(); }
+        if (Metro.Source == MetronomeSource.Piece && Metro.Piece != null) { log = Metro.BuildSessionLog(); }
         if (await LogDialog.ShowAsync(Dialogs, log, isNew: true)) Snackbar.Add("Practice logged", Severity.Success);
     }
 
