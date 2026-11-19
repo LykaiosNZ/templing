@@ -11,6 +11,7 @@ dotnet build src/Songler/Songler.csproj
 dotnet run --project src/Songler/Songler.csproj --launch-profile http   # http://localhost:5075
 ```
 
+- The `http` profile listens on all interfaces (`0.0.0.0:5075`), so other devices on the network can open `http://<this machine's IP>:5075`. Each address is its own origin with its own IndexedDB data, so the LAN address starts empty (use backup/restore to copy data across).
 - The dev server does **not** hot-reload: restart it after C# / Razor / JS / CSS changes (static files are served from a build manifest, so even CSS edits need a build + restart) (`.claude/launch.json` has the `songler` preview config).
 - There is no test project. Verify changes in the browser, and use clearly named throwaway fixtures (e.g. ids prefixed `zztest-`). Remove them afterwards and never touch the user's real data in the browser.
 
