@@ -363,7 +363,7 @@ code { font-family: var(--mono); font-size: .85em; background: var(--card-2); pa
 
 /* score import preview */
 .import-parts { display: flex; flex-direction: column; gap: 6px; max-height: 46vh; overflow-y: auto; padding-right: 4px; }
-.import-part { display: grid; grid-template-columns: minmax(160px, 1fr) 70px 110px 130px auto; gap: 10px; align-items: center; }
+.import-part { display: grid; grid-template-columns: minmax(160px, 1fr) 64px 88px 150px auto; gap: 10px; align-items: center; }
 .import-part .ip-meta { font-size: .8rem; color: var(--mud-palette-text-secondary); white-space: nowrap; }
 .import-part .ip-actions { display: flex; }
 .import-part .mud-input-control { margin-top: 0; }
@@ -515,7 +515,7 @@ code { font-family: var(--mono); font-size: .85em; background: var(--card-2); pa
 /* split button: MudButtonGroup + MudMenu. The group only restyles direct MudButton children,
    so make the menu's arrow match the main button (height, width, colour, divider, corners). */
 .split-button { align-items: stretch; }
-.split-button > .mud-menu { display: flex; align-self: stretch; }
+.split-button > .mud-menu, .split-button > .mud-tooltip-root, .split-button > .mud-tooltip-root > .mud-menu { display: flex; align-self: stretch; }
 .split-button .mud-menu-icon-button-activator {
     height: auto; align-self: stretch; width: 34px; padding: 0; border-radius: 0 var(--mud-default-borderradius) var(--mud-default-borderradius) 0;
     background: var(--mud-palette-primary); color: var(--mud-palette-primary-text);

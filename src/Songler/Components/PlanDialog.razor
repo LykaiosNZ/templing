@@ -34,7 +34,7 @@
                             </MudSelect>
                             @if (item is { } it2 && it2.Sections.Count > 1)
                             {
-                                <MudSelect T="string" @bind-Value="s.SectionId" Label="@(it2.Type == ItemType.Song ? "Part" : "Section")" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="ps-part">
+                                <MudSelect T="string" @bind-Value="s.SectionId" Label="Section" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="ps-part">
                                     @foreach (var sec in it2.Sections) { <MudSelectItem T="string" Value="@sec.Id">@sec.Name</MudSelectItem> }
                                 </MudSelect>
                             }

@@ -7,7 +7,8 @@
     </TitleContent>
     <DialogContent>
         <div class="d-flex flex-column gap-4">
-            <MudTextField @bind-Value="_m.Name" Label="Name" AutoFocus="true" Immediate="true" OnBlur="() => _nameTouched = true"
+            @* the error shows once the name has been typed and cleared, or Save was pressed; not on open or when focus moves *@
+            <MudTextField T="string" Value="_m.Name" ValueChanged="v => { _m.Name = v; _nameTouched = true; }" Label="Name" AutoFocus="true" Immediate="true"
                           Error="@(_nameTouched && string.IsNullOrWhiteSpace(_m.Name))" ErrorText="Enter a name" />
             <div>
                 <MudText Typo="Typo.subtitle2" Class="mb-1">Type</MudText>
@@ -25,7 +26,7 @@
                     <MudText Typo="Typo.subtitle2" Class="mb-1">Measure progress in</MudText>
                     <MudToggleGroup T="TempoUnit" @bind-Value="_m.Unit" Color="Color.Primary" Size="Size.Small" Outlined="true" CheckMark="true" Style="width:320px">
                         <MudToggleItem Value="TempoUnit.Bpm" Text="BPM" />
-                        <MudToggleItem Value="TempoUnit.Percent" Text="% of song tempo" />
+                        <MudToggleItem Value="TempoUnit.Percent" Text="% of full tempo" />
                     </MudToggleGroup>
                 </div>
                 <MudNumericField T="double?" @bind-Value="_m.Goal" Label="@($"Goal ({(_m.Unit == TempoUnit.Percent ? "%" : "bpm")})")" Min="1" Max="400" Style="max-width:160px" />
@@ -39,12 +40,12 @@
                         <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Rounded.MusicNote" OnClose="DetachScore">@_m.ScoreFileName</MudChip>
                     }
                     <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.QueueMusic" OnClick="ImportScore">
-                        @(_m.ScoreFileId == null ? "Import parts from Guitar Pro…" : "Re-import from score file…")
+                        @(_m.ScoreFileId == null ? ScoreImportDialog.Title + "…" : "Re-import from score file…")
                     </MudButton>
                 </div>
                 @if (_m.Type == ItemType.Song)
                 {
-                    <div class="d-flex flex-wrap gap-1 mb-2 align-center" role="group" aria-label="Add a song part">
+                    <div class="d-flex flex-wrap gap-1 mb-2 align-center" role="group" aria-label="Add a section">
                         @foreach (var part in ItemTypeExt.SongParts)
                         {
                             var name = part;
@@ -52,7 +53,7 @@
                         }
                     </div>
                 }
-                <SectionsEditor Sections="_m.Sections" BpmLabel="@(_m.Unit == TempoUnit.Percent ? "Song BPM" : "BPM")" OnChanged="StateHasChanged" />
+                <SectionsEditor Sections="_m.Sections" BpmLabel="@(_m.Unit == TempoUnit.Percent ? "Full BPM" : "BPM")" OnChanged="StateHasChanged" />
             </div>
             <MudTextField @bind-Value="_m.Link" Label="Link" />
             <MudTextField @bind-Value="_m.Notes" Label="Notes" Lines="2" Sizing="InputSizing.Auto" MaxLines="8" />
@@ -122,7 +123,9 @@
 
     async Task ImportScore()
     {
-        var r = await ScoreImportDialog.ShowAsync(Dialogs, forExisting: true);
+        // only warn about replacing sections when there's something real to replace
+        var replacing = !IsNew || _m.ScoreFileId != null || _m.Sections.Count > 1 || _m.Sections.FirstOrDefault()?.Name != "Main";
+        var r = await ScoreImportDialog.ShowAsync(Dialogs, forExisting: true, replacing: replacing);
         if (r == null) return;
         _m.Sections = r.Sections;
         _m.ScoreFileId = r.FileId;

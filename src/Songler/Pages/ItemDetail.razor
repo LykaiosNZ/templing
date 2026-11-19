@@ -30,7 +30,7 @@ else
             <MudTooltip Text="More">
                 <MudMenu Icon="@Icons.Material.Rounded.MoreHoriz" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" AriaLabel="More actions">
                     <MudMenuItem Icon="@(_item.Archived ? Icons.Material.Rounded.Unarchive : Icons.Material.Rounded.Archive)" OnClick="ToggleArchive">@(_item.Archived ? "Unarchive" : "Archive")</MudMenuItem>
-                    <MudMenuItem Icon="@Icons.Material.Rounded.Delete" IconColor="Color.Error" OnClick="Delete">Delete…</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Rounded.Delete" IconColor="Color.Error" OnClick="() => AfterMenu(Delete)">Delete…</MudMenuItem>
                 </MudMenu>
             </MudTooltip>
         </div>
@@ -66,8 +66,8 @@ else
                     </MudSelect>
                     @if (_item.Sections.Count > 1)
                     {
-                        <MudSelect T="string" @bind-Value="SectionPick" @bind-Value:after="Refresh" Label="@(_item.Type == ItemType.Song ? "Part" : "Section")" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Class="toolbar-select">
-                            <MudSelectItem T="string" Value="@("")">@(_item.Type == ItemType.Song ? "All parts" : "All sections")</MudSelectItem>
+                        <MudSelect T="string" @bind-Value="SectionPick" @bind-Value:after="Refresh" Label="Section" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Class="toolbar-select">
+                            <MudSelectItem T="string" Value="@("")">All sections</MudSelectItem>
                             @foreach (var s in _item.Sections) { <MudSelectItem T="string" Value="@s.Id">@s.Name</MudSelectItem> }
                         </MudSelect>
                     }
@@ -99,13 +99,13 @@ else
                 <div class="card-head">
                     <button type="button" class="collapse-toggle" aria-expanded="@(SectionsOpen ? "true" : "false")" aria-controls="sections-body" @onclick="() => _sectionsOpen = !SectionsOpen">
                         <MudIcon Icon="@Icons.Material.Rounded.ExpandMore" Class="collapse-chevron" Size="Size.Small" />
-                        <h2 class="card-title">@(_item.Type == ItemType.Song ? "Song parts" : "Sections")</h2>
+                        <h2 class="card-title">Sections</h2>
                         @if (!SectionsOpen)
                         {
                             <span class="collapse-summary muted">@SectionsSummary</span>
                         }
                     </button>
-                    <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Rounded.Edit" OnClick="Edit">@(_item.Type == ItemType.Song ? "Edit parts" : "Edit")</MudButton>
+                    <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Rounded.Edit" OnClick="Edit">Edit</MudButton>
                 </div>
                 <div id="sections-body" hidden="@(!SectionsOpen)">
                 @if (_item.HasParts())
@@ -114,7 +114,7 @@ else
                         <table class="log-table parts-table">
                             <thead>
                                 <tr>
-                                    <th scope="col">Part</th>
+                                    <th scope="col">Section</th>
                                     <th scope="col">Tempo · meter</th>
                                     <th scope="col" class="num">Latest</th>
                                     <th scope="col" class="num">Best</th>
@@ -205,6 +205,8 @@ else
 }
 
 @code {
+    // MudMenu only closes once a menu item's handler finishes; start dialogs after it closes instead of awaiting them inside the click
+    void AfterMenu(Func<Task> action) => _ = InvokeAsync(action);
     [Parameter] public string Id { get; set; } = "";
     PracticeItem? _item;
     ItemStats _st = default!;
@@ -226,7 +228,7 @@ else
         get
         {
             if (_item!.HasParts())
-                return $"{_parts.Count} parts" + (_weakest is { } w ? $" · weakest {w.Section.Name}" : "");
+                return $"{_parts.Count} sections" + (_weakest is { } w ? $" · weakest {w.Section.Name}" : "");
             var s0 = _item.Sections[0];
             return $"{s0.Bpm:0} bpm · {s0.Meter} · {SubName(s0.Subdivision).ToLowerInvariant()}";
         }
@@ -254,7 +256,7 @@ else
         {
             var goal = _item!.Goal is { } g ? $"Goal {g:0}{_item.Unit.Suffix()}" : "No goal set";
             if (_section != null || !_item.HasParts()) return goal;
-            return _weakest is { } w ? $"Avg of {_parts.Count} parts · weakest {w.Section.Name}" : $"Avg of {_parts.Count} parts";
+            return _weakest is { } w ? $"Avg of {_parts.Count} sections · weakest {w.Section.Name}" : $"Avg of {_parts.Count} sections";
         }
     }
 

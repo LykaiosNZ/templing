@@ -13,7 +13,7 @@
         <MudButton StartIcon="@Icons.Material.Rounded.Add" OnClick="Add">Add item</MudButton>
         <MudTooltip Text="More ways to add">
             <MudMenu Icon="@Icons.Material.Rounded.ArrowDropDown" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" AriaLabel="More ways to add">
-                <MudMenuItem Icon="@Icons.Material.Rounded.QueueMusic" OnClick="ImportScore">Import from Guitar Pro…</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Rounded.QueueMusic" OnClick="() => AfterMenu(ImportScore)">@(ScoreImportDialog.Title)…</MudMenuItem>
             </MudMenu>
         </MudTooltip>
     </MudButtonGroup>
@@ -97,7 +97,7 @@ else
                     </div>
                     @if (row.Parts is { Count: > 1 } parts)
                     {
-                        <div class="part-bars" aria-label="Progress by part">
+                        <div class="part-bars" aria-label="Progress by section">
                             @foreach (var ps in parts)
                             {
                                 var pct = Math.Min(100, (ps.Progress ?? 0) * 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
@@ -110,7 +110,7 @@ else
                     @if (st.Sessions > 0)
                     {
                         <div class="item-meta">
-                            <span>@(st.Progress is { } p ? $"{p:P0}" : "No goal")@(row.Parts is { Count: > 1 } pc ? $" · {pc.Count} parts" : "")</span>
+                            <span>@(st.Progress is { } p ? $"{p:P0}" : "No goal")@(row.Parts is { Count: > 1 } pc ? $" · {pc.Count} sections" : "")</span>
                             <span>@(st.Sessions == 1 ? "1 session" : $"{st.Sessions} sessions") · @Stats.Duration(st.TotalSec)</span>
                         </div>
                     }
@@ -136,6 +136,8 @@ else
 }
 
 @code {
+    // MudMenu only closes once a menu item's handler finishes; start dialogs after it closes instead of awaiting them inside the click
+    void AfterMenu(Func<Task> action) => _ = InvokeAsync(action);
     string? _search;
     string? _type = "all";
     string _sort = "recent";

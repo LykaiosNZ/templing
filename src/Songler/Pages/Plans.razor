@@ -39,7 +39,7 @@ else
                         <MudTooltip Text="More">
                             <MudMenu Icon="@Icons.Material.Rounded.MoreVert" Size="Size.Small" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" AriaLabel="@($"More for {plan.Name}")">
                                 <MudMenuItem Icon="@Icons.Material.Rounded.ContentCopy" OnClick="() => Duplicate(plan)">Duplicate</MudMenuItem>
-                                <MudMenuItem Icon="@Icons.Material.Rounded.Delete" OnClick="() => Delete(plan)">Delete</MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Rounded.Delete" OnClick="() => AfterMenu(() => Delete(plan))">Delete…</MudMenuItem>
                             </MudMenu>
                         </MudTooltip>
                     </div>
@@ -74,6 +74,8 @@ else
 }
 
 @code {
+    // MudMenu only closes once a menu item's handler finishes; start dialogs after it closes instead of awaiting them inside the click
+    void AfterMenu(Func<Task> action) => _ = InvokeAsync(action);
     protected override void OnInitialized() { Store.Changed += OnChanged; Runner.Changed += OnChanged; }
     void OnChanged() => InvokeAsync(StateHasChanged);
 

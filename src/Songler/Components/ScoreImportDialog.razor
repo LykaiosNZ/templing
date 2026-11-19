@@ -2,20 +2,17 @@
 
 <MudDialog>
     <TitleContent>
-        <MudText Typo="Typo.h6">@(ForExisting ? "Import parts from a score file" : "Import a song from Guitar Pro")</MudText>
+        <MudText Typo="Typo.h6">@Title</MudText>
     </TitleContent>
     <DialogContent>
         @if (_score == null)
         {
-            <MudText Typo="Typo.body2" Class="muted mb-3">
-                Choose a Guitar Pro (.gp, .gpx, .gp5, .gp4, .gp3) or MusicXML file. Section markers become song parts, with each part's tempo and
-                bar-by-bar time signatures. The file is kept in this browser so the tab can follow along while you practise.
-            </MudText>
             <label class="file-drop" for="score-input">
                 <MudIcon Icon="@Icons.Material.Rounded.UploadFile" />
-                <span>@(_busy ? "Reading…" : "Choose a score file…")</span>
+                <span>@(_busy ? "Reading…" : "Choose or drop a score file")</span>
                 <InputFile id="score-input" OnChange="Pick" accept="@string.Join(",", ScoreImport.Extensions)" class="file-input" disabled="@_busy" />
             </label>
+            <MudText Typo="Typo.caption" Class="muted d-block mt-2">.gp, .gpx, .gp5, .gp4, .gp3 or MusicXML</MudText>
             @if (_busy) { <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mt-2" /> }
             @if (_error != null) { <MudAlert Severity="Severity.Error" Class="mt-3" Dense="true">@_error</MudAlert> }
         }
@@ -24,38 +21,35 @@
             <div class="d-flex flex-column gap-3">
                 @if (!ForExisting)
                 {
-                    <MudTextField @bind-Value="_name" Label="Song name" Immediate="true" />
+                    <MudTextField @bind-Value="_name" Label="Name" Immediate="true" />
                 }
-                else
+                else if (Replacing)
                 {
-                    <MudAlert Severity="Severity.Info" Dense="true">This replaces the item's current sections. Logs on removed sections will count as full run-throughs.</MudAlert>
+                    <MudAlert Severity="Severity.Warning" Dense="true">Replaces the current sections. Logs on removed sections count as full run-throughs.</MudAlert>
                 }
                 <div class="d-flex gap-3 flex-wrap">
-                    <MudSelect T="int" @bind-Value="_track" Label="Track to show" Style="min-width:260px" Class="flex-grow-1">
+                    <MudSelect T="int" @bind-Value="_track" Label="Track" Style="min-width:260px" Class="flex-grow-1">
                         @foreach (var t in _score.Tracks) { <MudSelectItem T="int" Value="t.Index">@t.Name</MudSelectItem> }
                     </MudSelect>
-                    <MudText Typo="Typo.body2" Class="muted align-self-center">@_score.Bars.Count bars · @_order bars played with repeats</MudText>
+                    <MudText Typo="Typo.body2" Class="muted align-self-center">@_score.Bars.Count bars@(_order != _score.Bars.Count ? $" · {_order} bars with repeats" : "")</MudText>
                 </div>
                 <div>
-                    <MudText Typo="Typo.subtitle2">Parts (@_parts.Count)</MudText>
-                    <MudText Typo="Typo.caption" Class="muted d-block mb-2">
-                        New parts start at section markers and tempo changes. Time-signature changes stay inside a part. Rename, merge or remove parts before importing.
-                    </MudText>
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Sections (@_parts.Count)</MudText>
                     <div class="import-parts" role="list">
                         @for (int i = 0; i < _parts.Count; i++)
                         {
                             var idx = i;
                             var p = _parts[i];
                             <div class="import-part" role="listitem" @key="p.Id">
-                                <MudTextField @bind-Value="p.Name" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ip-name" aria-label="Part name" />
+                                <MudTextField @bind-Value="p.Name" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ip-name" aria-label="Section name" />
                                 <span class="ip-meta mono">@p.Bpm.ToString("0") bpm</span>
                                 <span class="ip-meta mono">@p.Meter</span>
-                                <span class="ip-meta mono">bars @(p.ScoreBars![0][0] + 1)–@(p.ScoreBars[^1][0] + 1) · @p.Length</span>
+                                <span class="ip-meta mono">Bars @(p.ScoreBars![0][0] + 1)–@(p.ScoreBars[^1][0] + 1) · @p.Length bar@(p.Length == 1 ? "" : "s")</span>
                                 <span class="ip-actions">
-                                    <MudTooltip Text="Merge into the part above">
-                                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.VerticalAlignTop" Disabled="idx == 0" aria-label="@($"Merge {p.Name} into the part above")" OnClick="() => MergeUp(idx)" />
+                                    <MudTooltip Text="Merge into the section above">
+                                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.VerticalAlignTop" Disabled="idx == 0" aria-label="@($"Merge {p.Name} into the section above")" OnClick="() => MergeUp(idx)" />
                                     </MudTooltip>
-                                    <MudTooltip Text="Remove part">
+                                    <MudTooltip Text="Remove section">
                                         <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Close" Disabled="_parts.Count == 1" aria-label="@($"Remove {p.Name}")" OnClick="() => _parts.RemoveAt(idx)" />
                                     </MudTooltip>
                                 </span>
@@ -70,7 +64,7 @@
         @if (_score != null) { <MudButton OnClick="Reset" StartIcon="@Icons.Material.Rounded.ArrowBack">Choose another file</MudButton><MudSpacer /> }
         <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
         <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(_score == null || _parts.Count == 0 || _busy || (!ForExisting && string.IsNullOrWhiteSpace(_name)))" OnClick="Confirm">
-            @(ForExisting ? "Use these parts" : "Create song")
+            @(!ForExisting ? "Add to library" : Replacing ? "Replace sections" : "Use sections")
         </MudButton>
     </DialogActions>
 </MudDialog>
@@ -78,6 +72,10 @@
 @code {
     [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
     [Parameter] public bool ForExisting { get; set; }
+    /// <summary>Importing over sections that already exist: warn, and say "Replace sections".</summary>
+    [Parameter] public bool Replacing { get; set; }
+    /// <summary>The one name for score import, used by the dialog title and every button or menu item that opens it.</summary>
+    public const string Title = "Import from Guitar Pro";
 
     public record Result(string Name, string Artist, List<Section> Sections, string FileId, string FileName, int Track);
 
@@ -87,10 +85,10 @@
     int _track, _order;
     bool _busy;
 
-    public static async Task<Result?> ShowAsync(IDialogService dialogs, bool forExisting)
+    public static async Task<Result?> ShowAsync(IDialogService dialogs, bool forExisting, bool replacing = false)
     {
-        var p = new DialogParameters<ScoreImportDialog> { { x => x.ForExisting, forExisting } };
-        var r = await dialogs.ShowAsync<ScoreImportDialog>("Import score", p, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+        var p = new DialogParameters<ScoreImportDialog> { { x => x.ForExisting, forExisting }, { x => x.Replacing, replacing } };
+        var r = await dialogs.ShowAsync<ScoreImportDialog>(Title, p, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
         var res = await r.Result;
         return res is { Canceled: false } ? res.Data as Result : null;
     }
@@ -134,7 +132,7 @@
         try
         {
             var id = await Importer.SaveParsedAsync();
-            Dialog.Close(DialogResult.Ok(new Result(_name?.Trim() ?? "Song", _score!.Artist, _parts, id, _fileName ?? "score", _track)));
+            Dialog.Close(DialogResult.Ok(new Result(_name?.Trim() ?? "Untitled", _score!.Artist, _parts, id, _fileName ?? "score", _track)));
         }
         catch (Exception ex) { _error = ex.Message; _busy = false; }
     }

@@ -9,6 +9,7 @@ The house rules for how screens look and read. Follow them when building or chan
 - **Empty states:** a heading and the primary action, no explanatory sentence ("No plans yet" + "Create a plan").
 - **Filtered to nothing:** "No matching entries" + a "Clear filters" button. Keep "No … yet" for when there's no data at all.
 - **Pluralise** counts ("1 step", "2 steps").
+- **"Section", never "part".** A song is just another item type; don't word anything differently for songs. Item-level text says "item", not "song".
 - Sentence case everywhere ("Log practice", not "Log Practice").
 
 ## Numbers, times and dates
@@ -51,6 +52,7 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 - **Every icon-only button has a tooltip** (`MudTooltip`) naming what it does ("Move up", "Edit entry", "More"), plus an accessible name (`aria-label`, or `AriaLabel` on `MudMenu`) that can carry more context ("Move Verse up"). Tooltips never include keyboard shortcuts.
 - **Destructive actions** (delete) go in a ⋮ menu, not next to everyday buttons, and always confirm. In an edit dialog, Delete is a red text button on the left of the actions, and confirms too.
 - **No helper text under fields** in rows of fields: it pushes the field out of line. Examples go in the placeholder ("120, 65–145 or 85%"); a short note goes in the label ("Bars (loop)").
+- **Menu items that open a dialog** end with "…" and start it via `AfterMenu(...)`, not by awaiting it in `OnClick` (MudMenu stays open until the handler returns).
 - **Menus:** set the name with `AriaLabel="…"` on `MudMenu`. Plain `aria-label` lands on a wrapper and the button ends up unnamed.
 - **On/off options:** icon toggles (`opt-toggle`, `aria-pressed`, tooltip "Name: on/off") or dots. Not "On"/"Off" text, and no duplicate switches for the same setting.
 - **Selects:**
@@ -78,6 +80,7 @@ Reuse these instead of rebuilding them. When two screens show the same thing, th
 
 | Component | Used for |
 | --- | --- |
+| `ScoreImportDialog` (`ScoreImportDialog.Title`) | Guitar Pro / MusicXML import; every entry point uses `Title` for its label |
 | `IntervalsEditor` | Work / rest / rounds + presets (Metronome intervals, Timer countdown) |
 | `DurationInput` | Any duration field |
 | `LogTable` | Practice log lists (History, Item detail) |

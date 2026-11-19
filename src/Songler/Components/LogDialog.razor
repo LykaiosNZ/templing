@@ -23,8 +23,8 @@
             }
             else if (_item.Sections.Count > 1)
             {
-                <MudSelect T="string" Label="@(_item.Type == ItemType.Song ? "Part" : "Section")" @bind-Value="SectionPick">
-                    <MudSelectItem T="string" Value="@("")">@(_item.Type == ItemType.Song ? "Full run-through" : "Whole piece")</MudSelectItem>
+                <MudSelect T="string" Label="Section" @bind-Value="SectionPick">
+                    <MudSelectItem T="string" Value="@("")">Full run-through</MudSelectItem>
                     @foreach (var s in _item.Sections)
                     {
                         <MudSelectItem T="string" Value="@s.Id">@s.Name (@s.Bpm.ToString("0") bpm, @s.Meter)</MudSelectItem>
