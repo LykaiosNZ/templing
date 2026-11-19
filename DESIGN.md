@@ -41,6 +41,7 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 
 ## Layout
 
+- **Sidebar:** Dashboard and Library at the top, then **Practice** (Metronome, Timer, Plans) and **Progress** (History, Stats) under small uppercase headings (`nav-heading stat-label`), then a divider and Settings & data. New screens go in the group that matches what they're for.
 - **Page head:** `h1` on the left (optional overline above, optional info line below); the page's primary action on the right.
 - **Toolbars** (search + filters above a list): search box first, then filters, selects at the end. Everything in a toolbar is `Variant.Outlined`, `Margin.Dense`.
 - **Cards** (`section.card`) with a `card-title`. A card's on/off state shows as a dot after the title (`seg-dot`), not as text.
