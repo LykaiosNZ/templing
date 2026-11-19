@@ -1,0 +1,32 @@
+@* A division (what clicks) as notation: the note value's icon, with a small 3 for triplets. The tooltip and accessible
+   name spell it out ("Eighth-note triplets (1/8t)") for anyone who doesn't read notation. ShowLabel adds the short
+   form beside it ("♪ 1/8"). Falls back to the text when there's no icon (1/64). *@
+
+@if (_note.Icon is { } icon)
+{
+    <MudTooltip Text="@_note.Name" Inline="true" Disabled="!Tooltip">
+        <span class="division-icon" role="img" aria-label="@_note.Name"><MudIcon Icon="@icon" Class="division-note" aria-hidden="true" />@if (_note.Triplet)
+            {<span class="division-tuplet" aria-hidden="true">3</span>}</span>
+    </MudTooltip>
+    @if (ShowLabel)
+    {
+        <span class="division-label" aria-hidden="true">@Section.DivisionName(Subdivision, BeatUnit)</span>
+    }
+}
+else
+{
+    <span>@_note.Name</span>
+}
+
+@code {
+    [Parameter, EditorRequired] public int Subdivision { get; set; }
+    [Parameter, EditorRequired] public int BeatUnit { get; set; }
+    /// <summary>Also show "1/8t" beside the icon (tables, select options).</summary>
+    [Parameter] public bool ShowLabel { get; set; }
+    /// <summary>Off where the label says it already (select options).</summary>
+    [Parameter] public bool Tooltip { get; set; } = true;
+
+    (string? Icon, bool Triplet, string Name) _note;
+
+    protected override void OnParametersSet() => _note = NoteIcons.ForDivision(Subdivision, BeatUnit);
+}

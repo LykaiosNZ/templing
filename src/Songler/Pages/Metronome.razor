@@ -84,7 +84,7 @@
                         <span>bpm</span>
                     }
                     <span> · @Meter</span>
-                    <span> · @Metro.PlayingSection.Division</span>
+                    <span> · <DivisionIcon Subdivision="Metro.PlayingSection.Subdivision" BeatUnit="Metro.PlayingSection.BeatUnit" /></span>
                     @if (Metro.Source != MetronomeSource.Piece && Metro.Sections.Count > 1 && Math.Abs(Metro.Factor - 1) > 0.001 && !Metro.IsRunning)
                     {
                         <MudLink Class="ml-2" OnClick="() => Metro.ResetFactorAsync()" Typo="Typo.body2">reset ×@Metro.Factor.ToString("0.00")</MudLink>
@@ -224,7 +224,7 @@
                 <div class="form-grid">
                     <MeterInput Section="fs" OnChanged="Apply" />
                     <MudSelect T="int" @bind-Value="fs.Subdivision" @bind-Value:after="Apply" Label="Division" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
-                        @foreach (var (v, label) in Section.Divisions(fs.BeatUnit, fs.Subdivision)) { <MudSelectItem T="int" Value="v">@label</MudSelectItem> }
+                        @foreach (var (v, _) in Section.Divisions(fs.BeatUnit, fs.Subdivision)) { <MudSelectItem T="int" Value="v"><DivisionIcon Subdivision="v" BeatUnit="fs.BeatUnit" ShowLabel="true" Tooltip="false" /></MudSelectItem> }
                     </MudSelect>
                 </div>
             </RailSection>

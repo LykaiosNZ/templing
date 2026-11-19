@@ -89,7 +89,8 @@ else
                         <h2 class="card-title">Sections</h2>
                         @if (!SectionsOpen)
                         {
-                            <span class="collapse-summary muted">@SectionsSummary</span>
+                            <span class="collapse-summary muted">@SectionsSummary@if (!_piece!.HasParts() && _piece.Sections.FirstOrDefault() is { } only)
+                            {<span> · <DivisionIcon Subdivision="only.Subdivision" BeatUnit="only.BeatUnit" /></span>}</span>
                         }
                     </button>
                     <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Rounded.Edit" OnClick="Edit">Edit</MudButton>
@@ -162,7 +163,7 @@ else
                         <tbody>
                             <tr><th scope="row">Tempo</th><td>@s0.Bpm.ToString("0") bpm</td></tr>
                             <tr><th scope="row">Meter</th><td>@s0.Meter</td></tr>
-                            <tr><th scope="row">Division</th><td>@s0.Division</td></tr>
+                            <tr><th scope="row">Division</th><td><DivisionIcon Subdivision="s0.Subdivision" BeatUnit="s0.BeatUnit" ShowLabel="true" /></td></tr>
                         </tbody>
                     </MudSimpleTable>
                     @if (_piece.Type == PieceType.Song)
@@ -215,7 +216,7 @@ else
             if (_piece!.HasParts())
                 return $"{_parts.Count} sections" + (_weakest is { } w ? $" · weakest {w.Section.Name}" : "");
             var s0 = _piece.Sections[0];
-            return $"{s0.Bpm:0} bpm · {s0.Meter} · {s0.Division}";
+            return $"{s0.Bpm:0} bpm · {s0.Meter}";
         }
     }
 

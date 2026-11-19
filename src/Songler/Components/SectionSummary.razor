@@ -7,15 +7,11 @@
     <MudIcon Icon="@Icons.Material.Rounded.QueueMusic" Class="pl-icon" title="From the score" aria-label="From the score" />
 }
 <span class="pl-name">@(string.IsNullOrWhiteSpace(Section.Name) ? "Untitled" : Section.Name)</span>
-<span class="pl-meta">@Meta(Section)</span>
+<span class="pl-meta">@Section.Bpm.ToString("0") bpm · @Section.Meter · <DivisionIcon Subdivision="Section.Subdivision" BeatUnit="Section.BeatUnit" /> · @Length(Section)</span>
 
 @code {
     [Parameter, EditorRequired] public Section Section { get; set; } = default!;
     [Parameter] public int Index { get; set; }
 
-    public static string Meta(Section s)
-    {
-        var length = s.Length > 0 ? $"{s.Length} bar{(s.Length == 1 ? "" : "s")}" : "loop";
-        return $"{s.Bpm:0} bpm · {s.Meter} · {s.Division} · {length}";
-    }
+    static string Length(Section s) => s.Length > 0 ? $"{s.Length} bar{(s.Length == 1 ? "" : "s")}" : "loop";
 }

@@ -61,7 +61,7 @@
                             <MeterInput Section="s" OnChanged="Changed" />
                         }
                         <MudSelect T="int" @bind-Value="s.Subdivision" @bind-Value:after="Changed" Label="Division" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="sec-sub">
-                            @foreach (var (v, label) in Section.Divisions(s.BeatUnit, s.Subdivision)) { <MudSelectItem T="int" Value="v">@label</MudSelectItem> }
+                            @foreach (var (v, _) in Section.Divisions(s.BeatUnit, s.Subdivision)) { <MudSelectItem T="int" Value="v"><DivisionIcon Subdivision="v" BeatUnit="s.BeatUnit" ShowLabel="true" Tooltip="false" /></MudSelectItem> }
                         </MudSelect>
                         @if (s.FromScore)
                         {

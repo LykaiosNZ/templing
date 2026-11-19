@@ -119,6 +119,7 @@ Reuse these instead of rebuilding them. When two screens show the same thing, th
 | `PracticeGuard`, `PracticeKeys` | On the Metronome and Timer pages: ask before leaving while running; the practice shortcuts |
 | `SessionPanel` | Practised time on the Metronome and Timer, inside the stage. Hidden until there's time; one line while playing; once stopped, Log + Discard + page extras (Timer: +5 min, +10 min, Rest). Hidden while a plan runs. |
 | `DurationInput` | Any duration field |
+| `DivisionIcon` (`NoteIcons`) | A division shown as notation wherever it's read (tempo line, section summaries, piece page): the note value's icon, a small 3 for triplets, and a tooltip / accessible name that spells it out ("Eighth-note triplets (1/8t)"). In the Division select it sits beside the text (`ShowLabel`, no tooltip). Notes come from MDI; the thirty-second is hand-made in `NoteIcons` |
 | `MeterInput` | Any time signature: one outlined field "7 / 8", each number typed or stepped with ↑/↓ (the bottom doubles/halves and snaps to a note value: 1, 2, 4, 8, 16, 32). Pair it with a "Division" select from `Section.Divisions(unit)` (note values, 1/4 … 1/32, triplets to 1/16t) |
 | `PlanStepSummary` | One-line plan step (Plans list, plan editor rows) |
 | `SectionsEditor`, `SectionSummary` | Tempo-map editor (piece editor, custom metronome sections): header with count, quick-add chips, collapsible rows |

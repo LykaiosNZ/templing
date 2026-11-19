@@ -205,6 +205,11 @@ kbd {
 .opt-toggle.mud-icon-button { border: 1px solid var(--ring); color: var(--ink-2); }
 .opt-toggle.on.mud-icon-button { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 /* Metronome / Timer: one centred practice column, options in the rail (OptionsRail) */
+/* DivisionIcon: a note value in running text, with a small 3 for triplets */
+.division-icon { display: inline-flex; align-items: flex-start; vertical-align: -0.2em; line-height: 1; }
+.division-icon .division-note.mud-icon-root { font-size: 1.25em; width: 1em; height: 1em; }
+.division-tuplet { font-size: .62em; font-weight: 700; margin-left: -.15em; margin-top: -.1em; }
+.division-label { margin-left: 4px; }
 /* MeterInput: a time signature as one outlined field, "7 / 8" */
 .meter-input.mud-input-control { margin: 0; }
 .meter-parts { display: flex; align-items: center; gap: 2px; padding: 9px 12px 7px; font-size: 1rem; }
