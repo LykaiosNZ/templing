@@ -50,7 +50,7 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 - **Options rail** (`OptionsRail`, Metronome and Timer): the page's settings sit in a 320 px rail on the right, and the page itself is one centred column (`practice-col`).
   - The rail is for configuration only: no summaries, totals or explanations.
   - The source select (and Save or ⋮) goes at the top, then `RailSection`s.
-  - A feature you switch on and off (Speed trainer, Intervals, Count-in, Play through) is a section with a switch in its head, and its fields show only while it's on. Other sections (Time signature, Sound, Countdown) are always open. Sections don't collapse.
+  - A feature you switch on and off (Speed trainer, Intervals, Count-in, Play through) is a section whose whole header is its on/off switch (`role="switch"`): the icon sits in a circle lit while on, the same look as the strip buttons, and the title dims while off. Its fields show only while it's on. Switches inside a section are that feature's own options (Stop at end, Audio cues), with labels smaller than the section title. Other sections (Time signature, Sound, Countdown) are always open. Sections don't collapse.
   - Hiding the rail leaves a 56 px strip of quick controls rather than a copy of the sections: `RailToggle`s for the features, plus `RailVolume` (click turns sound on or off, hover shows the slider).
   - Below `lg` the same sections open as a bottom sheet from an Options button in the page head.
   - The rail starts open; hiding it lasts for the session.
@@ -74,7 +74,7 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 - **No helper text under fields** in rows of fields: it pushes the field out of line. Examples go in the placeholder ("120, 65–145 or 85%"); a short note goes in the label ("Bars (loop)").
 - **Menu items that open a dialog** end with "…" and start it via `AfterMenu(...)`, not by awaiting it in `OnClick` (MudMenu stays open until the handler returns).
 - **Menus:** set the name with `AriaLabel="…"` on `MudMenu`. Plain `aria-label` lands on a wrapper and the button ends up unnamed.
-- **On/off options:** icon toggles (`opt-toggle`, `aria-pressed`, tooltip "Name: on/off"), lit while on, or the switch in a rail section's head. Not "On"/"Off" text, and not checkboxes: an on/off field in a form is a `MudSwitch` with its label on the left (`rail-line-switch` in the rail). The rail's strip toggles are the hidden-rail stand-ins for the section switches, not extra copies on the page.
+- **On/off options:** icon toggles (`opt-toggle`, `aria-pressed`, tooltip "Name: on/off"), lit while on, or a rail section's header. Not "On"/"Off" text, and not checkboxes: an on/off field in a form is a `MudSwitch` with its label on the left (`rail-line-switch` in the rail). The rail's strip toggles are the hidden-rail stand-ins for the section switches, not extra copies on the page.
 - **Sound on/off** is shown as on/off (lit = sound on), not as a mute button that lights up when muted. It's `Metro.Muted`, not saved; moving the volume slider turns the sound back on.
 - **Selects:**
   - In toolbars and compact editor rows (plan steps, sections): `Variant.Outlined`, `Margin.Dense`, `Dense="true"`, fixed width via `toolbar-select` (ellipsis on overflow).
