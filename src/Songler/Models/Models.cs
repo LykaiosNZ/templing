@@ -232,9 +232,26 @@ public class TrainingSettings
     /// The number of jumps from Start to End. Unset, it's what the trainer did before Steps existed:
     /// Start–End ÷ Change by every N bars, or one bpm (or %) at a time over time.
     /// </summary>
-    public int StepCount => Math.Max(1, Steps ?? (Mode == RampMode.EveryNBars
+    [JsonIgnore]
+    public int StepCount => Math.Clamp(Steps ?? (Mode == RampMode.EveryNBars
         ? (int)Math.Ceiling(Math.Abs(End - Start) / Math.Max(0.5, Increment))
-        : (int)Math.Round(Math.Abs(End - Start))));
+        : (int)Math.Round(Math.Abs(End - Start))), 1, MaxSteps);
+
+    /// <summary>At most one step per whole bpm (or %), so no step is +0.</summary>
+    [JsonIgnore]
+    public int MaxSteps => Math.Max(1, (int)Math.Round(Math.Abs(End - Start)));
+
+    /// <summary>
+    /// The tempos played, Start first and End last (bpm or %), each a whole number. Rounding spreads the remainder,
+    /// so the jumps differ by at most one: 128 → 150 in 4 steps is 128, 134, 139, 145, 150 (+6 +5 +6 +5).
+    /// </summary>
+    public IReadOnlyList<double> Levels()
+    {
+        var n = StepCount;
+        return Enumerable.Range(0, n + 1)
+            .Select(k => Math.Round(Start + (End - Start) * k / n, MidpointRounding.AwayFromZero))
+            .ToList();
+    }
     public bool StopAtEnd { get; set; }
 }
 

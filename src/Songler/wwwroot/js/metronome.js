@@ -9,8 +9,9 @@
 //   factor: number,                   // manual tempo factor (when training disabled)
 //   countIn: { enabled, bars },
 //   volume, sound: 'click'|'beep'|'wood', accentFirst,
-//   training: { enabled, startFactor, endFactor, mode: 'time'|'bars', durationSec, everyBars, steps, stopAtEnd },
-//     steps equal jumps from start to end: one every everyBars bars, or one every durationSec / steps
+//   training: { enabled, startFactor, endFactor, mode: 'time'|'bars', durationSec, everyBars, levels, stopAtEnd },
+//     levels: the tempo factors to play in turn, start first and end last (whole bpm / %, worked out in C#);
+//     one jump every everyBars bars, or spread evenly over durationSec
 //   interval: { enabled, workSec, restSec, rounds, cues }
 // }
 
@@ -221,7 +222,8 @@ function accumulateActive() {
 function trainingFactorAtBar() {
     const tr = cfg.training;
     if (!tr.enabled) return cfg.factor;
-    const n = Math.max(1, tr.steps || 1);
+    const levels = tr.levels || [tr.startFactor, tr.endFactor];
+    const n = Math.max(1, levels.length - 1);
     let done; // jumps taken so far
     if (tr.mode === 'bars') {
         done = Math.floor(st.trainingBars / Math.max(1, tr.everyBars));
@@ -229,7 +231,7 @@ function trainingFactorAtBar() {
         const elapsed = activeNow() - st.trainingStartActive;
         done = Math.floor(Math.min(1, elapsed / Math.max(1, tr.durationSec)) * n + 1e-9);
     }
-    return done >= n ? tr.endFactor : tr.startFactor + (tr.endFactor - tr.startFactor) * done / n;
+    return levels[Math.min(done, n)];
 }
 
 // How far until the training tempo next changes: { bars, beats } for 'bars' mode, { sec } for 'time' mode.
@@ -240,7 +242,7 @@ function trainingNextStep() {
         const meter = st.meter || meterAt(stepCfg(), st.bar);
         return { bars: every - (st.trainingBars % every), beats: Math.max(1, meter.n - st.beat) };
     }
-    const n = Math.max(1, tr.steps || 1);
+    const n = Math.max(1, (tr.levels || []).length - 1);
     const elapsed = activeNow() - st.trainingStartActive;
     const next = Math.min(n, Math.floor(elapsed / Math.max(1, tr.durationSec) * n + 1e-9) + 1); // the jump after this one
     return { sec: Math.max(0, tr.durationSec * next / n - elapsed) };

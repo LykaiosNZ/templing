@@ -379,7 +379,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
                 mode = tr.Mode == RampMode.EveryNBars ? "bars" : "time",
                 durationSec = tr.DurationMin * 60,
                 everyBars = tr.EveryBars,
-                steps = tr.StepCount,
+                levels = tr.Levels().Select(ToFactor),
                 stopAtEnd = tr.StopAtEnd,
             },
             silent = Silent,
