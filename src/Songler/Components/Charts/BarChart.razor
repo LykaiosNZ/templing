@@ -1,5 +1,5 @@
-@* Single-series column chart on MudChart. Tooltips are MudChart's own, written with the same formatter as the axis. *@
-@inject DataStore Store
+@* Single-series column chart (ECharts via ChartBase). Optional goal line and highlighted last bar (the current week). *@
+@inherits ChartBase
 
 <div class="viz" role="img" aria-label="@AriaLabel">
     @if (Values.Count == 0 || Values.All(v => v <= 0))
@@ -8,50 +8,55 @@
     }
     else
     {
-        <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="_series" ChartLabels="_labels" ChartOptions="_options"
-                  Width="100%" Height="@($"{Height}px")" MatchBoundsToSize="true" />
+        @if (Goal is not null && GoalLabel is not null)
+        {
+            <div class="viz-key" aria-hidden="true"><span class="viz-key-goal"></span>@GoalLabel</div>
+        }
+        <div @ref="El" style="height:@(Height)px"></div>
     }
 </div>
 
 @code {
     [Parameter] public List<string> Labels { get; set; } = new();
+    /// <summary>Tooltip label per bar (e.g. "Week of 9 Nov 2026"); defaults to <see cref="Labels"/>.</summary>
+    [Parameter] public List<string>? TipLabels { get; set; }
     [Parameter] public List<double> Values { get; set; } = new();
-    /// <summary>Values are minutes: the axis steps in round durations and labels read "30 min", "1 hr 30 min".</summary>
+    /// <summary>Values are minutes: the axis steps in round durations and text reads "30 min", "1 hr 30 min".</summary>
     [Parameter] public bool Minutes { get; set; }
     /// <summary>Axis and tooltip text for a value (ignored when <see cref="Minutes"/> is set).</summary>
     [Parameter] public Func<double, string> Format { get; set; } = v => v.ToString("0");
     [Parameter] public int Height { get; set; } = 240;
+    /// <summary>Show every Nth x label; by default labels are spaced to fit.</summary>
     [Parameter] public int LabelEvery { get; set; } = 1;
     [Parameter] public string AriaLabel { get; set; } = "Bar chart";
+    /// <summary>Dashed goal line at this value (same units as <see cref="Values"/>).</summary>
+    [Parameter] public double? Goal { get; set; }
+    /// <summary>Key above the chart for the goal line, e.g. "Weekly goal 2 hr 30 min".</summary>
+    [Parameter] public string? GoalLabel { get; set; }
+    /// <summary>Draws the last bar in the accent colour (the current week).</summary>
+    [Parameter] public bool HighlightLast { get; set; }
 
-    List<ChartSeries<double>> _series = new();
-    string[] _labels = [];
-    BarChartOptions _options = new();
+    protected override string Kind => "bar";
 
-    protected override void OnParametersSet()
+    protected override object? BuildSpec()
     {
-        _series = [new() { Name = AriaLabel, Data = Values.ToArray() }];
-        _labels = Labels.ToArray();
-        var hi = Values.DefaultIfEmpty(0).Max();
-        _options = new BarChartOptions
+        if (Values.Count == 0 || Values.All(v => v <= 0)) return null;
+        Func<double, string> fmt = Minutes ? Stats.DurationMin : Format;
+        var hi = Math.Max(Values.Max(), Goal ?? 0);
+        var step = Minutes ? MinuteStep(hi) : Math.Max(1, NiceStep(hi / 4));
+        var (_, max, _, labels) = Ticks(0, hi, step, fmt);
+        return new
         {
-            ShowLegend = false,
-            ChartPalette = [ChartColors.Series(Store.Settings.DarkMode)],
-            BarWidthRatio = 0.7,
-            XAxisLabelInterval = Math.Max(1, LabelEvery),
-            YAxisTicks = Minutes ? MinuteStep(hi) : 0,
-            MaxNumYAxisTicks = 6,
-            YAxisToStringFunc = Minutes ? (v => Stats.Duration((int)Math.Round(v * 60))) : Format,
-            TooltipTitleFormat = "{{Y_AXIS_VALUE}}",
-            TooltipSubtitleFormat = "{{X_VALUE}}",
+            labels = Labels,
+            subs = TipLabels,
+            values = Values,
+            tips = Values.Select(fmt).ToList(),
+            yMax = max,
+            yStep = step,
+            yLabels = labels,
+            goal = Goal,
+            highlightLast = HighlightLast,
+            labelEvery = Math.Max(1, LabelEvery),
         };
-    }
-
-    // round duration steps (15 min … 2 hr) giving about four ticks
-    static int MinuteStep(double max)
-    {
-        foreach (var step in new[] { 5, 10, 15, 30, 60, 120, 180, 240, 300, 600 })
-            if (max / step <= 5) return step;
-        return 600;
     }
 }

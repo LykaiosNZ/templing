@@ -38,11 +38,12 @@ else
                     <h2 class="card-title">Practice calendar</h2>
                     <a href="stats" class="small">All stats →</a>
                 </div>
-                <Heatmap SecondsByDay="_byDay" Weeks="26" />
+                <Heatmap SecondsByDay="_byDay" Practiced="_practiced" Weeks="26" />
             </section>
             <section class="card mt-4">
                 <h2 class="card-title">Weekly practice time</h2>
-                <BarChart Labels="_weekLabels" Values="_weekValues" Minutes="true" LabelEvery="3" AriaLabel="Practice time per week, last 16 weeks" />
+                <BarChart Labels="_weekLabels" TipLabels="_weekTips" Values="_weekValues" Minutes="true" HighlightLast="true"
+                          Goal="Store.Settings.WeeklyGoalMin" GoalLabel="@($"Weekly goal {Stats.DurationMin(Store.Settings.WeeklyGoalMin)}")" AriaLabel="Practice time per week, last 16 weeks" />
             </section>
         </MudItem>
         <MudItem xs="12" lg="4">
@@ -100,7 +101,7 @@ else
     (int current, int longest) _streak;
     Dictionary<DateTime, int> _byDay = new();
     HashSet<DateTime> _practiced = new();
-    List<string> _weekLabels = new();
+    List<string> _weekLabels = new(), _weekTips = new();
     List<double> _weekValues = new();
     List<(Piece, PieceStats)> _goals = new();
     List<IGrouping<DateTime, PracticeLog>> _recent = new();
@@ -127,6 +128,7 @@ else
         _streak = Stats.Streaks(logs, today);
         var weeks = Stats.WeeklySeconds(logs, today, 16);
         _weekLabels = Stats.WeekLabels(weeks);
+        _weekTips = Stats.WeekTips(weeks);
         _weekValues = weeks.Select(w => w.sec / 60.0).ToList();
         _goals = Store.Pieces.Where(i => !i.Archived && i.Goal.HasValue)
             .Select(i => (i, Stats.ForPiece(i, logs)))

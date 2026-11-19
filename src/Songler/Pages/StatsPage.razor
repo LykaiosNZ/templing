@@ -28,13 +28,14 @@
     <MudItem xs="12">
         <section class="card">
             <h2 class="card-title">Practice calendar</h2>
-            <Heatmap SecondsByDay="_byDayAll" Weeks="53" />
+            <Heatmap SecondsByDay="_byDayAll" Practiced="_practicedAll" Weeks="53" From="_from" />
         </section>
     </MudItem>
     <MudItem xs="12" lg="8">
         <section class="card">
             <h2 class="card-title">Weekly practice time</h2>
-            <BarChart Labels="_weekLabels" Values="_weekValues" Minutes="true" LabelEvery="@Math.Max(1, _weekValues.Count / 8)" AriaLabel="Practice time per week" />
+            <BarChart Labels="_weekLabels" TipLabels="_weekTips" Values="_weekValues" Minutes="true" HighlightLast="true"
+                      Goal="Store.Settings.WeeklyGoalMin" GoalLabel="@($"Weekly goal {Stats.DurationMin(Store.Settings.WeeklyGoalMin)}")" AriaLabel="Practice time per week" />
         </section>
     </MudItem>
     <MudItem xs="12" lg="4">
@@ -77,8 +78,10 @@
     int _totalSec, _days, _timedDays, _pieceCount, _spanDays, _goalsReached;
     (int current, int longest) _streak;
     Dictionary<DateTime, int> _byDayAll = new();
+    HashSet<DateTime> _practicedAll = new();
+    DateTime _from = DateTime.Today;
     double _piecesPerDay;
-    List<string> _weekLabels = new(), _dowLabels = new();
+    List<string> _weekLabels = new(), _weekTips = new(), _dowLabels = new();
     List<double> _weekValues = new(), _dowValues = new();
     List<HBars.Row> _byPiece = new(), _gains = new(), _progress = new(), _byType = new();
 
@@ -98,10 +101,13 @@
         _pieceCount = _logs.Select(l => l.PieceName).Distinct().Count();
         _streak = Stats.Streaks(Store.Logs, today);
         _byDayAll = Stats.SecondsByDay(Store.Logs);
+        _practicedAll = Stats.DaysPracticed(Store.Logs);
+        _from = from.Date;
         _piecesPerDay = _logs.GroupBy(l => l.Date.Date).Select(g => g.Select(l => l.PieceName).Distinct().Count()).DefaultIfEmpty(0).Average();
 
         var weeks = Stats.WeeklySeconds(_logs, today, Math.Clamp((int)Math.Ceiling(_spanDays / 7.0), 4, 104));
         _weekLabels = Stats.WeekLabels(weeks);
+        _weekTips = Stats.WeekTips(weeks);
         _weekValues = weeks.Select(w => w.sec / 60.0).ToList();
 
         var order = new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday };

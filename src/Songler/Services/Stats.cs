@@ -124,6 +124,10 @@ public static class Stats
     public static List<string> WeekLabels(List<(DateTime week, int sec)> weeks) =>
         weeks.Select((w, i) => i == weeks.Count - 1 && w.week == WeekStart(DateTime.Today) ? "This week" : w.week.ToString("d MMM")).ToList();
 
+    /// <summary>Tooltip labels for <see cref="WeeklySeconds"/>: "Week of 9 Nov", "This week so far".</summary>
+    public static List<string> WeekTips(List<(DateTime week, int sec)> weeks) =>
+        weeks.Select((w, i) => i == weeks.Count - 1 && w.week == WeekStart(DateTime.Today) ? "This week so far" : $"Week of {Day(w.week)[4..]}").ToList();
+
     /// <summary>Durations in text: "45 sec", "10 min", "1 hr", "1 hr 5 min" (see DESIGN.md).</summary>
     public static string Duration(int sec)
     {

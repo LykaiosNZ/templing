@@ -1,47 +1,51 @@
-@* Practice calendar on MudChart's HeatMap: one row per weekday, one column per week, minutes practised per day. *@
-@inject DataStore Store
+@* Practice calendar (ECharts calendar via ChartBase): one column per week, Monday first, shaded by minutes practised.
+   Practised-but-untimed days use the first step, days before the selected period are faded, today is outlined. *@
+@inherits ChartBase
 
 <div class="viz heatmap" role="img" aria-label="@AriaLabel">
-    <MudChart T="double" ChartType="ChartType.HeatMap" ChartSeries="_series" ChartLabels="_labels" ChartOptions="_options"
-              Width="100%" Height="@($"{Height}px")" MatchBoundsToSize="true" />
+    <div @ref="El" class="hm-plot"></div>
+    <div class="hm-legend" aria-hidden="true">
+        <span class="muted">Less</span>
+        @for (int i = 0; i <= 4; i++) { <span class="hm-swatch" style="background:var(--hm-@i)"></span> }
+        <span class="muted">More</span>
+    </div>
 </div>
 
 @code {
     [Parameter] public Dictionary<DateTime, int> SecondsByDay { get; set; } = new();
+    /// <summary>Days with any log, timed or not.</summary>
+    [Parameter] public HashSet<DateTime> Practiced { get; set; } = new();
     [Parameter] public int Weeks { get; set; } = 26;
-    [Parameter] public int Height { get; set; } = 190;
+    /// <summary>Start of the selected period; earlier days are faded.</summary>
+    [Parameter] public DateTime? From { get; set; }
     [Parameter] public DateTime Today { get; set; } = DateTime.Today;
     [Parameter] public string AriaLabel { get; set; } = "Practice calendar";
 
-    static readonly string[] Days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    List<ChartSeries<double>> _series = new();
-    string[] _labels = [];
-    HeatMapChartOptions _options = new();
+    protected override string Kind => "calendar";
 
-    protected override void OnParametersSet()
+    protected override object? BuildSpec()
     {
-        var start = Stats.WeekStart(Today).AddDays(-7 * (Weeks - 1));
-        _series = Days.Select((name, d) => new ChartSeries<double>
+        var today = Today.Date;
+        var start = Stats.WeekStart(today).AddDays(-7 * (Weeks - 1));
+        var days = new List<object>();
+        for (var d = start; d <= today; d = d.AddDays(1))
         {
-            Name = name,
-            Data = Enumerable.Range(0, Weeks).Select(w => SecondsByDay.GetValueOrDefault(start.AddDays(w * 7 + d)) / 60.0).ToArray(),
-        }).ToList();
-        // a month name over the first week that starts in that month
-        _labels = Enumerable.Range(0, Weeks).Select(w =>
-        {
-            var first = start.AddDays(w * 7);
-            return w == 0 || first.Day <= 7 ? first.ToString("MMM") : "";
-        }).ToArray();
-        _options = new HeatMapChartOptions
-        {
-            ChartPalette = ChartColors.Heat(Store.Settings.DarkMode),
-            ShowLabels = false,
-            ShowLegend = true,
-            ShowToolTips = true,
-            ValueFormatString = "F0",
-            TooltipTitleFormat = "{{Y_VALUE}} min",
-            TooltipSubtitleFormat = "{{SERIES_NAME}}",
-            XAxisLabelPosition = XAxisLabelPosition.Top,
-        };
+            var sec = SecondsByDay.GetValueOrDefault(d);
+            var did = sec > 0 || Practiced.Contains(d);
+            var min = sec / 60.0;
+            var level = !did ? 0 : min < 20 ? 1 : min < 45 ? 2 : min < 75 ? 3 : 4;
+            days.Add(new
+            {
+                date = IsoDate(d),
+                level,
+                tip = sec > 0 ? Stats.Duration(sec) : did ? "Practised, no time logged" : "No practice",
+                sub = Stats.Day(d),
+                faded = From is { } f && d < f.Date,
+                today = d == today,
+            });
+        }
+        // a month that only shows its last few days at the left edge has no room for a label
+        var hideMonth = start.Day > 21 ? $"{start.Year}-{start.Month}" : null;
+        return new { start = IsoDate(start), end = IsoDate(today), weeks = Weeks, hideMonth, days };
     }
 }

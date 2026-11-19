@@ -20,7 +20,7 @@ The house rules for how screens look and read. Follow them when building or chan
 | Durations in text | `45 sec`, `10 min`, `1 hr`, `1 hr 5 min`: always `hr`, `min`, `sec` | `Stats.Duration(sec)` |
 | Running clocks / countdowns | `m:ss`, `h:mm:ss` | `Stats.Clock(sec)` |
 | Duration inputs | h:mm:ss text field | `<DurationInput>` (never number fields or `MudTimePicker`) |
-| Chart axis ticks and tooltips | durations in round steps ("30 min", "1 hr 30 min"), same format as text | `BarChart Minutes` (MudChart `YAxisToStringFunc` + `{{Y_AXIS_VALUE}}`) |
+| Chart axis ticks and tooltips | durations in round steps ("30 min", "1 hr 30 min"), same format as text | `BarChart Minutes` (C# formats every tick and tooltip and sends the text to charts.js) |
 | Dates | `Sat 14 Nov`; add the year (`14 Nov 2025`) only outside the current year | |
 | Relative dates | `today`, `yesterday`, `3 days ago`, `2w ago`, then a date | `Stats.Ago` |
 | Tempo | `120 bpm`, `90%`, ranges `65–145` | |
@@ -33,7 +33,11 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 - Everything on a page with a period picker follows that period. The practice calendar is the exception: it always shows the last 12 months so it doesn't change size.
 - Cards side by side in a grid end level at the bottom (`equal-cards` on the `MudGrid`).
 - Long ranked lists show their top 8 with "Show all".
-- Charts are `MudChart` (bar, time series, heat map) with `MatchBoundsToSize` so text keeps its size at any width. Tooltips are MudChart's own, set through `TooltipTitleFormat` / `TooltipSubtitleFormat` (`{{Y_AXIS_VALUE}}`, `{{X_VALUE}}`, `{{SERIES_NAME}}`). Palettes come from the theme via `ChartColors`. We accept MudChart's limits (no reference lines or per-bar colours) rather than hand-build charts.
+- Charts are **Apache ECharts** (vendored in `wwwroot/lib/echarts`, lazy-loaded) drawn by `wwwroot/js/charts.js`, through components on `ChartBase`. MudChart was tried and dropped: no reference lines, per-bar colours, whiskers or calendar extras. LiveCharts2 too (Skia canvas ignores CSS fonts, needs native WASM linking).
+- All text (ticks, tooltips) is formatted in C# with `Stats.*` and sent as strings, so charts read the same as the rest of the app. Don't format numbers or durations in JS.
+- Colours come from the theme's CSS tokens (`--series`, `--accent`, `--good`, `--hm-*`…), read when drawing; the spec includes the theme so a theme switch redraws. Tooltips are ECharts' HTML tooltips styled with the tokens: bold value, muted label below ("2 hr 35 min" / "Week of 9 Nov"), optional note.
+- Goals are a dashed green line, with a small key above the chart ("Weekly goal 2 hr 30 min"). The current week's bar is accent. Tempo dots are coloured by feel, with a faint whisker down to the day's lowest tempo.
+- Practice calendar: Monday-first columns, square cells sized to the width, untimed practice days on the first step, days before the selected period faded, today outlined in accent, Less → More key below.
 
 ## Layout
 
@@ -50,7 +54,7 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 
 ## Controls
 
-- **Prefer existing MudBlazor components** over hand-built ones: `MudChart` for charts, `MudProgressLinear` for bars, `MudTooltip` / a component's own tooltip options for tooltips, and so on. Configure them through their parameters and options first; only build something custom when MudBlazor has nothing that fits, and say why in a comment. Check the API at mudblazor.com (it renders client-side, so open it in a browser rather than fetching it).
+- **Prefer existing MudBlazor components** over hand-built ones: `MudProgressLinear` for bars, `MudTooltip` / a component's own tooltip options for tooltips, and so on. Configure them through their parameters and options first; only build something custom when MudBlazor has nothing that fits, and say why in a comment. Check the API at mudblazor.com (it renders client-side, so open it in a browser rather than fetching it). Charts are the exception (ECharts, see Charts).
 
 - **Buttons:** at most one filled primary button per view (or per card when that card is the active one). Secondary actions are outlined; tertiary ones are text buttons.
 - **Every icon-only button has a tooltip** (`MudTooltip`) naming what it does ("Move up", "Edit entry", "More"), plus an accessible name (`aria-label`, or `AriaLabel` on `MudMenu`) that can carry more context ("Move Verse up"). Tooltips never include keyboard shortcuts.
@@ -99,4 +103,4 @@ Reuse these instead of rebuilding them. When two screens show the same thing, th
 | `GoalBar` | Goal progress bar (`MudProgressLinear`: accent, green when reached) |
 | `StatTile` | Headline numbers (pass `Seconds` for durations so the unit words render small) |
 | `FeelHint`, `EffortSlider` | Feel / effort display and input |
-| `Charts/*` | MudChart wrappers: `BarChart` (`Minutes` for durations), `TempoChart` (time series + faint goal line), `Heatmap` (practice calendar); `HBars` ranked lists on `MudProgressLinear` (`Limit` + "Show all") |
+| `Charts/*` | ECharts components on `ChartBase`: `BarChart` (`Minutes`, `Goal` + `GoalLabel`, `HighlightLast`, `TipLabels`), `TempoChart` (whiskers, feel dots, goal), `Heatmap` (practice calendar: `Practiced`, `From`); `HBars` ranked lists on `MudProgressLinear` (`Limit` + "Show all", `Goal` for goal colouring) |

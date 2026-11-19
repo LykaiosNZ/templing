@@ -78,7 +78,7 @@ else
         <MudItem xs="12" lg="4">
             <section class="card">
                 <h2 class="card-title">Weekly practice time</h2>
-                <BarChart Labels="_weekLabels" Values="_weekValues" Minutes="true" LabelEvery="3" Height="260" AriaLabel="Practice time per week" />
+                <BarChart Labels="_weekLabels" TipLabels="_weekTips" Values="_weekValues" Minutes="true" HighlightLast="true" Height="260" AriaLabel="Practice time per week" />
             </section>
         </MudItem>
         <MudItem xs="12">
@@ -199,7 +199,7 @@ else
     string SectionPick { get => _section ?? ""; set => _section = string.IsNullOrEmpty(value) ? null : value; }
     List<TempoPoint> _points = new();
     List<PracticeLog> _logs = new();
-    List<string> _weekLabels = new();
+    List<string> _weekLabels = new(), _weekTips = new();
     List<double> _weekValues = new();
     List<SectionStats> _parts = new();
     SectionStats? _weakest;
@@ -270,6 +270,7 @@ else
         _logs = Store.LogsFor(_piece.Id).OrderByDescending(l => l.Date).ToList();
         var weeks = Stats.WeeklySeconds(Store.LogsFor(_piece.Id), DateTime.Today, 12);
         _weekLabels = Stats.WeekLabels(weeks);
+        _weekTips = Stats.WeekTips(weeks);
         _weekValues = weeks.Select(w => w.sec / 60.0).ToList();
         _parts = Stats.ForSections(_piece, Store.Logs);
         _weakest = _parts.Count > 1 && _parts.Any(p => p.Progress < 1)

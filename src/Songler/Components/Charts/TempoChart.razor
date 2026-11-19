@@ -1,6 +1,6 @@
-@* Tempo over time on MudChart's time-series line: each day's top tempo, plus the goal as a faint flat line. *@
-@using MudBlazor.Charts
-@inject DataStore Store
+@* Tempo over time (ECharts via ChartBase): each day's top tempo, a whisker down to its lowest, dots coloured by feel,
+   dashed goal line. *@
+@inherits ChartBase
 
 <div class="viz" role="img" aria-label="@AriaLabel">
     @if (Points.Count == 0)
@@ -9,8 +9,11 @@
     }
     else
     {
-        <MudChart T="double" ChartType="ChartType.Timeseries" ChartSeries="_series" ChartOptions="_options"
-                  Width="100%" Height="@($"{Height}px")" MatchBoundsToSize="true" />
+        @if (Goal is { } g)
+        {
+            <div class="viz-key" aria-hidden="true"><span class="viz-key-goal"></span>Goal @Value(g)</div>
+        }
+        <div @ref="El" style="height:@(Height)px"></div>
     }
 </div>
 
@@ -21,48 +24,42 @@
     [Parameter] public int Height { get; set; } = 260;
     [Parameter] public string AriaLabel { get; set; } = "Tempo progress chart";
 
-    List<ChartSeries<double>> _series = new();
-    TimeSeriesChartOptions _options = new();
+    protected override string Kind => "tempo";
 
-    protected override void OnParametersSet()
+    string Value(double v) => $"{v:0}{Unit.Suffix()}";
+
+    protected override object? BuildSpec()
     {
-        if (Points.Count == 0) return;
-        var dark = Store.Settings.DarkMode;
-        var tempo = new ChartSeries<double>
+        if (Points.Count == 0) return null;
+        var vals = Points.Select(p => p.Value).Concat(Points.Where(p => p.Min.HasValue).Select(p => p.Min!.Value)).ToList();
+        if (Goal.HasValue) vals.Add(Goal.Value);
+        var lo = vals.Min(); var hi = vals.Max();
+        var span = Math.Max(10, hi - lo);
+        var step = NiceStep(span / 4);
+        var min = Math.Max(0, Math.Floor((lo - span * 0.05) / step) * step);
+        var (_, max, _, labels) = Ticks(min, hi + span * 0.05, step, v => $"{v:0}{(Unit == TempoUnit.Percent ? "%" : "")}");
+        return new
         {
-            Name = "Tempo",
-            Data = Points.Select(p => new TimeValue<double>(p.Date, p.Value)).ToArray(),
-        };
-        _series = [tempo];
-        var palette = new List<string> { ChartColors.Series(dark) };
-        var overrides = new Dictionary<IChartSeries, SeriesDisplayOverride>();
-        if (Goal is { } g)
-        {
-            var first = Points.Min(p => p.Date); var last = Points.Max(p => p.Date);
-            if (last == first) last = first.AddDays(1);
-            var goal = new ChartSeries<double> { Name = "Goal", Data = new[] { new TimeValue<double>(first, g), new TimeValue<double>(last, g) } };
-            _series.Add(goal);
-            palette.Add(ChartColors.Good(dark));
-            overrides[goal] = new SeriesDisplayOverride { StrokeOpacity = 0.6 };
-        }
-        var span = Points.Max(p => p.Date) - Points.Min(p => p.Date);
-        var suffix = Unit == TempoUnit.Percent ? "%" : " bpm";
-        _options = new TimeSeriesChartOptions
-        {
-            ShowLegend = false,
-            ShowDataMarkers = true,
-            LineStrokeWidth = 2,
-            ChartPalette = palette.ToArray(),
-            SeriesDisplayOverrides = overrides,
-            TimeLabelFormat = "d MMM",
-            TimeLabelSpacing = TimeSpan.FromDays(Math.Max(1, Math.Ceiling(span.TotalDays / 6))),
-            TimeLabelSpacingRounding = true,
-            TooltipTimeLabelFormat = "ddd d MMM yyyy",
-            YAxisTicks = 0,
-            MaxNumYAxisTicks = 6,
-            YAxisToStringFunc = v => $"{v:0}{suffix}",
-            TooltipTitleFormat = "{{Y_AXIS_VALUE}}",
-            TooltipSubtitleFormat = "{{X_VALUE}}",
+            points = Points.Select(p =>
+            {
+                var feel = Effort.Get(p.Effort);
+                var range = p.Min is { } mn && mn < p.Value ? $"{mn:0}–{Value(p.Value)}" : Value(p.Value);
+                return new
+                {
+                    date = IsoDate(p.Date),
+                    value = p.Value,
+                    min = p.Min,
+                    color = feel?.Color,
+                    tip = feel is null ? range : $"{range} · {feel.Label}",
+                    sub = Stats.Day(p.Date),
+                    note = string.IsNullOrWhiteSpace(p.Note) ? null : p.Note!.Length > 80 ? p.Note[..80] + "…" : p.Note,
+                };
+            }).ToList(),
+            yMin = min,
+            yMax = max,
+            yStep = step,
+            yLabels = labels,
+            goal = Goal,
         };
     }
 }

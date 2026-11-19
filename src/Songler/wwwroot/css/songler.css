@@ -120,6 +120,11 @@ kbd {
 /* charts */
 .viz { width: 100%; position: relative; }
 .viz-empty { padding: 40px; text-align: center; color: var(--muted); }
+.viz-key { display: flex; align-items: center; justify-content: flex-end; gap: 6px; font-size: .75rem; color: var(--muted); margin: -4px 0 2px; }
+.viz-key-goal { width: 18px; border-top: 2px dashed var(--good); }
+.hm-plot { height: 120px; } /* placeholder until charts.js sizes it */
+.hm-legend { display: flex; align-items: center; justify-content: flex-end; gap: 4px; font-size: .72rem; margin-top: 4px; }
+.hm-swatch { width: 11px; height: 11px; border-radius: 3px; }
 /* cards in a grid row share the row's height; in a stacked column the last card fills the rest */
 .equal-cards > .mud-grid-item { display: flex; flex-direction: column; }
 .equal-cards > .mud-grid-item > .card:last-child { flex: 1; }
