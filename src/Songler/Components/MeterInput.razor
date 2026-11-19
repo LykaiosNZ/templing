@@ -1,10 +1,10 @@
-@* Time signature as one field, "7 / 8": type either number, or use ↑/↓ (the top steps by 1, the bottom doubles and
-   halves). Both are whole numbers. The top is 1–32 beats; the bottom is a note value (1, 2, 4, 8, 16 or 32), so a
-   typed 6 snaps to the nearest one, 8. Anything else puts the last good value back. Edits the section directly and
-   keeps its division valid for the new beat. *@
+@* Time signature as one field, "7 / 8": type either number, use ↑/↓ (the top steps by 1, the bottom doubles and
+   halves), and ←/→ to move between them. Both are whole numbers. The top is 1–32 beats; the bottom is a note value
+   (1, 2, 4, 8, 16 or 32), so a typed 6 snaps to the nearest one, 8. Anything else puts the last good value back.
+   Edits the section directly and keeps its division valid for the new beat. *@
 
 <MudField Label="@Label" Variant="Variant.Outlined" Margin="Margin.Dense" InnerPadding="false" Class="meter-input">
-    <span class="meter-parts" role="group" aria-label="@Label">
+    <span class="meter-parts" role="group" aria-label="@Label" onkeydown="@MoveBetween">
         <input class="meter-part" inputmode="numeric" autocomplete="off" maxlength="2" aria-label="Beats per bar"
                @bind="_beats" @bind:after="CommitBeats" @onkeydown="KeyBeats" onfocus="this.select()" />
         <span class="meter-slash" aria-hidden="true">/</span>
@@ -14,6 +14,12 @@
 </MudField>
 
 @code {
+    // ← / → hop between the two numbers at the edge of the text (or when it's all selected, as it is on focus);
+    // plain DOM, so it's instant and the hop's blur commits the number like Tab does
+    const string MoveBetween = "const [a, b] = this.querySelectorAll('input'), t = event.target;"
+        + "if (event.key === 'ArrowRight' && t === a && t.selectionEnd === t.value.length) { event.preventDefault(); b.focus(); }"
+        + "else if (event.key === 'ArrowLeft' && t === b && t.selectionStart === 0) { event.preventDefault(); a.focus(); }";
+
     [Parameter, EditorRequired] public Section Section { get; set; } = default!;
     [Parameter] public EventCallback OnChanged { get; set; }
     [Parameter] public string Label { get; set; } = "Time signature";
