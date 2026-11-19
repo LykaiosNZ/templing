@@ -36,7 +36,7 @@ Every new piece of user data has to be wired through **storage, backup/restore a
 1. `wwwroot/js/db.js`: add the store name to `STORES` **and bump `DB_VERSION`** (the upgrade handler creates missing stores).
 2. `DataStore.cs`: add the list, load it in `LoadAsync`, add save/delete methods that call `Changed`, include it in `ImportAsync` and in `ClearAllAsync` (both the store-name array and the in-memory `.Clear()`).
 3. `Backup.cs`: add a **nullable field with a default** to `BackupFile` (old backups must still load), fill it in `Export`, restore it in `RestoreAsync`, add it to the summary text, **bump `Backup.Version`** and extend the format-history comment.
-4. `SettingsPage.razor`: add it to the counts in the Danger zone and the "Delete all data" wording. `RestoreDialog.razor`: mention it in the "Songs & data only" description if it's data, or in the settings line if it's a preference.
+4. `SettingsPage.razor`: add it to the "Delete all data" confirmation wording. `RestoreDialog.razor`: mention it in the "Songs & data only" description if it's data, or in the settings line if it's a preference.
 5. If other entities reference it by id (e.g. plan steps → items), decide what happens on delete (see `DataStore.DeleteItemAsync`) and handle missing references in the UI.
 
 **Adding a field to an existing persisted type:**

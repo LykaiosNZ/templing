@@ -39,6 +39,12 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 - **Cards** (`section.card`) with a `card-title`. A card's on/off state shows as a dot after the title (`seg-dot`), not as text.
 - Must work at phone width (≥ 360 px): wide tables switch to compact rows (`hide-phone` / `show-phone-block`).
 
+## Settings
+
+- Settings pages are a single column of sections (`settings-list`): a heading per section, then one row per setting (`setting-row`) with its name on the left and the control right-aligned. Rows are separated by hairlines; no cards.
+- A row's description (`setting-desc`) is only for information the name can't carry ("Score files aren't included."), never for instructions.
+- Controls in a row have no visible label of their own (the row names them), but still get an accessible name (`aria-label`, `DurationInput AriaLabel`).
+
 ## Controls
 
 - **Buttons:** at most one filled primary button per view (or per card when that card is the active one). Secondary actions are outlined; tertiary ones are text buttons.

@@ -4,10 +4,12 @@
 <MudTextField T="string" @bind-Value="_text" @bind-Value:after="Commit" Label="@Label" Placeholder="h:mm:ss"
               HelperText="@HelperText" Error="@(_error != null)" ErrorText="@_error" Disabled="Disabled" Variant="Variant" Margin="Margin"
               Class="@($"duration-input {Class}")" Style="@Style" InputMode="InputMode.text" Clearable="Nullable"
-              OnKeyDown="KeyDown" OnClearButtonClick="Cleared" aria-label="@($"{Label} (hours:minutes:seconds)")" />
+              OnKeyDown="KeyDown" OnClearButtonClick="Cleared" aria-label="@($"{AriaLabel ?? Label} (hours:minutes:seconds)")" />
 
 @code {
     [Parameter] public string? Label { get; set; }
+    /// <summary>Accessible name when there's no visible <see cref="Label"/> (e.g. a settings row names the field).</summary>
+    [Parameter] public string? AriaLabel { get; set; }
     /// <summary>Duration in seconds; null = empty (only when <see cref="Nullable"/>).</summary>
     [Parameter] public double? Seconds { get; set; }
     [Parameter] public EventCallback<double?> SecondsChanged { get; set; }

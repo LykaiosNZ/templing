@@ -11,46 +11,54 @@
     <h1 class="page-title" tabindex="-1">Settings &amp; data</h1>
 </div>
 
-<MudGrid Spacing="4">
-    <MudItem xs="12" lg="6">
-        <section class="card">
-            <h2 class="card-title">Backup</h2>
-            <MudText Typo="Typo.body2" Class="muted mb-3">Everything is stored locally in this browser (IndexedDB). Export a backup regularly, or to move to another device. Imported score files are not included in the backup; re-import them on the new device.</MudText>
-            <div class="d-flex gap-2 flex-wrap">
-                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Download" OnClick="ExportJson">Export backup (JSON)</MudButton>
-                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.TableView" OnClick="ExportCsv">Export log (CSV)</MudButton>
+<div class="settings-list">
+    <section aria-labelledby="set-practice">
+        <h2 class="settings-heading" id="set-practice">Practice</h2>
+        <div class="setting-row">
+            <div class="setting-text"><div class="setting-title">Weekly goal</div></div>
+            <div class="setting-control">
+                <DurationInput Seconds="Store.Settings.WeeklyGoalMin * 60.0" SecondsChanged="async v => { Store.Settings.WeeklyGoalMin = (int)Math.Round((v ?? 0) / 60); await Save(); }"
+                               AriaLabel="Weekly goal" StepSeconds="900" MaxSeconds="100 * 3600" Variant="Variant.Outlined" Margin="Margin.Dense" Style="width:140px" />
             </div>
-            <label class="file-drop mt-3" for="json-input">
-                <MudIcon Icon="@Icons.Material.Rounded.Restore" />
-                <span>Restore from backup (JSON)…</span>
-                <InputFile id="json-input" OnChange="ImportJson" accept=".json,application/json" class="file-input" />
-            </label>
-        </section>
-    </MudItem>
+        </div>
+        <div class="setting-row">
+            <div class="setting-text"><div class="setting-title">Log plan steps automatically</div></div>
+            <div class="setting-control">
+                <MudSwitch T="bool" @bind-Value="Store.Settings.AutoLogPlanSteps" @bind-Value:after="Save" Color="Color.Primary" aria-label="Log plan steps automatically" Class="ma-0" />
+            </div>
+        </div>
+    </section>
 
-    <MudItem xs="12" lg="6">
-        <section class="card">
-            <h2 class="card-title">Goals</h2>
-            <DurationInput Seconds="Store.Settings.WeeklyGoalMin * 60.0" SecondsChanged="async v => { Store.Settings.WeeklyGoalMin = (int)Math.Round((v ?? 0) / 60); await Save(); }"
-                           Label="Weekly practice goal" StepSeconds="900" MaxSeconds="100 * 3600" Style="max-width:260px" />
-        </section>
-
-        <section class="card mt-4">
-            <h2 class="card-title">Plans</h2>
-            <MudSwitch T="bool" @bind-Value="Store.Settings.AutoLogPlanSteps" @bind-Value:after="Save" Color="Color.Primary"
-                       Label="Log each plan step automatically when it finishes" />
-            <MudText Typo="Typo.caption" Class="muted d-block">
-                Off: you're asked to confirm each log (and can add the tempo you reached and how it felt). On: the time is saved straight away and you can edit it later in History.
-            </MudText>
-        </section>
-
-        <section class="card mt-4 danger">
-            <h2 class="card-title">Danger zone</h2>
-            <MudText Typo="Typo.body2" Class="muted mb-3">@Store.Items.Count items · @Store.Logs.Count log entries · @Store.Presets.Count custom metronomes · @Store.Plans.Count plans</MudText>
-            <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Rounded.DeleteForever" OnClick="ClearAll">Delete all data</MudButton>
-        </section>
-    </MudItem>
-</MudGrid>
+    <section aria-labelledby="set-data">
+        <h2 class="settings-heading" id="set-data">Data</h2>
+        <div class="setting-row">
+            <div class="setting-text">
+                <div class="setting-title">Backup</div>
+                <div class="setting-desc">Score files aren't included.</div>
+            </div>
+            <div class="setting-control">
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Download" OnClick="ExportJson">Export</MudButton>
+                <MudFileUpload T="IBrowserFile" FilesChanged="ImportJson" Accept=".json,application/json" Class="ma-0">
+                    <CustomContent>
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Restore" OnClick="@context.OpenFilePickerAsync">Restore…</MudButton>
+                    </CustomContent>
+                </MudFileUpload>
+            </div>
+        </div>
+        <div class="setting-row">
+            <div class="setting-text"><div class="setting-title">Practice log</div></div>
+            <div class="setting-control">
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.TableView" OnClick="ExportCsv">Export CSV</MudButton>
+            </div>
+        </div>
+        <div class="setting-row">
+            <div class="setting-text"><div class="setting-title">Delete all data</div></div>
+            <div class="setting-control">
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Rounded.DeleteForever" OnClick="ClearAll">Delete…</MudButton>
+            </div>
+        </div>
+    </section>
+</div>
 
 @code {
     [SupplyParameterFromQuery(Name = "restored")] public int? Restored { get; set; }
@@ -72,13 +80,14 @@
     async Task ExportCsv() =>
         await Store.DownloadAsync($"songler-log-{DateTime.Today:yyyy-MM-dd}.csv", LogCsv.ExportLogCsv(Store), "text/csv");
 
-    async Task ImportJson(InputFileChangeEventArgs e)
+    async Task ImportJson(IBrowserFile? picked)
     {
+        if (picked == null) return;
         try
         {
-            using var reader = new StreamReader(e.File.OpenReadStream(20_000_000));
+            using var reader = new StreamReader(picked.OpenReadStream(20_000_000));
             var file = Backup.Parse(await reader.ReadToEndAsync());
-            var includeSettings = await RestoreDialog.ShowAsync(Dialogs, file, e.File.Name);
+            var includeSettings = await RestoreDialog.ShowAsync(Dialogs, file, picked.Name);
             if (includeSettings == null) return;
             if (includeSettings == true) await Metro.StopAsync();
             var summary = await Backup.RestoreAsync(Store, file, includeSettings.Value);
