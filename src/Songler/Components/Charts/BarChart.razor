@@ -1,7 +1,7 @@
 @* Single-series column chart (ECharts via ChartBase). Optional goal line and highlighted last bar (the current week). *@
 @inherits ChartBase
 
-<div class="viz" role="img" aria-label="@AriaLabel">
+<div class="viz @(Fill ? "viz-fill" : null)" role="img" aria-label="@AriaLabel">
     @if (Values.Count == 0 || Values.All(v => v <= 0))
     {
         <div class="viz-empty">No data yet</div>
@@ -12,7 +12,7 @@
         {
             <div class="viz-key" aria-hidden="true"><span class="viz-key-goal"></span>@GoalLabel</div>
         }
-        <div @ref="El" style="height:@(Height)px"></div>
+        <div @ref="El" style="@(Fill ? $"min-height:{Height}px" : $"height:{Height}px")"></div>
     }
 </div>
 
@@ -26,6 +26,8 @@
     /// <summary>Axis and tooltip text for a value (ignored when <see cref="Minutes"/> is set).</summary>
     [Parameter] public Func<double, string> Format { get; set; } = v => v.ToString("0");
     [Parameter] public int Height { get; set; } = 240;
+    /// <summary>Grow to fill the card (in a <c>chart-card</c>), with <see cref="Height"/> as the minimum, so cards side by side end level.</summary>
+    [Parameter] public bool Fill { get; set; }
     /// <summary>Show every Nth x label; by default labels are spaced to fit.</summary>
     [Parameter] public int LabelEvery { get; set; } = 1;
     [Parameter] public string AriaLabel { get; set; } = "Bar chart";

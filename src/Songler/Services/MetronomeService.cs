@@ -194,6 +194,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         await _mod.InvokeVoidAsync("init", _ref);
         LoadFreeInternal();
         await PushConfig();
+        Changed?.Invoke(); // listeners that rendered before init (the mini player) show the loaded tempo
     }
 
     // ------------------------------------------------------------ loading
@@ -213,6 +214,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         LoadFreeInternal();
         ResetSession();
         await PushConfig();
+        Changed?.Invoke();
     }
 
     public async Task LoadPieceAsync(Piece piece, string? sectionId = null)
@@ -235,6 +237,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         tr.Start = Math.Round(tr.End * 0.85);
         ResetSession();
         await PushConfig();
+        Changed?.Invoke();
     }
 
     public async Task LoadPresetAsync(MetronomePreset p)
@@ -247,6 +250,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         CurrentStep = 0; Factor = 1;
         ResetSession();
         await PushConfig();
+        Changed?.Invoke();
     }
 
     /// <summary>Replace the tempo map of a custom metronome (persisted by saving the preset).</summary>

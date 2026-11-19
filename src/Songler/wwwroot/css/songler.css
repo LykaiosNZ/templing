@@ -130,6 +130,10 @@ kbd {
 /* cards in a grid row share the row's height; in a stacked column the last card fills the rest */
 .equal-cards > .mud-grid-item { display: flex; flex-direction: column; }
 .equal-cards > .mud-grid-item > .card:last-child { flex: 1; }
+/* a card whose chart grows to fill it (BarChart Fill) */
+.chart-card { display: flex; flex-direction: column; }
+.viz-fill { flex: 1; display: flex; flex-direction: column; }
+.viz-fill > div:last-child { flex: 1; }
 .hbars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .hbar-label { display: flex; justify-content: space-between; gap: 8px; font-size: .86rem; margin-bottom: 4px; }
 .mud-layout .hbar-label a, .hbar-label span:first-child { color: var(--ink); font-weight: 500; }

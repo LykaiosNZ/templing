@@ -158,7 +158,7 @@
                 if (ShowEndPanel && Metro.SessionActiveSec >= 1) return "practised this session";
                 return iv.Rounds == 1 ? "" : $"{(iv.Rounds == 0 ? "endless" : $"{iv.Rounds} rounds")}{(iv.RestSec > 0 ? $" · {Stats.Clock(iv.RestSec)} rests" : "")}";
             }
-            if (Metro.RestOnlyRunning) return "not counted as practice";
+            if (Metro.RestOnlyRunning) return "remaining";
             if (Metro.State.remaining is null) return "elapsed";
             return iv.Rounds > 1 ? $"round {Metro.State.round} of {iv.Rounds}" : Rest ? "until work" : "remaining";
         }
