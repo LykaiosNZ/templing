@@ -45,7 +45,7 @@ else
     <div class="tiles tiles-lead">
         <StatTile Label="Progress" Value="@(_st.Progress is { } p ? p.ToString("P0") : "—")" Icon="@Icons.Material.Rounded.Flag"
                   Sub="@ProgressSub">
-            <div class="progress-track mt-2"><div class="progress-fill @(_st.Progress >= 1 ? "done" : "")" style="width:@Pct(_st.Progress)%"></div></div>
+            <GoalBar Progress="_st.Progress" Class="mt-2" AriaLabel="Progress to goal" />
         </StatTile>
         <StatTile Label="Latest" Value="@(_st.Last?.ToString("0") ?? "—")" Unit="@(_st.Last.HasValue ? _piece.Unit.Suffix() : null)" Icon="@Icons.Material.Rounded.Speed"
                   Sub="@(_st.Best is { } b ? $"Best {b:0}{_piece.Unit.Suffix()}" : null)" />
@@ -140,9 +140,7 @@ else
                                         <td class="num mono muted">@(ps.Best is { } pb ? pb.ToString("0") + pctSuffix : "—")</td>
                                         <td>
                                             <div class="d-flex align-center gap-2">
-                                                <div class="progress-track flex-grow-1" role="progressbar" aria-label="@($"{s.Name} progress")" aria-valuenow="@((int)((ps.Progress ?? 0) * 100))" aria-valuemin="0" aria-valuemax="100">
-                                                    <div class="progress-fill @(ps.Progress >= 1 ? "done" : "")" style="width:@Pct(ps.Progress)%"></div>
-                                                </div>
+                                                <GoalBar Progress="ps.Progress" Class="flex-grow-1" AriaLabel="@($"{s.Name} progress")" />
                                                 <span class="mono small" style="min-width:38px;text-align:right">@(ps.Progress is { } pp ? pp.ToString("P0") : "—")</span>
                                             </div>
                                         </td>
@@ -260,7 +258,6 @@ else
         }
     }
 
-    static string Pct(double? p) => Math.Min(100, (p ?? 0) * 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
 
     string Improvement
     {

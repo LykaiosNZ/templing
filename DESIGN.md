@@ -94,6 +94,7 @@ Reuse these instead of rebuilding them. When two screens show the same thing, th
 | `DurationInput` | Any duration field |
 | `PlanStepSummary` | One-line plan step (Plans list, plan editor rows) |
 | `LogTable` | Practice log lists (History, Piece detail) |
+| `GoalBar` | Goal progress bar (`MudProgressLinear`: accent, green when reached) |
 | `StatTile` | Headline numbers (pass `Seconds` for durations so the unit words render small) |
 | `FeelHint`, `EffortSlider` | Feel / effort display and input |
 | `Charts/*` | Tempo line, bar chart, heatmap, ranked bars (`HBars Limit` for long lists with "Show all"; `BarChart Minutes` for minute values: ticks in min, whole hr once the scale is large) |

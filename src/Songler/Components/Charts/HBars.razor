@@ -16,9 +16,7 @@
                 }
                 <span class="hbar-value">@row.Display</span>
             </div>
-            <div class="hbar-track" aria-hidden="true">
-                <div class="hbar-fill" style="width:@(pct.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))%; @(row.Color != null ? $"background:{row.Color}" : "")"></div>
-            </div>
+            <MudProgressLinear Value="@Math.Clamp(pct, 0, 100)" Color="Color.Secondary" Rounded="true" Size="Size.Medium" aria-hidden="true" />
         </li>
     }
 </ul>
@@ -28,7 +26,7 @@
 }
 
 @code {
-    public record Row(string Label, double Value, string Display, string? Href = null, string? Color = null);
+    public record Row(string Label, double Value, string Display, string? Href = null);
     [Parameter] public List<Row> Rows { get; set; } = new();
     [Parameter] public string AriaLabel { get; set; } = "Ranking";
     [Parameter] public double? Max { get; set; }

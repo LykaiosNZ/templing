@@ -1,0 +1,16 @@
+@* Progress toward a goal as a MudProgressLinear: accent while in progress, green once reached.
+   Used wherever the app shows goal progress (dashboard, library cards, piece detail). *@
+
+<MudProgressLinear Value="@Percent" Color="@(Progress >= 1 ? Color.Success : Color.Primary)" Rounded="true" Size="Size"
+                   Class="@Class" aria-label="@AriaLabel" title="@Title" />
+
+@code {
+    /// <summary>Fraction of the goal reached (1 = 100%). Null shows an empty bar.</summary>
+    [Parameter] public double? Progress { get; set; }
+    [Parameter] public Size Size { get; set; } = Size.Small;
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public string? Title { get; set; }
+
+    double Percent => Math.Clamp((Progress ?? 0) * 100, 0, 100);
+}

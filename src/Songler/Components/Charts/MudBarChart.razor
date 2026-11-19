@@ -1,0 +1,75 @@
+@* TRIAL: the BarChart parameters on top of MudBlazor's MudChart, to compare with the hand-built BarChart.
+   Not yet supported here: HighlightLast and Target (MudChart has no per-bar colours or reference lines). *@
+@inject DataStore Store
+
+<div class="viz mud-viz" role="img" aria-label="@AriaLabel">
+    @if (Values.Count == 0 || Values.All(v => v <= 0))
+    {
+        <div class="viz-empty">No data yet</div>
+    }
+    else
+    {
+        <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="_series" ChartLabels="_labels" ChartOptions="_options"
+                  Width="100%" Height="@($"{Height}px")" MatchBoundsToSize="true">
+            <TooltipTemplate>
+                @{
+                    // SvgPath.Index isn't the bar's position; find it from its x label
+                    var i = Array.IndexOf(_labels, context.Item1.LabelXValue);
+                    var label = i < 0 ? "" : TipLabels is { } tl && i < tl.Count ? tl[i] : i < Labels.Count ? Labels[i] : "";
+                    var value = i >= 0 && i < Values.Count ? ValueFormat(Values[i]) : "";
+                }
+                <foreignObject x="@F(context.Item1.LabelX - 90)" y="@F(context.Item1.LabelY - 58)" width="180" height="54" style="overflow:visible; pointer-events:none">
+                    <div class="chart-tip center above" style="position:absolute; left:90px; top:54px">
+                        <div class="chart-tip-label">@label</div>
+                        <div class="chart-tip-value">@value</div>
+                    </div>
+                </foreignObject>
+            </TooltipTemplate>
+        </MudChart>
+    }
+</div>
+
+@code {
+    [Parameter] public List<string> Labels { get; set; } = new();
+    [Parameter] public List<string>? TipLabels { get; set; }
+    [Parameter] public List<double> Values { get; set; } = new();
+    [Parameter] public Func<double, string> ValueFormat { get; set; } = v => v.ToString("0");
+    [Parameter] public Func<double, string> AxisFormat { get; set; } = v => v.ToString("0");
+    [Parameter] public bool Minutes { get; set; }
+    [Parameter] public int Height { get; set; } = 220;
+    [Parameter] public int LabelEvery { get; set; } = 1;
+    [Parameter] public string AriaLabel { get; set; } = "Bar chart";
+
+    List<ChartSeries<double>> _series = new();
+    string[] _labels = [];
+    BarChartOptions _options = new();
+
+    static string F(double v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+
+    protected override void OnParametersSet()
+    {
+        _series = [new() { Name = AriaLabel, Data = Values.ToArray() }];
+        _labels = Labels.ToArray();
+        var hi = Values.DefaultIfEmpty(0).Max();
+        var hours = Minutes && hi >= 300;
+        _options = new BarChartOptions
+        {
+            ShowLegend = false,
+            ChartPalette = [Store.Settings.DarkMode ? "#3987e5" : "#2a78d6"],
+            BarWidthRatio = 0.7,
+            XAxisLabelInterval = Math.Max(1, LabelEvery),
+            // minutes: round minute steps, or whole-hour steps once the scale is large (as BarChart does)
+            YAxisTicks = hours ? (int)(Math.Max(1, NiceStep(hi / 60 / 4)) * 60) : 0,
+            MaxNumYAxisTicks = 6,
+            YAxisToStringFunc = Minutes ? (v => hours ? $"{v / 60:0.#} hr" : $"{v:0} min") : AxisFormat,
+        };
+    }
+
+    static double NiceStep(double raw)
+    {
+        if (raw <= 0) return 1;
+        var mag = Math.Pow(10, Math.Floor(Math.Log10(raw)));
+        var n = raw / mag;
+        return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * mag;
+    }
+}
