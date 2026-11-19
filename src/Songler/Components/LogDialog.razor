@@ -1,5 +1,6 @@
 @inject DataStore Store
 @inject IDialogService Dialogs
+@inject ISnackbar Snackbar
 
 <MudDialog>
     <TitleContent>
@@ -120,9 +121,10 @@
 
     async Task Delete()
     {
-        var ok = await Dialogs.ShowMessageBoxAsync("Delete entry?", $"{Log.PieceName} on {Stats.Day(Log.Date)} will be removed.", "Delete", cancelText: "Cancel");
-        if (ok != true) return;
+        var what = $"{Log.PieceName} on {Stats.Day(Log.Date)}";
+        if (!await ConfirmDialog.DeleteAsync(Dialogs, "entry", what, quote: false)) return;
         await Store.DeleteLogAsync(Log);
+        Snackbar.Add($"Deleted {what}", Severity.Info);
         Dialog.Close(DialogResult.Ok(Log));
     }
 }

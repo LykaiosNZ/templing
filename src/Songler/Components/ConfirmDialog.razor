@@ -1,0 +1,62 @@
+@* Every confirmation in the app. Destructive answers are red; the safe answer has focus, so a stray Enter
+   never deletes anything. Use ShowAsync / DeleteAsync rather than MudBlazor's message box. *@
+@inject Shortcuts Keys
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2">@Message</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Class="confirm-cancel" OnClick="() => Dialog.Cancel()">@CancelText</MudButton>
+        @if (AltText != null)
+        {
+            <MudButton Class="confirm-alt" Color="@(AltDestructive ? Color.Error : Color.Default)" OnClick="() => Dialog.Close(DialogResult.Ok(false))">@AltText</MudButton>
+        }
+        <MudButton Class="confirm-ok" Variant="Variant.Filled" Color="@(Destructive ? Color.Error : Color.Primary)"
+                   OnClick="() => Dialog.Close(DialogResult.Ok(true))">@ConfirmText</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public string Message { get; set; } = "";
+    [Parameter] public string ConfirmText { get; set; } = "OK";
+    [Parameter] public bool Destructive { get; set; }
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public string? AltText { get; set; }
+    [Parameter] public bool AltDestructive { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await Task.Yield(); // after the dialog has taken focus for itself
+        // anything that loses data starts on the safe answer
+        await Keys.FocusAsync(Destructive || AltDestructive ? ".mud-dialog .confirm-cancel" : ".mud-dialog .confirm-ok");
+    }
+
+    /// <summary>Asks a question. True = confirm, false = the alternative answer (if any), null = cancelled.</summary>
+    public static async Task<bool?> ShowAsync(IDialogService dialogs, string title, string message, string confirm,
+        bool destructive = false, string cancel = "Cancel", string? alt = null, bool altDestructive = false)
+    {
+        var p = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.Message, message }, { x => x.ConfirmText, confirm }, { x => x.Destructive, destructive },
+            { x => x.CancelText, cancel }, { x => x.AltText, alt }, { x => x.AltDestructive, altDestructive },
+        };
+        var r = await dialogs.ShowAsync<ConfirmDialog>(title, p, new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        var res = await r.Result;
+        return res is { Canceled: false, Data: bool b } ? b : null;
+    }
+
+    /// <summary>
+    /// "Delete …?" with a red Delete button. The message always ends "This can't be undone.";
+    /// <paramref name="consequence"/> says what else goes or stays ("Your practice logs are kept.").
+    /// </summary>
+    /// <param name="quote">Quote <paramref name="name"/> (a thing's name); false for a description ("Scales on Sat 14 Nov").</param>
+    public static async Task<bool> DeleteAsync(IDialogService dialogs, string what, string name, string? consequence = null, string confirm = "Delete", bool quote = true)
+    {
+        var subject = quote ? $"“{name}”" : name;
+        var message = string.Join(" ", new[] { $"{subject} will be deleted.", consequence, "This can't be undone." }.Where(s => !string.IsNullOrWhiteSpace(s)));
+        return await ShowAsync(dialogs, $"Delete {what}?", message, confirm, destructive: true) == true;
+    }
+}

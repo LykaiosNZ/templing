@@ -492,9 +492,9 @@
     async Task DeletePreset()
     {
         if (Metro.Preset is not { } p) return;
-        var ok = await Dialogs.ShowMessageBoxAsync("Delete custom metronome?", $"“{p.Name}” will be removed.", "Delete", cancelText: "Cancel");
-        if (ok != true) return;
+        if (!await ConfirmDialog.DeleteAsync(Dialogs, "custom metronome", p.Name)) return;
         await Store.DeletePresetAsync(p);
+        Snackbar.Add($"Deleted “{p.Name}”", Severity.Info);
         Nav.NavigateTo("metronome/free");
     }
 

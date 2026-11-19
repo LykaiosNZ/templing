@@ -58,6 +58,7 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 
 - **Buttons:** at most one filled primary button per view (or per card when that card is the active one). Secondary actions are outlined; tertiary ones are text buttons.
 - **Every icon-only button has a tooltip** (`MudTooltip`) naming what it does ("Move up", "Edit entry", "More"), plus an accessible name (`aria-label`, or `AriaLabel` on `MudMenu`) that can carry more context ("Move Verse up"). Tooltips never include keyboard shortcuts.
+- **Confirmations** use `ConfirmDialog` (`DeleteAsync` for deletes, `ShowAsync` otherwise), never MudBlazor's message box. Destructive answers are red and the safe answer has focus. Delete wording: "“Name” will be deleted." + what else goes or stays + "This can't be undone." After a delete, a snackbar says "Deleted “Name”".
 - **Destructive actions** (delete) go in a ⋮ menu, not next to everyday buttons, and always confirm. In an edit dialog, Delete is a red text button on the left of the actions, and confirms too.
 - **No helper text under fields** in rows of fields: it pushes the field out of line. Examples go in the placeholder ("120, 65–145 or 85%"); a short note goes in the label ("Bars (loop)").
 - **Menu items that open a dialog** end with "…" and start it via `AfterMenu(...)`, not by awaiting it in `OnClick` (MudMenu stays open until the handler returns).

@@ -295,12 +295,11 @@ else
     {
         if (_piece == null) return;
         var count = Store.LogsFor(_piece.Id).Count();
-        var r = await Dialogs.ShowMessageBoxAsync("Delete piece?",
-            $"“{_piece.Name}” will be removed from your library. {(count > 0 ? $"Its {count} log entries will be deleted too." : "")} This cannot be undone.",
-            "Delete", cancelText: "Cancel");
-        if (r != true) return;
+        var logs = count switch { 0 => null, 1 => "Its log entry is deleted too.", _ => $"Its {count} log entries are deleted too." };
+        if (!await ConfirmDialog.DeleteAsync(Dialogs, "piece", _piece.Name, logs)) return;
+        var name = _piece.Name;
         await Store.DeletePieceAsync(_piece, deleteLogs: true);
-        Snackbar.Add("Piece deleted", Severity.Info);
+        Snackbar.Add($"Deleted “{name}”", Severity.Info);
         Nav.NavigateTo("library");
     }
 

@@ -120,9 +120,9 @@ else if (Runner.Summary is { } sum)
     async Task<bool> ConfirmLeave(string verb)
     {
         if (!HasUnlogged || Runner.Current is not { } step) return true;
-        var r = await Dialogs.ShowMessageBoxAsync($"{verb}?",
-            $"You have {Stats.Clock(Metro.SessionActiveSec)} on {Runner.Describe(step)} that hasn't been logged.",
-            yesText: "Log it", noText: "Discard", cancelText: "Cancel");
+        var r = await ConfirmDialog.ShowAsync(Dialogs, $"{verb}?",
+            $"You have {Stats.Duration((int)Metro.SessionActiveSec)} on {Runner.Describe(step)} that hasn't been logged.",
+            "Log it", cancel: "Keep going", alt: "Discard", altDestructive: true);
         if (r == null) return false;
         if (r == true) await LogCurrent(step, ask: true);
         else Metro.ResetSession();
@@ -151,9 +151,9 @@ else if (Runner.Summary is { } sum)
         }
         else
         {
-            var ok = await Dialogs.ShowMessageBoxAsync("End plan?",
+            var ok = await ConfirmDialog.ShowAsync(Dialogs, "End plan?",
                 $"You're on step {Runner.Index + 1} of {Runner.Plan?.Steps.Count}. Logs already saved are kept.",
-                yesText: "End plan", cancelText: "Keep going");
+                "End plan", cancel: "Keep going");
             if (ok != true) return;
         }
         await Runner.EndAsync();

@@ -70,8 +70,21 @@ export function setBindings(list) { bound = new Set(list); }
 export async function focus(selector) {
     for (let t = 0; t < 60; t++) {
         const el = document.querySelector(selector);
-        if (el) { el.focus(); if (el.select) el.select(); return; }
+        if (el) { el.focus(); if (el.select) el.select(); hold(el); return; }
         await new Promise(r => requestAnimationFrame(r));
     }
 }
 
+// A menu that opened this dialog hands focus back to its own button as it closes, which can land just after
+// we focused something in the dialog. For a moment, take focus back if it leaves the dialog (moves inside it are fine).
+function hold(el, ms = 400) {
+    const scope = el.closest('.mud-dialog');
+    if (!scope) return;
+    const until = Date.now() + ms;
+    const check = () => {
+        if (!el.isConnected || Date.now() > until) return;
+        if (!scope.contains(document.activeElement)) el.focus();
+        requestAnimationFrame(check);
+    };
+    requestAnimationFrame(check);
+}

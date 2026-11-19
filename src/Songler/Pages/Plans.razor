@@ -101,10 +101,10 @@ else
 
     async Task Delete(PracticePlan p)
     {
-        var ok = await Dialogs.ShowMessageBoxAsync("Delete plan?", $"“{p.Name}” will be removed. Your practice logs are kept.", "Delete", cancelText: "Cancel");
-        if (ok != true) return;
+        if (!await ConfirmDialog.DeleteAsync(Dialogs, "plan", p.Name, "Your practice logs are kept.")) return;
         if (Runner.Plan?.Id == p.Id) await Runner.EndAsync();
         await Store.DeletePlanAsync(p);
+        Snackbar.Add($"Deleted “{p.Name}”", Severity.Info);
     }
 
     async Task Run(PracticePlan p)

@@ -123,9 +123,9 @@
 
     async Task ClearAll()
     {
-        var ok = await Dialogs.ShowMessageBoxAsync("Delete all data?",
-            "This permanently removes every piece, log entry, plan and custom metronome from this browser. Export a backup first if you might want it back.",
-            "Delete everything", cancelText: "Cancel");
+        var ok = await ConfirmDialog.ShowAsync(Dialogs, "Delete all data?",
+            "Every piece, log entry, plan and custom metronome in this browser will be deleted. Export a backup first if you might want it back. This can't be undone.",
+            "Delete everything", destructive: true);
         if (ok != true) return;
         await Store.ClearAllAsync();
         Snackbar.Add("All data deleted", Severity.Info);
