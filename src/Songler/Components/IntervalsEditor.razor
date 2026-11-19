@@ -1,0 +1,53 @@
+@* Work / rest interval settings, shared by the Metronome and Timer pages. On/off lives with each page's quick toggles. *@
+@inject MetronomeService Metro
+
+@if (Metro.StepPinned)
+{
+    <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">Your plan sets the intervals for this step. Changes here apply after the plan.</MudAlert>
+}
+@{ var iv = Metro.Settings.Interval; }
+<div class="d-flex gap-2 flex-wrap mb-3" role="group" aria-label="Interval presets">
+    @foreach (var p in Presets)
+    {
+        var preset = p;
+        var on = IsActive(iv, preset);
+        <MudButton Size="Size.Small" Variant="@(on ? Variant.Filled : Variant.Outlined)" Color="@(on ? Color.Primary : Color.Default)" aria-pressed="@(on ? "true" : "false")"
+                   OnClick="() => Set(preset)">@Label(preset)</MudButton>
+    }
+</div>
+<div class="form-grid three">
+    <DurationInput Seconds="iv.WorkMin * 60" SecondsChanged="async v => { iv.WorkMin = (v ?? 15) / 60; await Apply(); }" Label="Work" MinSeconds="15" MaxSeconds="7200" />
+    <DurationInput Seconds="iv.RestMin * 60" SecondsChanged="async v => { iv.RestMin = (v ?? 0) / 60; await Apply(); }" Label="Rest" MaxSeconds="3600" />
+    <MudNumericField T="int" @bind-Value="iv.Rounds" @bind-Value:after="Apply" Label="Rounds" Min="0" Max="99" HelperText="0 = endless" />
+</div>
+<MudCheckBox T="bool" @bind-Value="iv.VoiceCues" @bind-Value:after="Apply" Color="Color.Primary" Label="Audio cues (3-2-1 pips before each change)" />
+<MudText Typo="Typo.caption" Class="muted d-block mt-2">
+    Total active time: @Stats.Duration((int)(iv.WorkMin * 60 * Math.Max(1, iv.Rounds)))@(iv.Rounds == 0 ? " per round" : "")
+</MudText>
+
+@code {
+    record Preset(double Work, double Rest, int Rounds);
+
+    static readonly Preset[] Presets =
+    {
+        new(10, 0, 1), new(15, 0, 1), new(5, 1, 2), new(10, 2, 3), new(2, 0.5, 4), new(0.5, 0.25, 8),
+    };
+
+    static string Label(Preset p)
+    {
+        var work = p.Work < 1 ? $"{p.Work * 60:0} s" : $"{p.Work:0.#} min";
+        return p.Rounds == 1 ? work : $"{p.Rounds} × {work}";
+    }
+
+    static bool IsActive(IntervalSettings iv, Preset p) =>
+        iv.Enabled && Math.Abs(iv.WorkMin - p.Work) < 1e-6 && Math.Abs(iv.RestMin - p.Rest) < 1e-6 && iv.Rounds == p.Rounds;
+
+    async Task Set(Preset p)
+    {
+        var iv = Metro.Settings.Interval;
+        iv.WorkMin = p.Work; iv.RestMin = p.Rest; iv.Rounds = p.Rounds; iv.Enabled = true;
+        await Apply();
+    }
+
+    Task Apply() => Metro.ApplyAsync();
+}

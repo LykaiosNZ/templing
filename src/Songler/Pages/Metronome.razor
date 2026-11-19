@@ -265,26 +265,7 @@
             }
             else if (_panel == "intervals")
             {
-                    @if (Metro.StepPinned)
-                    {
-                        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">Your plan sets the intervals for this step. Changes here apply after the plan.</MudAlert>
-                    }
-                    var iv = Metro.Settings.Interval;
-                    <div class="d-flex gap-2 flex-wrap mb-2">
-                        <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="() => SetInterval(5, 1, 2)">5 · 1 · 5</MudButton>
-                        <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="() => SetInterval(10, 0, 1)">10 min</MudButton>
-                        <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="() => SetInterval(2, 0.5, 4)">4 × 2 min</MudButton>
-                        <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="() => SetInterval(0.5, 0.25, 8)">8 × 30 s</MudButton>
-                    </div>
-                    <div class="form-grid three">
-                        <DurationInput Seconds="iv.WorkMin * 60" SecondsChanged="async v => { iv.WorkMin = (v ?? 15) / 60; await Apply(); }" Label="Work" MinSeconds="15" MaxSeconds="7200" />
-                        <DurationInput Seconds="iv.RestMin * 60" SecondsChanged="async v => { iv.RestMin = (v ?? 0) / 60; await Apply(); }" Label="Rest" MaxSeconds="3600" />
-                        <MudNumericField T="int" @bind-Value="iv.Rounds" @bind-Value:after="Apply" Label="Rounds" Min="0" Max="99" HelperText="0 = endless" />
-                    </div>
-                    <MudCheckBox T="bool" @bind-Value="iv.VoiceCues" @bind-Value:after="Apply" Color="Color.Primary" Label="Audio cues (3-2-1 pips before each change)" />
-                    <MudText Typo="Typo.caption" Class="muted d-block mt-2">
-                        Total active time: @Stats.Duration((int)(iv.WorkMin * 60 * Math.Max(1, iv.Rounds)))@(iv.Rounds == 0 ? " per round" : "")
-                    </MudText>
+                    <IntervalsEditor />
             }
             else
             {
@@ -430,12 +411,6 @@
 
     async Task Toggle(Action a) { a(); await Metro.ApplyAsync(); }
 
-    async Task SetInterval(double work, double rest, int rounds)
-    {
-        var iv = Metro.Settings.Interval;
-        iv.WorkMin = work; iv.RestMin = rest; iv.Rounds = rounds; iv.Enabled = true;
-        await Metro.ApplyAsync();
-    }
 
     async Task LogSession()
     {

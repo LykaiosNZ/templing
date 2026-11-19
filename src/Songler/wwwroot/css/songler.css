@@ -234,6 +234,7 @@ kbd {
 .settings-switcher { width: 100%; }
 .settings-switcher .mud-toggle-item { flex: 1; }
 .seg-label { display: inline-flex; align-items: center; gap: 6px; }
+.card-title.seg-label { display: flex; }
 .seg-dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid currentColor; opacity: .5; display: inline-block; box-sizing: border-box; }
 .seg-dot.on { background: var(--accent); border-color: var(--accent); opacity: 1; }
 .mud-toggle-item-selected .seg-dot.on { background: currentColor; border-color: currentColor; }

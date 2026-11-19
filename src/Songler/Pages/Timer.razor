@@ -13,19 +13,27 @@
 
 <div class="page-head">
     <div>
-        <MudText Typo="Typo.overline" Class="muted">Practice timer · no click</MudText>
-        <h1 class="page-title" tabindex="-1">@(Metro.Item is { } it && Metro.Source == MetronomeSource.Item ? it.Name : "Timer")</h1>
-        <MudText Typo="Typo.body2" Class="muted">For playing along to Guitar Pro or a backing track. Only work time is logged, not rests.</MudText>
-    </div>
-    <div class="d-flex gap-2 align-center flex-wrap">
-        <MudSelect T="string" Value="@(Metro.Source == MetronomeSource.Item ? Metro.Item?.Id : null)" ValueChanged="PickItem" Label="Practising" Clearable="true"
-                   Variant="Variant.Outlined" Margin="Margin.Dense" Style="min-width:260px" Disabled="Metro.IsRunning" HelperText="Optional">
-            @foreach (var i in Store.Items.Where(i => !i.Archived)) { <MudSelectItem T="string" Value="@i.Id">@i.Name</MudSelectItem> }
-        </MudSelect>
-        @if (Metro.Source == MetronomeSource.Item && Metro.Item != null)
+        @if (Metro.Item is { } it && Metro.Source == MetronomeSource.Item)
         {
-            <MudButton Variant="Variant.Outlined" StartIcon="@Mdi.Metronome" Href="@($"metronome/item/{Metro.Item.Id}")" Disabled="Metro.IsRunning">Use metronome instead</MudButton>
+            <MudText Typo="Typo.overline" Class="muted">@it.Type.Label()</MudText>
+            <h1 class="page-title" tabindex="-1">@it.Name</h1>
         }
+        else
+        {
+            <h1 class="page-title" tabindex="-1">Timer</h1>
+        }
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <MudMenu Label="Load…" StartIcon="@Icons.Material.Rounded.FolderOpen" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                 Disabled="Metro.IsRunning" aria-label="Load timer source">
+            <MudMenuItem Href="timer/free" Icon="@Icons.Material.Rounded.HourglassEmpty">Timer</MudMenuItem>
+            <MudDivider />
+            <MudText Typo="Typo.overline" Class="px-4 muted">Library</MudText>
+            @foreach (var i in Store.Items.Where(i => !i.Archived))
+            {
+                <MudMenuItem Href="@($"timer/item/{i.Id}")" Icon="@i.Type.Icon()">@i.Name</MudMenuItem>
+            }
+        </MudMenu>
     </div>
 </div>
 
@@ -36,7 +44,10 @@
             <div class="timer-ring">
                 <svg viewBox="0 0 200 200" aria-hidden="true">
                     <circle cx="100" cy="100" r="88" class="ring-track" />
-                    <circle cx="100" cy="100" r="88" class="ring-fill" style="stroke-dasharray:@Dash" transform="rotate(-90 100 100)" />
+                    @if (Dash is { } dash)
+                    {
+                        <circle cx="100" cy="100" r="88" class="ring-fill" style="stroke-dasharray:@dash" transform="rotate(-90 100 100)" />
+                    }
                 </svg>
                 <div class="timer-center" role="timer" aria-live="off">
                     <div class="timer-phase" aria-live="polite">@PhaseLabel</div>
@@ -46,9 +57,16 @@
             </div>
 
             <div class="transport">
-                <button class="play-btn @(Metro.IsRunning ? "on" : "")" @onclick="Toggle" aria-label="@(Metro.IsRunning ? "Stop (Space)" : "Start (Space)")">
+                <button class="play-btn @(Metro.IsRunning ? "on" : "")" @onclick="Toggle" aria-label="@(Metro.IsRunning ? "Stop" : "Start")">
                     <MudIcon Icon="@(Metro.IsRunning ? Icons.Material.Rounded.Stop : Icons.Material.Rounded.PlayArrow)" Style="font-size:2.6rem" />
                 </button>
+            </div>
+
+            <div class="quick-toggles" role="group" aria-label="Options">
+                <MudTooltip Text="@($"Intervals: {(Metro.Settings.Interval.Enabled ? "on" : "off")}")">
+                    <MudIconButton Icon="@Icons.Material.Rounded.Timelapse" Class="@(Metro.Settings.Interval.Enabled ? "opt-toggle on" : "opt-toggle")" aria-label="Intervals"
+                                   aria-pressed="@(Metro.Settings.Interval.Enabled ? "true" : "false")" OnClick="ToggleIntervals" />
+                </MudTooltip>
             </div>
 
             @if (ShowEndPanel)
@@ -71,12 +89,11 @@
                         }
                         @if (Metro.SessionActiveSec >= 1)
                         {
-                            <MudButton Variant="@(Metro.LastFinishReason == "rest" ? Variant.Outlined : Variant.Filled)" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.AddTask" OnClick="Log">Log @Stats.Clock(Metro.SessionActiveSec) (L)</MudButton>
+                            <MudButton Variant="@(Metro.LastFinishReason == "rest" ? Variant.Outlined : Variant.Filled)" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.AddTask" OnClick="Log">Log @Stats.Clock(Metro.SessionActiveSec)</MudButton>
                         }
-                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.MoreTime" OnClick="() => Metro.ExtendAsync(_extendMin, _extendRestMin)">
-                            +@_extendMin.ToString("0.#") min@(_extendRestMin > 0 ? $" after {_extendRestMin:0.#} min rest" : "")
-                        </MudButton>
-                        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Rounded.SelfImprovement" OnClick="() => Metro.StartRestAsync(_restMin)">Rest @_restMin.ToString("0.#") min</MudButton>
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.MoreTime" OnClick="() => Metro.ExtendAsync(5, 0)">+5 min</MudButton>
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.MoreTime" OnClick="() => Metro.ExtendAsync(10, 0)">+10 min</MudButton>
+                        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Rounded.SelfImprovement" OnClick="() => Metro.StartRestAsync(2)">Rest 2 min</MudButton>
                         @if (Metro.SessionActiveSec >= 1)
                         {
                             <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Discard">Discard</MudButton>
@@ -84,7 +101,7 @@
                     </div>
                 </div>
             }
-            else
+            else if (Metro.SessionActiveSec >= 1)
             {
                 <div class="timer-session muted">This session: <strong>@Stats.Clock(Metro.SessionActiveSec)</strong> practised</div>
             }
@@ -93,36 +110,12 @@
 
     <MudItem xs="12" lg="5">
         <section class="card">
-            <h2 class="card-title">Intervals</h2>
-            @if (Metro.StepPinned)
-            {
-                <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">Set by your plan for this step. Changes here apply after the plan.</MudAlert>
-            }
-            @{ var iv = Metro.Settings.Interval; }
-            <MudSwitch T="bool" @bind-Value="iv.Enabled" @bind-Value:after="Apply" Color="Color.Primary" Disabled="Metro.IsRunning"
-                       Label="@(iv.Enabled ? "Work / rest intervals" : "Off: open-ended stopwatch")" />
-            <div class="d-flex gap-2 flex-wrap my-2">
-                <MudButton Size="Size.Small" Variant="Variant.Outlined" Disabled="Metro.IsRunning" OnClick="() => Preset(5, 1, 2)">5 · 1 · 5</MudButton>
-                <MudButton Size="Size.Small" Variant="Variant.Outlined" Disabled="Metro.IsRunning" OnClick="() => Preset(10, 0, 1)">10 min</MudButton>
-                <MudButton Size="Size.Small" Variant="Variant.Outlined" Disabled="Metro.IsRunning" OnClick="() => Preset(15, 0, 1)">15 min</MudButton>
-                <MudButton Size="Size.Small" Variant="Variant.Outlined" Disabled="Metro.IsRunning" OnClick="() => Preset(10, 2, 3)">3 × 10 · 2</MudButton>
-            </div>
-            @if (iv.Enabled)
-            {
-                <div class="form-grid three">
-                    <DurationInput Seconds="iv.WorkMin * 60" SecondsChanged="async v => { iv.WorkMin = (v ?? 15) / 60; await Apply(); }" Label="Work" MinSeconds="15" MaxSeconds="7200" Disabled="Metro.IsRunning" />
-                    <DurationInput Seconds="iv.RestMin * 60" SecondsChanged="async v => { iv.RestMin = (v ?? 0) / 60; await Apply(); }" Label="Rest" MaxSeconds="3600" Disabled="Metro.IsRunning" />
-                    <MudNumericField T="int" @bind-Value="iv.Rounds" @bind-Value:after="Apply" Label="Rounds" Min="0" Max="99" HelperText="0 = endless" Disabled="Metro.IsRunning" />
-                </div>
-            }
-            <MudText Typo="Typo.caption" Class="muted d-block mt-2">
-                You'll hear 3-2-1 pips before each change, a chime when work ends and a high tone when it starts again. The screen turns blue during rests.
-            </MudText>
+            <h2 class="card-title seg-label">Intervals<span class="@(Metro.Settings.Interval.Enabled ? "seg-dot on" : "seg-dot")" aria-label="@(Metro.Settings.Interval.Enabled ? "On" : "Off")"></span></h2>
+            <IntervalsEditor />
         </section>
 
         <section class="card mt-4">
             <h2 class="card-title">Between pieces</h2>
-            <MudText Typo="Typo.body2" Class="muted mb-2">A rest countdown that doesn't count as practice.</MudText>
             <div class="d-flex gap-2 flex-wrap">
                 @foreach (var m in new[] { 1.0, 2.0, 3.0, 5.0 })
                 {
@@ -130,18 +123,12 @@
                     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.SelfImprovement" Disabled="Metro.IsRunning" OnClick="() => Metro.StartRestAsync(min)">@min.ToString("0") min</MudButton>
                 }
             </div>
-            <div class="form-grid mt-4">
-                <DurationInput Seconds="_extendMin * 60" SecondsChanged="v => _extendMin = (v ?? 300) / 60" Label="Extend by" MinSeconds="15" MaxSeconds="3600" />
-                <DurationInput Seconds="_extendRestMin * 60" SecondsChanged="v => _extendRestMin = (v ?? 0) / 60" Label="…after a rest of" MaxSeconds="1800" />
-            </div>
-            <DurationInput Seconds="_restMin * 60" SecondsChanged="v => _restMin = (v ?? 120) / 60" Label="Rest button length" MinSeconds="15" MaxSeconds="1800" Class="mt-2" Style="max-width:240px" />
         </section>
     </MudItem>
 </MudGrid>
 
 @code {
     [Parameter] public string? ItemId { get; set; }
-    double _extendMin = 5, _extendRestMin = 1, _restMin = 2;
     string? _lastPhase;
     int _flashKey;
     bool _dismissed;
@@ -154,7 +141,7 @@
 
     string PhaseLabel => !Metro.IsRunning ? (ShowEndPanel ? "Finished" : "Ready")
         : Metro.RestOnlyRunning ? "Rest"
-        : Rest ? "Rest · next up: work"
+        : Rest ? "Rest"
         : "Practise";
 
     string Clock
@@ -189,7 +176,7 @@
     }
 
     // ring: fraction of the current block that's elapsed
-    string Dash
+    string? Dash
     {
         get
         {
@@ -202,6 +189,7 @@
             }
             else if (Metro.IsRunning) frac = ((Metro.State.workElapsed ?? 0) % 60) / 60; // stopwatch: one lap per minute
             var on = Math.Clamp(frac, 0, 1) * c;
+            if (on < 0.5) return null;
             return $"{on.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)} {c.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)}";
         }
     }
@@ -248,14 +236,11 @@
 
     Task Apply() => Metro.ApplyAsync();
 
-    async Task Preset(double work, double rest, int rounds)
+    async Task ToggleIntervals()
     {
-        var iv = Metro.Settings.Interval;
-        iv.WorkMin = work; iv.RestMin = rest; iv.Rounds = rounds; iv.Enabled = true;
+        Metro.Settings.Interval.Enabled = !Metro.Settings.Interval.Enabled;
         await Metro.ApplyAsync();
     }
-
-    void PickItem(string? id) => Nav.NavigateTo(id == null ? "timer/free" : $"timer/item/{id}");
 
     async Task Log()
     {
