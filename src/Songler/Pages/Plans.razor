@@ -49,14 +49,9 @@ else
                     {
                         var s = plan.Steps[i];
                         var idx = i;
-                        var missing = s.Kind == PlanStepKind.Item && Store.GetItem(s.ItemId) == null;
-                        var (icon, mode) = s.Kind == PlanStepKind.Rest ? (Icons.Material.Rounded.SelfImprovement, "Rest")
-                            : s.Mode == StepMode.Timer ? (Icons.Material.Rounded.HourglassBottom, "Timer") : (Mdi.Metronome, "Metronome");
+                        var missing = PlanStepSummary.IsMissing(s, Store);
                         <li class="@(s.Kind == PlanStepKind.Rest ? "rest" : "") @(missing ? "missing" : "") @(running && Runner.Index == idx ? "on" : "")">
-                            <span class="pl-num">@(idx + 1).</span>
-                            <MudIcon Icon="@(missing ? Icons.Material.Rounded.WarningAmber : icon)" Class="pl-icon" title="@(missing ? "Item deleted" : mode)" aria-label="@(missing ? "Item deleted" : mode)" />
-                            <span class="pl-name">@Runner.Describe(s)</span>
-                            <span class="pl-meta">@(s.Kind == PlanStepKind.Rest ? StepDur(s.Minutes) : s.IntervalText)@(StepTempo(s) is { Length: > 0 } t ? $" · {t}" : "")</span>
+                            <PlanStepSummary Step="s" Index="idx" />
                         </li>
                     }
                 </ol>
@@ -100,7 +95,6 @@ else
         await Store.SavePlanAsync(copy);
     }
 
-    string StepTempo(PlanStep s) => s.TempoText(Store.GetItem(s.ItemId)?.Unit ?? TempoUnit.Bpm);
 
     async Task New() => await PlanDialog.ShowAsync(Dialogs);
     async Task Edit(PracticePlan p) => await PlanDialog.ShowAsync(Dialogs, p);

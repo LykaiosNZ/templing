@@ -3,14 +3,15 @@
     --radius: 14px;
     --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
 }
-.theme-light {
+/* tokens live on the root too, so dialogs, menus and tooltips (rendered outside the layout) get them */
+.theme-light, :root:has(.theme-light) {
     --ink: #0b0b0b; --ink-2: #52514e; --muted: #77756f;
     --grid: #e1e0d9; --axis: #c3c2b7; --card: #fcfcfb; --card-2: #f1f0ec; --ring: rgba(11,11,11,.09);
     --series: #2a78d6; --accent: #d9531e; --accent-soft: rgba(217,83,30,.12); --good: #0a8a0a; --rest: #2a78d6;
     --hm-0: #ebeae5; --hm-1: #b7d3f6; --hm-2: #6da7ec; --hm-3: #2a78d6; --hm-4: #184f95;
     --tip-bg: #0b0b0b; --tip-ink: #f0efec; --tip-muted: #c3c2b7;
 }
-.theme-dark {
+.theme-dark, :root:has(.theme-dark) {
     --ink: #f0efec; --ink-2: #c3c2b7; --muted: #8f8d87;
     --grid: #2c2c2a; --axis: #383835; --card: #1a1a19; --card-2: #232321; --ring: rgba(255,255,255,.07);
     --series: #3987e5; --accent: #f0763f; --accent-soft: rgba(240,118,63,.14); --good: #0ca30c; --rest: #3987e5;
@@ -460,17 +461,31 @@ code { font-family: var(--mono); font-size: .85em; background: var(--card-2); pa
 .plan-list .pl-meta { color: var(--ink-2); font-size: .8rem; }
 .plan-list li.on .pl-meta { color: inherit; }
 .plan-steps { display: flex; flex-direction: column; gap: 8px; max-height: 55vh; overflow-y: auto; }
-.plan-step-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; border-radius: 10px; border: 1px solid var(--mud-palette-lines-default); }
+/* plan editor: each step is a one-line summary (PlanStepSummary) that expands to its fields */
+.plan-step-row { display: flex; flex-direction: column; border-radius: 10px; border: 1px solid var(--mud-palette-lines-default); }
 .plan-step-row.rest { border-style: dashed; }
+.plan-step-row.open { border-color: var(--mud-palette-lines-inputs); }
+.plan-step-row.missing .pl-name, .plan-step-row.missing .pl-icon { color: var(--mud-palette-warning); }
+.ps-head { display: flex; align-items: center; gap: 4px; padding: 2px 4px 2px 0; }
+.ps-summary { flex: 1; min-width: 0; display: flex; justify-content: flex-start; align-items: baseline; gap: 8px; padding: 8px 6px; background: none; border: none; color: inherit; font: inherit; font-size: .9rem; text-align: left; cursor: pointer; border-radius: 8px; }
+.ps-summary:hover { background: var(--card-2); }
+.ps-summary:focus-visible { outline: 2px solid var(--mud-palette-primary); }
+.ps-summary .pl-num { min-width: 1.2em; text-align: right; color: var(--muted); }
+.ps-summary .pl-icon { font-size: 1rem; align-self: center; color: var(--muted); flex: none; }
+.ps-summary .pl-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ps-summary .pl-meta { color: var(--ink-2); font-size: .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ps-chevron { align-self: center; transition: transform .15s; transform: rotate(-90deg); color: var(--muted); }
+.plan-step-row.open .ps-chevron { transform: none; }
+.ps-body { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 4px 10px 12px 36px; }
 .plan-step-row .mud-input-control { margin-top: 0; }
 .ps-num { width: 22px; text-align: center; font-weight: 700; color: var(--mud-palette-text-secondary); }
 .ps-rest { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; min-width: 120px; }
 .ps-item { flex: 2 1 200px; }
 .ps-part { flex: 1 1 140px; }
-.ps-mode { flex: 0 1 170px; }
+.ps-mode { flex: none; }
 .ps-num-field { flex: 0 1 100px; max-width: 110px; }
 .ps-actions { display: flex; margin-left: auto; }
-.ps-tempo { flex-basis: 100%; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-left: 30px; }
+.ps-tempo { flex-basis: 100%; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ps-tempo .ps-switch { margin-right: 4px; }
 .ps-start-field { flex: 0 1 170px; max-width: 180px; }
 

@@ -6,7 +6,8 @@
     </TitleContent>
     <DialogContent>
         <div class="d-flex flex-column gap-3">
-            <MudTextField @bind-Value="_m.Name" Label="Plan name" AutoFocus="true" Immediate="true" />
+            <MudTextField T="string" Value="_m.Name" ValueChanged="v => { _m.Name = v; _nameTouched = true; }" Label="Name" Placeholder="My routine" AutoFocus="@IsNew" Immediate="true"
+                          Error="@(_nameTouched && string.IsNullOrWhiteSpace(_m.Name))" ErrorText="Enter a name" />
             <div class="d-flex justify-space-between align-center flex-wrap gap-2">
                 <MudText Typo="Typo.subtitle2">Steps (@_m.Steps.Count) · @Stats.Duration((int)(_m.TotalMinutes * 60)) total</MudText>
                 <div class="d-flex gap-2">
@@ -14,86 +15,104 @@
                     <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.SelfImprovement" OnClick="AddRest">Add rest</MudButton>
                 </div>
             </div>
+            @if (_m.Steps.Count > 0)
+            {
             <div class="plan-steps" role="list">
                 @for (int i = 0; i < _m.Steps.Count; i++)
                 {
                     var idx = i;
                     var s = _m.Steps[i];
                     var item = Store.GetItem(s.ItemId);
-                    <div class="plan-step-row @(s.Kind == PlanStepKind.Rest ? "rest" : "")" role="listitem" @key="s.Id">
-                        <span class="ps-num">@(idx + 1)</span>
-                        @if (s.Kind == PlanStepKind.Rest)
+                    var open = _open.Contains(s.Id);
+                    var missing = PlanStepSummary.IsMissing(s, Store);
+                    <div class="plan-step-row @(s.Kind == PlanStepKind.Rest ? "rest" : "") @(open ? "open" : "") @(missing ? "missing" : "")" role="listitem" @key="s.Id">
+                        <div class="ps-head">
+                            <button type="button" class="ps-summary" aria-expanded="@(open ? "true" : "false")" aria-controls="@($"ps-body-{s.Id}")" @onclick="() => Toggle(s)">
+                                <MudIcon Icon="@Icons.Material.Rounded.ExpandMore" Size="Size.Small" Class="ps-chevron" />
+                                <PlanStepSummary Step="s" Index="idx" />
+                            </button>
+                            <span class="ps-actions">
+                                <MudTooltip Text="Move up">
+                                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowUpward" Disabled="idx == 0" aria-label="@($"Move step {idx + 1} up")" OnClick="() => Move(idx, -1)" />
+                                </MudTooltip>
+                                <MudTooltip Text="Move down">
+                                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowDownward" Disabled="idx == _m.Steps.Count - 1" aria-label="@($"Move step {idx + 1} down")" OnClick="() => Move(idx, 1)" />
+                                </MudTooltip>
+                                <MudTooltip Text="Duplicate">
+                                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ContentCopy" aria-label="@($"Duplicate step {idx + 1}")" OnClick="() => Duplicate(idx)" />
+                                </MudTooltip>
+                                <MudTooltip Text="Remove">
+                                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Close" aria-label="@($"Remove step {idx + 1}")" OnClick="() => _m.Steps.RemoveAt(idx)" />
+                                </MudTooltip>
+                            </span>
+                        </div>
+                        @if (open)
                         {
-                            <span class="ps-rest"><MudIcon Icon="@Icons.Material.Rounded.SelfImprovement" Size="Size.Small" /> Rest</span>
-                            <DurationInput Seconds="s.Minutes * 60" SecondsChanged="v => s.Minutes = (v ?? 120) / 60" Label="Length" MinSeconds="15" MaxSeconds="3600" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-dur-field" />
-                        }
-                        else
-                        {
-                            <MudSelect T="string" @bind-Value="s.ItemId" @bind-Value:after="() => s.SectionId = null" Label="Item" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-item">
-                                @foreach (var it in Store.ItemsByRecent(keepId: s.ItemId)) { <MudSelectItem T="string" Value="@it.Id">@it.Name</MudSelectItem> }
-                            </MudSelect>
-                            @if (item is { } it2 && it2.Sections.Count > 1)
-                            {
-                                <MudSelect T="string" @bind-Value="s.SectionId" Label="Section" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="ps-part">
-                                    @foreach (var sec in it2.Sections) { <MudSelectItem T="string" Value="@sec.Id">@sec.Name</MudSelectItem> }
-                                </MudSelect>
-                            }
-                            <MudSelect T="StepMode" @bind-Value="s.Mode" Label="With" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="ps-mode">
-                                <MudSelectItem T="StepMode" Value="StepMode.Metronome">Metronome</MudSelectItem>
-                                <MudSelectItem T="StepMode" Value="StepMode.Timer">Timer (no click)</MudSelectItem>
-                            </MudSelect>
-                            <DurationInput Seconds="s.Minutes * 60" SecondsChanged="v => s.Minutes = (v ?? 600) / 60" Label="Work" MinSeconds="15" MaxSeconds="7200" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-dur-field" />
-                            <MudNumericField T="int" @bind-Value="s.Rounds" Label="Rounds" Min="1" Max="20" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
-                            <DurationInput Seconds="s.RestMin * 60" SecondsChanged="v => s.RestMin = (v ?? 0) / 60" Label="Rest" MaxSeconds="1800" Disabled="s.Rounds < 2" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-dur-field" />
-                            @if (s.Mode == StepMode.Metronome)
-                            {
-                                var u = item?.Unit == TempoUnit.Percent ? "%" : "bpm";
-                                <div class="ps-tempo">
-                                    <MudSwitch T="bool" @bind-Value="s.Trainer" Color="Color.Primary" Label="Speed trainer" Class="ps-switch" />
-                                    @if (s.Trainer)
+                            <div class="ps-body" id="@($"ps-body-{s.Id}")">
+                                @if (s.Kind == PlanStepKind.Rest)
+                                {
+                                    <DurationInput Seconds="s.Minutes * 60" SecondsChanged="v => s.Minutes = (v ?? 120) / 60" Label="Length" MinSeconds="15" MaxSeconds="3600" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-dur-field" />
+                                }
+                                else
+                                {
+                                    <MudSelect T="string" @bind-Value="s.ItemId" @bind-Value:after="() => s.SectionId = null" Label="Item" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="ps-item">
+                                        @foreach (var it in Store.ItemsByRecent(keepId: s.ItemId)) { <MudSelectItem T="string" Value="@it.Id">@it.Name</MudSelectItem> }
+                                    </MudSelect>
+                                    @if (item is { } it2 && it2.Sections.Count > 1)
                                     {
-                                        <MudNumericField T="double" @bind-Value="s.TrainerStart" Label="@($"From ({u})")" Min="10" Max="400" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
-                                        <MudNumericField T="double" @bind-Value="s.TrainerEnd" Label="@($"To ({u})")" Min="10" Max="400" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
-                                        <MudText Typo="Typo.caption" Class="muted">over the step's @Stats.Duration((int)(s.WorkMinutes * 60)) of playing, then holds</MudText>
+                                        <MudSelect T="string" Value="@(s.SectionId ?? "")" ValueChanged="v => s.SectionId = string.IsNullOrEmpty(v) ? null : v" Label="Section" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="ps-part">
+                                            <MudSelectItem T="string" Value="@("")">Full run-through</MudSelectItem>
+                                            @foreach (var sec in it2.Sections) { <MudSelectItem T="string" Value="@sec.Id">@sec.Name</MudSelectItem> }
+                                        </MudSelect>
                                     }
-                                    else
+                                    <MudToggleGroup T="StepMode" @bind-Value="s.Mode" Color="Color.Primary" Size="Size.Small" Outlined="true" CheckMark="false" Class="ps-mode" aria-label="Practise with">
+                                        <MudToggleItem Value="StepMode.Metronome"><span class="d-inline-flex align-center gap-1"><MudIcon Icon="@Mdi.Metronome" Size="Size.Small" />Metronome</span></MudToggleItem>
+                                        <MudToggleItem Value="StepMode.Timer"><span class="d-inline-flex align-center gap-1"><MudIcon Icon="@Icons.Material.Rounded.HourglassBottom" Size="Size.Small" />Timer</span></MudToggleItem>
+                                    </MudToggleGroup>
+                                    <DurationInput Seconds="s.Minutes * 60" SecondsChanged="v => s.Minutes = (v ?? 600) / 60" Label="Work" MinSeconds="15" MaxSeconds="7200" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-dur-field" />
+                                    <MudNumericField T="int" @bind-Value="s.Rounds" Label="Rounds" Min="1" Max="20" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
+                                    @if (s.Rounds > 1)
                                     {
-                                        <MudNumericField T="double?" @bind-Value="s.StartTempo" Label="@($"Start tempo ({u})")" Min="10" Max="400" Clearable="true"
-                                                         Placeholder="last logged" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-start-field" />
-                                        <MudText Typo="Typo.caption" Class="muted">change it as you go with ↑ / ↓</MudText>
+                                        <DurationInput Seconds="s.RestMin * 60" SecondsChanged="v => s.RestMin = (v ?? 0) / 60" Label="Rest" MaxSeconds="1800" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-dur-field" />
                                     }
-                                </div>
-                            }
+                                    @if (s.Mode == StepMode.Metronome)
+                                    {
+                                        var u = item?.Unit == TempoUnit.Percent ? "%" : "bpm";
+                                        <div class="ps-tempo">
+                                            <MudTooltip Text="@($"Speed trainer: {(s.Trainer ? "on" : "off")}")">
+                                                <MudIconButton Icon="@Icons.Material.Rounded.TrendingUp" Size="Size.Small" Class="@(s.Trainer ? "opt-toggle on" : "opt-toggle")" aria-label="Speed trainer"
+                                                               aria-pressed="@(s.Trainer ? "true" : "false")" OnClick="() => s.Trainer = !s.Trainer" />
+                                            </MudTooltip>
+                                            @if (s.Trainer)
+                                            {
+                                                <MudNumericField T="double" @bind-Value="s.TrainerStart" Label="@($"From ({u})")" Min="10" Max="400" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
+                                                <MudNumericField T="double" @bind-Value="s.TrainerEnd" Label="@($"To ({u})")" Min="10" Max="400" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
+                                                <MudText Typo="Typo.caption" Class="muted">over @Stats.Duration((int)(s.WorkMinutes * 60)), then holds</MudText>
+                                            }
+                                            else
+                                            {
+                                                <MudNumericField T="double?" @bind-Value="s.StartTempo" Label="@($"Start tempo ({u})")" Min="10" Max="400" Clearable="true"
+                                                                 Placeholder="last logged" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-start-field" />
+                                            }
+                                        </div>
+                                    }
+                                }
+                            </div>
                         }
-                        <span class="ps-actions">
-                            <MudTooltip Text="Move up">
-                                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowUpward" Disabled="idx == 0" aria-label="@($"Move step {idx + 1} up")" OnClick="() => Move(idx, -1)" />
-                            </MudTooltip>
-                            <MudTooltip Text="Move down">
-                                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowDownward" Disabled="idx == _m.Steps.Count - 1" aria-label="@($"Move step {idx + 1} down")" OnClick="() => Move(idx, 1)" />
-                            </MudTooltip>
-                            <MudTooltip Text="Duplicate">
-                                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ContentCopy" aria-label="@($"Duplicate step {idx + 1}")" OnClick="() => Duplicate(idx)" />
-                            </MudTooltip>
-                            <MudTooltip Text="Remove">
-                                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Close" aria-label="@($"Remove step {idx + 1}")" OnClick="() => _m.Steps.RemoveAt(idx)" />
-                            </MudTooltip>
-                        </span>
                     </div>
                 }
-                @if (_m.Steps.Count == 0)
-                {
-                    <MudText Class="muted pa-4">Add steps in the order you practise them: warm-up, exercises, then songs.</MudText>
-                }
             </div>
-            <MudText Typo="Typo.caption" Class="muted">
-                Tip: a step with 2 rounds of 5 min and 1 min rest is a 5 · 1 · 5 interval. Use <em>Timer</em> for anything you play along to in Guitar Pro.
-            </MudText>
+            }
         </div>
     </DialogContent>
     <DialogActions>
+        @if (SaveBlocker is { } why)
+        {
+            <MudText Typo="Typo.body2" Class="muted ml-2">@why</MudText>
+        }
+        <MudSpacer />
         <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save" Disabled="@(string.IsNullOrWhiteSpace(_m.Name) || _m.Steps.Count == 0 || _m.Steps.Any(s => s.Kind == PlanStepKind.Item && s.ItemId == null))">Save</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save" Disabled="@(SaveBlocker != null)">Save</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -102,6 +121,29 @@
     [Parameter] public PracticePlan Plan { get; set; } = new();
     [Parameter] public bool IsNew { get; set; }
     PracticePlan _m = new();
+    bool _nameTouched;
+    // steps whose fields are showing; the rest show as one-line summaries
+    readonly HashSet<string> _open = new();
+
+    /// <summary>Why Save is disabled, said next to it (null = can save).</summary>
+    string? SaveBlocker
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_m.Name)) return "Add a name";
+            if (_m.Steps.Count == 0) return "Add a step";
+            var noItem = _m.Steps.Select((s, i) => (s, i)).Where(x => x.s.Kind == PlanStepKind.Item && x.s.ItemId == null).Select(x => x.i + 1).ToList();
+            return noItem.Count switch
+            {
+                0 => null,
+                1 => $"Step {noItem[0]} has no item",
+                _ => $"Steps {string.Join(", ", noItem.SkipLast(1))} and {noItem[^1]} have no item"
+            };
+        }
+    }
+
+    void Toggle(PlanStep s) { if (!_open.Remove(s.Id)) _open.Add(s.Id); }
+    void OpenOnly(PlanStep s) { _open.Clear(); _open.Add(s.Id); }
 
     public static async Task<PracticePlan?> ShowAsync(IDialogService dialogs, PracticePlan? plan = null)
     {
@@ -111,16 +153,26 @@
         return res is { Canceled: false } ? res.Data as PracticePlan : null;
     }
 
-    protected override void OnInitialized() =>
+    protected override void OnInitialized()
+    {
         _m = System.Text.Json.JsonSerializer.Deserialize<PracticePlan>(System.Text.Json.JsonSerializer.Serialize(Plan, DataStore.Json), DataStore.Json)!;
+        if (IsNew) _m.Name = "";
+    }
 
     void AddItem()
     {
         var last = _m.Steps.LastOrDefault(s => s.Kind == PlanStepKind.Item);
-        _m.Steps.Add(new PlanStep { Kind = PlanStepKind.Item, Mode = last?.Mode ?? StepMode.Metronome, Minutes = last?.Minutes ?? 10, Rounds = last?.Rounds ?? 1, RestMin = last?.RestMin ?? 0 });
+        var step = new PlanStep { Kind = PlanStepKind.Item, Mode = last?.Mode ?? StepMode.Metronome, Minutes = last?.Minutes ?? 10, Rounds = last?.Rounds ?? 1, RestMin = last?.RestMin ?? 0 };
+        _m.Steps.Add(step);
+        OpenOnly(step);
     }
 
-    void AddRest() => _m.Steps.Add(new PlanStep { Kind = PlanStepKind.Rest, Minutes = 2 });
+    void AddRest()
+    {
+        var step = new PlanStep { Kind = PlanStepKind.Rest, Minutes = 2 };
+        _m.Steps.Add(step);
+        OpenOnly(step);
+    }
 
     void Move(int i, int d)
     {
@@ -131,15 +183,18 @@
     void Duplicate(int i)
     {
         var s = _m.Steps[i];
-        _m.Steps.Insert(i + 1, new PlanStep
+        var copy = new PlanStep
         {
             Kind = s.Kind, ItemId = s.ItemId, SectionId = s.SectionId, Mode = s.Mode, Minutes = s.Minutes, Rounds = s.Rounds, RestMin = s.RestMin,
             StartTempo = s.StartTempo, Trainer = s.Trainer, TrainerStart = s.TrainerStart, TrainerEnd = s.TrainerEnd
-        });
+        };
+        _m.Steps.Insert(i + 1, copy);
+        OpenOnly(copy);
     }
 
     async Task Save()
     {
+        if (SaveBlocker != null) return;
         _m.Name = _m.Name.Trim();
         await Store.SavePlanAsync(_m);
         Dialog.Close(DialogResult.Ok(_m));

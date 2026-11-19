@@ -1,0 +1,40 @@
+@* One-line summary of a plan step: number, mode icon, item (or Rest) and its timing/tempo.
+   Shared by the Plans list and the plan editor's collapsed rows so they read the same. *@
+@inject DataStore Store
+@inject PlanRunner Runner
+
+<span class="pl-num">@(Index + 1).</span>
+<MudIcon Icon="@Icon" Class="pl-icon" title="@IconLabel" aria-label="@IconLabel" />
+<span class="pl-name">@Name</span>
+<span class="pl-meta">@Meta</span>
+
+@code {
+    [Parameter, EditorRequired] public PlanStep Step { get; set; } = default!;
+    [Parameter] public int Index { get; set; }
+
+    PracticeItem? Item => Store.GetItem(Step.ItemId);
+
+    /// <summary>A practice step whose item isn't set or no longer exists.</summary>
+    public static bool IsMissing(PlanStep s, DataStore store) => s.Kind == PlanStepKind.Item && store.GetItem(s.ItemId) == null;
+
+    bool Missing => IsMissing(Step, Store);
+
+    string Icon => Missing ? Icons.Material.Rounded.WarningAmber
+        : Step.Kind == PlanStepKind.Rest ? Icons.Material.Rounded.SelfImprovement
+        : Step.Mode == StepMode.Timer ? Icons.Material.Rounded.HourglassBottom : Mdi.Metronome;
+
+    string IconLabel => Missing ? (Step.ItemId == null ? "No item" : "Item deleted")
+        : Step.Kind == PlanStepKind.Rest ? "Rest" : Step.Mode == StepMode.Timer ? "Timer" : "Metronome";
+
+    string Name => Step.Kind == PlanStepKind.Item && Step.ItemId == null ? "No item" : Runner.Describe(Step);
+
+    string Meta
+    {
+        get
+        {
+            var time = Step.Kind == PlanStepKind.Rest ? Stats.DurationMin(Step.Minutes) : Step.IntervalText;
+            var tempo = Step.TempoText(Item?.Unit ?? TempoUnit.Bpm);
+            return tempo.Length > 0 ? $"{time} · {tempo}" : time;
+        }
+    }
+}
