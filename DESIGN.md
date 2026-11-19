@@ -66,6 +66,7 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 - **A disabled primary button says why** next to it, phrased as what to do ("Select an item for step 2", "Add a name"), so nothing is blocked silently.
 - **Placeholders, not defaults:** example names ("My routine") are placeholders. Don't pre-fill a value the user has to delete.
 - **Reorderable lists drag** by a grip handle (`DragIndicator`, `data-drag-handle` / `data-drag-row`, see `js/drag.js`). The list reorders live while dragging and the dragged row is outlined in accent (no browser ghost); Esc puts it back, and keep Move up / Move down buttons for keyboard and touch. Never attach a Blazor handler to `dragover` (it fires continuously and re-renders on every call); use `@ondragover:preventDefault` alone and update state on `dragenter` / `drop`.
+- **Dialogs whose content grows** (editors with add buttons: item, plan, sections, score import) open at the top (`Position = DialogPosition.TopCenter`), so adding rows grows them downwards and the add buttons stay under the pointer. Short dialogs stay centred.
 - **Long editable lists collapse:** each row is a one-line summary that expands to its fields (plan steps). New rows open expanded; the summary uses the same component as the read-only view (`PlanStepSummary`).
 - **Rows that open something:** the whole row is clickable with a hover highlight. A pencil appears on hover and stays reachable by keyboard. Links inside the row still work.
 

@@ -80,7 +80,7 @@
     {
         var p = new DialogParameters<ItemDialog> { { x => x.Item, item ?? new PracticeItem() }, { x => x.IsNew, item == null } };
         var r = await dialogs.ShowAsync<ItemDialog>(item == null ? "Add item" : "Edit item", p,
-            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true });
+            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true, Position = DialogPosition.TopCenter });
         var res = await r.Result;
         return res is { Canceled: false } ? res.Data as PracticeItem : null;
     }

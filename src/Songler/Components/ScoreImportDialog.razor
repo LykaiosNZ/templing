@@ -88,7 +88,7 @@
     public static async Task<Result?> ShowAsync(IDialogService dialogs, bool forExisting, bool replacing = false)
     {
         var p = new DialogParameters<ScoreImportDialog> { { x => x.ForExisting, forExisting }, { x => x.Replacing, replacing } };
-        var r = await dialogs.ShowAsync<ScoreImportDialog>(Title, p, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+        var r = await dialogs.ShowAsync<ScoreImportDialog>(Title, p, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true, Position = DialogPosition.TopCenter });
         var res = await r.Result;
         return res is { Canceled: false } ? res.Data as Result : null;
     }

@@ -197,7 +197,7 @@
     public static async Task<PracticePlan?> ShowAsync(IDialogService dialogs, PracticePlan? plan = null)
     {
         var p = new DialogParameters<PlanDialog> { { x => x.Plan, plan ?? new PracticePlan() }, { x => x.IsNew, plan == null } };
-        var r = await dialogs.ShowAsync<PlanDialog>("Plan", p, new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true });
+        var r = await dialogs.ShowAsync<PlanDialog>("Plan", p, new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true, Position = DialogPosition.TopCenter });
         var res = await r.Result;
         return res is { Canceled: false } ? res.Data as PracticePlan : null;
     }
