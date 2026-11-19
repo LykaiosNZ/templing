@@ -469,9 +469,7 @@ code { font-family: var(--mono); font-size: .85em; background: var(--card-2); pa
 .ps-head { display: flex; align-items: center; gap: 4px; padding: 2px 4px 2px 0; }
 .ps-drag { display: flex; align-items: center; padding: 8px 0 8px 6px; cursor: grab; color: var(--muted); }
 .ps-drag:active { cursor: grabbing; }
-.plan-step-row.dragging { opacity: .45; }
-.plan-step-row.drop-before { box-shadow: 0 -3px 0 var(--accent); }
-.plan-step-row.drop-after { box-shadow: 0 3px 0 var(--accent); }
+.plan-step-row.dragging { border-color: var(--accent); background: var(--card-2); box-shadow: 0 0 0 1px var(--accent), 0 8px 22px rgba(0,0,0,.35); }
 .ps-summary { flex: 1; min-width: 0; display: flex; justify-content: flex-start; align-items: baseline; gap: 8px; padding: 8px 6px; background: none; border: none; color: inherit; font: inherit; font-size: .9rem; text-align: left; cursor: pointer; border-radius: 8px; }
 .ps-summary:hover { background: var(--card-2); }
 .ps-summary:focus-visible { outline: 2px solid var(--mud-palette-primary); }

@@ -25,11 +25,11 @@
                     var item = Store.GetItem(s.ItemId);
                     var open = _open.Contains(s.Id);
                     var missing = PlanStepSummary.IsMissing(s, Store);
-                    <div class="plan-step-row @(s.Kind == PlanStepKind.Rest ? "rest" : "") @(open ? "open" : "") @(missing ? "missing" : "") @DropClass(idx)" role="listitem" @key="s.Id"
-                         data-drag-row @ondragover:preventDefault="true" @ondragenter="() => DragEnter(idx)" @ondrop="() => Drop(idx)" @ondrop:preventDefault="true">
+                    <div class="plan-step-row @(s.Kind == PlanStepKind.Rest ? "rest" : "") @(open ? "open" : "") @(missing ? "missing" : "") @(s.Id == _dragId ? "dragging" : "")" role="listitem" @key="s.Id"
+                         data-drag-row @ondragover:preventDefault="true" @ondragenter="() => DragEnter(idx)" @ondrop="Drop" @ondrop:preventDefault="true">
                         <div class="ps-head">
                             <span class="ps-drag" draggable="true" data-drag-handle aria-hidden="true"
-                                  @ondragstart="() => _dragFrom = idx" @ondragend="() => { _dragFrom = null; _dragOver = null; }">
+                                  @ondragstart="() => DragStart(s)" @ondragend="DragEnd">
                                 <MudIcon Icon="@Icons.Material.Rounded.DragIndicator" Size="Size.Small" />
                             </span>
                             <button type="button" class="ps-summary" aria-expanded="@(open ? "true" : "false")" aria-controls="@($"ps-body-{s.Id}")" @onclick="() => Toggle(s)">
@@ -147,33 +147,48 @@
         }
     }
 
-    // drag to reorder (the up/down buttons stay for keyboard and touch).
-    // dragover fires continuously, so it has no handler (each one would re-render the dialog); the drop marker
-    // updates on dragenter, which fires once per row crossed.
-    int? _dragFrom, _dragOver;
+    // Drag to reorder (the up/down buttons stay for keyboard and touch). The list reorders live as the
+    // dragged step passes over others, so the list itself is the preview; js/drag.js hides the browser's ghost.
+    // dragover has no handler (it fires continuously and each call would re-render the dialog).
+    string? _dragId, _justSwapped;
+    List<PlanStep>? _dragStartOrder;
+    bool _dropped;
+
+    void DragStart(PlanStep s) { _dragId = s.Id; _dragStartOrder = _m.Steps.ToList(); _dropped = false; _justSwapped = null; }
+
     void DragEnter(int i)
     {
-        // dragenter also fires for every child element crossed; only re-render when the target row changes
-        if (_dragFrom == null || _dragOver == i) { _skipRender = true; return; }
-        _dragOver = i;
+        var target = _m.Steps[i];
+        // dragenter fires for every child crossed; ignore the dragged row itself, and the row it just swapped
+        // with (after a swap with a taller row the pointer can land on it, which would swap straight back)
+        if (_dragId == null || target.Id == _dragId || target.Id == _justSwapped)
+        {
+            if (target.Id == _dragId) _justSwapped = null;
+            _skipRender = true;
+            return;
+        }
+        var from = _m.Steps.FindIndex(x => x.Id == _dragId);
+        var dragged = _m.Steps[from];
+        _m.Steps.RemoveAt(from);
+        _m.Steps.Insert(i, dragged);
+        _justSwapped = target.Id;
     }
+
+    void Drop() => _dropped = true;
+
+    void DragEnd()
+    {
+        // cancelled (Esc, or dropped outside the list): put the steps back
+        if (!_dropped && _dragStartOrder != null) { _m.Steps.Clear(); _m.Steps.AddRange(_dragStartOrder); }
+        _dragId = null; _dragStartOrder = null; _justSwapped = null;
+    }
+
     bool _skipRender;
     protected override bool ShouldRender()
     {
         if (!_skipRender) return true;
         _skipRender = false;
         return false;
-    }
-    string? DropClass(int i) => _dragFrom is { } f && _dragOver == i && i != f ? (i < f ? "drop-before" : "drop-after") : _dragFrom == i ? "dragging" : null;
-    void Drop(int to)
-    {
-        if (_dragFrom is { } from && from != to)
-        {
-            var s = _m.Steps[from];
-            _m.Steps.RemoveAt(from);
-            _m.Steps.Insert(to, s);
-        }
-        _dragFrom = null; _dragOver = null;
     }
 
     void Toggle(PlanStep s) { if (!_open.Remove(s.Id)) _open.Add(s.Id); }
