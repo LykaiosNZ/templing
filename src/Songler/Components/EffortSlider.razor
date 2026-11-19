@@ -16,7 +16,8 @@
     <input id="@_id" type="range" min="1" max="5" step="1" class="effort-range"
            value="@(Value ?? 3)"
            aria-valuetext="@(Current is { } cc ? $"{cc.Label}: {cc.Advice}" : "Not rated")"
-           @oninput="e => Set(int.Parse((string)e.Value!))" />
+           @oninput="e => Set(int.Parse((string)e.Value!))"
+           @onpointerup="RateIfUnset" />
     <div class="effort-scale">
         @foreach (var l in Effort.Levels)
         {
@@ -27,7 +28,6 @@
             </button>
         }
     </div>
-    <div class="effort-hints" aria-hidden="true"><span>← push faster</span><span>slow down →</span></div>
 </div>
 
 @code {
@@ -35,6 +35,9 @@
     [Parameter] public EventCallback<int?> ValueChanged { get; set; }
     readonly string _id = "effort-" + Guid.NewGuid().ToString("N")[..6];
     Effort.Level? Current => Effort.Get(Value);
+
+    // clicking the spot the hidden thumb already sits on (3) fires no input event, so rate it on release
+    Task RateIfUnset() => Value is null ? Set(3) : Task.CompletedTask;
 
     async Task Set(int? v)
     {

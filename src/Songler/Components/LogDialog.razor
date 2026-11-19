@@ -1,4 +1,5 @@
 @inject DataStore Store
+@inject IDialogService Dialogs
 
 <MudDialog>
     <TitleContent>
@@ -6,21 +7,24 @@
     </TitleContent>
     <DialogContent>
         <MudForm @ref="_form" Class="d-flex flex-column gap-3">
-            <MudDatePicker Label="Date" @bind-Date="_date" DateFormat="ddd d MMM yyyy" Editable="true" MaxDate="DateTime.Today" />
-            <MudSelect T="string" Label="Item" @bind-Value="_itemId" @bind-Value:after="OnItemChanged" AnchorOrigin="Origin.BottomCenter" Clearable="true"
-                       HelperText="Leave empty for free practice">
-                @foreach (var i in Store.ItemsByRecent(keepId: _itemId))
-                {
-                    <MudSelectItem T="string" Value="@i.Id">@i.Name</MudSelectItem>
-                }
-            </MudSelect>
+            <div class="d-flex gap-3">
+                <MudSelect T="string" Label="Item" @bind-Value="ItemPick" @bind-Value:after="OnItemChanged" AnchorOrigin="Origin.BottomCenter" Style="flex:2 1 0">
+                    <MudSelectItem T="string" Value="@("")">Free practice</MudSelectItem>
+                    @foreach (var i in Store.ItemsByRecent(keepId: _itemId))
+                    {
+                        <MudSelectItem T="string" Value="@i.Id">@i.Name</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudDatePicker Label="Date" @bind-Date="_date" DateFormat="ddd d MMM yyyy" Editable="true" MaxDate="DateTime.Today" Style="flex:1 1 0; min-width:150px" />
+            </div>
             @if (_item == null)
             {
                 <MudTextField @bind-Value="_name" Label="What did you practise?" />
             }
             else if (_item.Sections.Count > 1)
             {
-                <MudSelect T="string" Label="@(_item.Type == ItemType.Song ? "Part" : "Section")" @bind-Value="_sectionId" Clearable="true" HelperText="@(_item.Type == ItemType.Song ? "Empty = full run-through (counts for every part)" : "Empty = whole piece")">
+                <MudSelect T="string" Label="@(_item.Type == ItemType.Song ? "Part" : "Section")" @bind-Value="SectionPick">
+                    <MudSelectItem T="string" Value="@("")">@(_item.Type == ItemType.Song ? "Full run-through" : "Whole piece")</MudSelectItem>
                     @foreach (var s in _item.Sections)
                     {
                         <MudSelectItem T="string" Value="@s.Id">@s.Name (@s.Bpm.ToString("0") bpm, @s.Meter)</MudSelectItem>
@@ -29,8 +33,8 @@
             }
             <div class="d-flex gap-3">
                 <MudTextField @bind-Value="_tempo" Label="@($"Tempo reached{(_item != null ? $" ({(_item.Unit == TempoUnit.Percent ? "%" : "bpm")})" : "")}")"
-                              HelperText="e.g. 120, 65 - 145 or 85%" Class="flex-1" Immediate="true" AutoFocus="true" />
-                <DurationInput Seconds="_seconds" SecondsChanged="v => _seconds = v" Nullable="true" Label="Active time" HelperText="Excluding rests" Class="flex-1" />
+                              Placeholder="120, 65–145 or 85%" Class="flex-1" Immediate="true" AutoFocus="true" />
+                <DurationInput Seconds="_seconds" SecondsChanged="v => _seconds = v" Nullable="true" Label="Active time" Class="flex-1" />
             </div>
             <EffortSlider @bind-Value="_effort" />
             <MudTextField @bind-Value="_notes" Label="Notes" Lines="2" Sizing="InputSizing.Auto" MaxLines="6" />
@@ -58,6 +62,9 @@
     double? _seconds;
     int? _effort;
     PracticeItem? _item;
+    // selects show "Free practice" / "Full run-through" as an explicit "" option rather than an empty field
+    string ItemPick { get => _itemId ?? ""; set => _itemId = string.IsNullOrEmpty(value) ? null : value; }
+    string SectionPick { get => _sectionId ?? ""; set => _sectionId = string.IsNullOrEmpty(value) ? null : value; }
 
     public static async Task<bool> ShowAsync(IDialogService dialogs, PracticeLog log, bool isNew)
     {
@@ -113,6 +120,8 @@
 
     async Task Delete()
     {
+        var ok = await Dialogs.ShowMessageBoxAsync("Delete entry?", $"{Log.ItemName} on {Stats.Day(Log.Date)} will be removed.", "Delete", cancelText: "Cancel");
+        if (ok != true) return;
         await Store.DeleteLogAsync(Log);
         Dialog.Close(DialogResult.Ok(Log));
     }

@@ -326,7 +326,9 @@ code { font-family: var(--mono); font-size: .85em; background: var(--card-2); pa
     width: 18px; height: 18px; border-radius: 50%; background: var(--effort-color);
     border: 3px solid var(--mud-palette-surface); box-shadow: 0 0 0 1px rgba(0,0,0,.25);
 }
-.effort.unrated .effort-range::-webkit-slider-thumb { background: var(--mud-palette-surface); box-shadow: 0 0 0 2px var(--mud-palette-text-disabled); }
+/* unrated: no thumb, so the scale doesn't look like "Just right" was picked */
+.effort.unrated .effort-range::-webkit-slider-thumb { opacity: 0; }
+.effort.unrated .effort-range::-moz-range-thumb { opacity: 0; }
 .effort-range:focus-visible { outline: 2px solid var(--mud-palette-primary); outline-offset: 4px; }
 .effort-scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
 .effort-tick {
@@ -335,7 +337,6 @@ code { font-family: var(--mono); font-size: .85em; background: var(--card-2); pa
 }
 .effort-tick:hover { border-color: var(--tick-color); }
 .effort-tick.on { border-color: var(--tick-color); color: var(--tick-color); font-weight: 700; background: color-mix(in srgb, var(--tick-color) 12%, transparent); }
-.effort-hints { display: flex; justify-content: space-between; font-size: .7rem; color: var(--mud-palette-text-disabled); }
 
 .feel-pill { display: inline-flex; align-items: center; gap: 5px; font-size: .76rem; white-space: nowrap; color: var(--ink-2); }
 .feel-pill::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--feel); }
