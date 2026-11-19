@@ -29,7 +29,7 @@ dotnet run --project src/Songler/Songler.csproj --launch-profile http   # http:/
 | `Services/Hotkeys.cs`, `Services/Shortcuts.cs`, `wwwroot/js/keys.js` | Keyboard shortcuts: the one catalog of keys, the handler registry, the key listener |
 | `wwwroot/js/metronome.js` | Audio engine (look-ahead scheduler, intervals, trainer, per-bar meters) |
 | `wwwroot/js/db.js` | IndexedDB wrapper (JSON stores + binary `files` store) |
-| `Components/Charts/*` + `wwwroot/js/charts.js` | Charts via Apache ECharts (vendored in `wwwroot/lib/echarts`, Apache-2.0); C# formats all text, JS draws |
+| `Components/Charts/*` + `wwwroot/js/charts.js` | Charts via Apache ECharts (Apache-2.0): a trimmed bundle in `wwwroot/lib/echarts`, built by `tools/echarts`; C# formats all text, JS draws |
 
 ## Persisted data: checklist (don't skip)
 
@@ -56,7 +56,7 @@ Serialisation uses `DataStore.Json` (PascalCase property names, string enums via
 
 ## Gotchas learned the hard way
 
-- **Prefer MudBlazor components** (progress bars, tooltips, dialogs…) over hand-built ones; see DESIGN.md. Charts are the exception: they're ECharts, and new chart kinds go in `charts.js` + a `ChartBase` component. The docs at mudblazor.com are a client-side app, so read them in a browser tab (plain fetches return an empty shell).
+- **Prefer MudBlazor components** (progress bars, tooltips, dialogs…) over hand-built ones; see DESIGN.md. Charts are the exception: they're ECharts, and new chart kinds go in `charts.js` + a `ChartBase` component. The bundle only contains the series, components and features `charts.js` uses (`tools/echarts/entry.js`): if a chart needs another (a scatter series, a legend, dataZoom…), add it there and run `npm install && npm run build` in `tools/echarts`, then rebuild the app. A missing part doesn't throw; it logs "[ECharts] … is used but not imported" and quietly doesn't draw. The docs at mudblazor.com are a client-side app, so read them in a browser tab (plain fetches return an empty shell).
 
 - **Naming:** a thing in the library is a **piece** everywhere: UI text, code (`Piece`, `PieceId`, `PieceDialog`, `PieceDetail`), routes (`/metronome/piece/{id}`), CSS (`.piece-card`) and the IndexedDB store (`pieces`). Never "item" (MudBlazor's `MudSelectItem` etc. aside).
 

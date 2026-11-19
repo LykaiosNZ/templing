@@ -49,4 +49,4 @@ Shortcuts are ignored while you type in a field.
 - `src/Songler/Models`: data model (pieces, sections, logs, presets, settings)
 - `src/Songler/Services`: `DataStore` (IndexedDB cache), `MetronomeService`, `Shortcuts`, `Stats`, `LogCsv`, `ScoreImport`, `PlanRunner`
 - `src/Songler/wwwroot/js`: `metronome.js` (audio engine), `db.js` (IndexedDB), `keys.js` (global shortcuts)
-- `src/Songler/Components/Charts` + `wwwroot/js/charts.js`: charts on [Apache ECharts](https://echarts.apache.org) (Apache-2.0, vendored in `wwwroot/lib/echarts`): tempo line, bars, practice calendar; ranked bars on MudBlazor progress bars
+- `src/Songler/Components/Charts` + `wwwroot/js/charts.js`: charts on [Apache ECharts](https://echarts.apache.org) (Apache-2.0; a trimmed bundle in `wwwroot/lib/echarts`, built by `tools/echarts`): tempo line, bars, practice calendar; ranked bars on MudBlazor progress bars

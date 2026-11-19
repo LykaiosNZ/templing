@@ -4,3 +4,4 @@ obj/
 *.user
 .idea/
 tools/icons/node_modules/
+tools/echarts/node_modules/

@@ -33,7 +33,7 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 - Everything on a page with a period picker follows that period. The practice calendar is the exception: it always shows the last 12 months so it doesn't change size.
 - Cards side by side in a grid end level at the bottom (`equal-cards` on the `MudGrid`).
 - Long ranked lists show their top 8 with "Show all".
-- Charts are **Apache ECharts** (vendored in `wwwroot/lib/echarts`, lazy-loaded) drawn by `wwwroot/js/charts.js`, through components on `ChartBase`. MudChart was tried and dropped: no reference lines, per-bar colours, whiskers or calendar extras. LiveCharts2 too (Skia canvas ignores CSS fonts, needs native WASM linking).
+- Charts are **Apache ECharts** (a trimmed bundle in `wwwroot/lib/echarts` built by `tools/echarts`, lazy-loaded) drawn by `wwwroot/js/charts.js`, through components on `ChartBase`. MudChart was tried and dropped: no reference lines, per-bar colours, whiskers or calendar extras. LiveCharts2 too (Skia canvas ignores CSS fonts, needs native WASM linking).
 - All text (ticks, tooltips) is formatted in C# with `Stats.*` and sent as strings, so charts read the same as the rest of the app. Don't format numbers or durations in JS.
 - Colours come from the theme's CSS tokens (`--series`, `--accent`, `--good`, `--hm-*`…), read when drawing; the spec includes the theme so a theme switch redraws. Tooltips are ECharts' HTML tooltips styled with the tokens: bold value, muted label below ("2 hr 35 min" / "Week of 9 Nov"), optional note.
 - Goals are a dashed green line, with a small key above the chart ("Weekly goal 2 hr 30 min"). The current week's bar is accent. Tempo dots are coloured by feel, with a faint whisker down to the day's lowest tempo.
