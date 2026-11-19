@@ -62,7 +62,7 @@
             {
                 <MudText Typo="Typo.body2" Class="muted mb-2">@(_goalsReached == 1 ? "1 goal reached" : $"{_goalsReached} goals reached")</MudText>
             }
-            <HBars Rows="_progress" Max="1" Limit="8" AriaLabel="Progress toward goal by piece" />
+            <HBars Rows="_progress" Max="1" Goal="true" Limit="8" AriaLabel="Progress toward goal by piece" />
         </section>
         <section class="card mt-4">
             <h2 class="card-title">By type</h2>

@@ -16,7 +16,14 @@
                 }
                 <span class="hbar-value">@row.Display</span>
             </div>
-            <MudProgressLinear Value="@Math.Clamp(pct, 0, 100)" Color="Color.Secondary" Rounded="true" Size="Size.Medium" aria-hidden="true" />
+            @if (Goal)
+            {
+                <GoalBar Progress="@(pct / 100)" Size="Size.Medium" />
+            }
+            else
+            {
+                <MudProgressLinear Value="@Math.Clamp(pct, 0, 100)" Color="Color.Secondary" Rounded="true" Size="Size.Medium" aria-hidden="true" />
+            }
         </li>
     }
 </ul>
@@ -32,6 +39,8 @@
     [Parameter] public double? Max { get; set; }
     /// <summary>Show only the first N rows, with a "Show all" button.</summary>
     [Parameter] public int? Limit { get; set; }
+    /// <summary>Rows are goal progress: bars use the goal colouring (accent, green once reached).</summary>
+    [Parameter] public bool Goal { get; set; }
     bool _all;
     double _max;
     protected override void OnParametersSet() => _max = Max ?? (Rows.Count > 0 ? Rows.Max(r => r.Value) : 0);
