@@ -24,7 +24,8 @@ dotnet run --project src/Songler/Songler.csproj --launch-profile http   # http:/
 | `Services/MetronomeService.cs` | App-wide metronome/timer state, session tracking, interval/trainer overrides |
 | `Services/PlanRunner.cs` | Runs practice plans step by step |
 | `Services/ScoreImport.cs` + `wwwroot/js/score.js` | Guitar Pro/MusicXML via alphaTab (vendored in `wwwroot/lib/alphatab`, MPL-2.0) |
-| `Services/Stats.cs`, `Services/LogCsv.cs`, `Services/Shortcuts.cs` | Stats maths, tempo parsing + CSV log export, global keyboard shortcuts |
+| `Services/Stats.cs`, `Services/LogCsv.cs` | Stats maths, tempo parsing + CSV log export |
+| `Services/Hotkeys.cs`, `Services/Shortcuts.cs`, `wwwroot/js/keys.js` | Keyboard shortcuts: the one catalog of keys, the handler registry, the key listener |
 | `wwwroot/js/metronome.js` | Audio engine (look-ahead scheduler, intervals, trainer, per-bar meters) |
 | `wwwroot/js/db.js` | IndexedDB wrapper (JSON stores + binary `files` store) |
 | `Components/Charts/*` + `wwwroot/js/charts.js` | Charts via Apache ECharts (vendored in `wwwroot/lib/echarts`, Apache-2.0); C# formats all text, JS draws |
@@ -62,6 +63,7 @@ Serialisation uses `DataStore.Json` (PascalCase property names, string enums via
 - **JS interop with arrays:** `InvokeVoidAsync("fn", array)` spreads a `string[]` as `params`. Pass `(object)array`.
 - **MudBlazor 9** renamed things (e.g. `AutoGrow` → `Sizing`, tabs `PanelClass` → `TabPanelsClass`). The analyzer warnings (MUD0002) tell you the replacement, so treat them as errors.
 - **Icons:** MudBlazor's Material set (`Icons.Material.Rounded.*`) by default. For icons it lacks (e.g. metronome), use Pictogrammers MDI: add the name to `tools/icons/icons.txt`, run `npm install && npm run generate` in `tools/icons`, then use `Mdi.Name`. Only listed icons ship. The output, `Components/Mdi.g.cs`, is generated, so don't hand-edit it.
+- **Keyboard shortcuts are defined only in `Hotkeys.cs`** (group, description, every combo). `Shortcuts.Register` takes a `Hotkey`, never a key string, and the shortcuts dialog is generated from `Hotkeys.All`, so a new key is listed automatically. A combo claimed twice throws at startup.
 - **Durations in the UI use `<DurationInput>`** (h:mm:ss text field, value in seconds; also accepts m:ss or bare minutes, ↑/↓ steps). Don't use number fields for minutes, and not `MudTimePicker` either: it's time-of-day, has no seconds and caps at 23:59. Models keep minutes or seconds as they are, so convert at the call site.
 - **Tempo is quarter-note based** (as in Guitar Pro): an x/8 bar clicks eighths. Score-linked sections carry `ScoreBars` ([masterBar, num, den] per bar); don't edit their meter/bars by hand.
 - **Practice time = active time only:** only work-phase time while running counts. Count-ins, rests, pauses and rest-only countdowns don't.

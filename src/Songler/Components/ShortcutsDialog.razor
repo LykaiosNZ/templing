@@ -1,25 +1,33 @@
+@* Generated from Hotkeys.All, the same entries the key handlers bind to, so the list can't drift from what works. *@
 <MudDialog>
     <DialogContent>
-        @foreach (var g in Shortcuts.All.GroupBy(s => s.Group))
+        @foreach (var g in Hotkeys.All.GroupBy(h => h.Group))
         {
             <MudText Typo="Typo.overline" Class="muted">@g.Key</MudText>
             <dl class="shortcut-list">
-                @foreach (var s in g)
+                @foreach (var h in g)
                 {
                     <dt>
-                        @foreach (var part in s.Keys.Split(' '))
+                        @for (int i = 0; i < h.Combos.Count; i++)
                         {
-                            if (s.Keys != "/" && part is "/" or "then" or "+")
+                            if (i > 0)
                             {
-                                <span class="muted sep">@part</span>
+                                <span class="muted sep">or</span>
                             }
-                            else
+                            foreach (var (text, key) in Hotkeys.Display(h.Combos[i]))
                             {
-                                <kbd>@part</kbd>
+                                if (key)
+                                {
+                                    <kbd>@text</kbd>
+                                }
+                                else
+                                {
+                                    <span class="muted sep">@text</span>
+                                }
                             }
                         }
                     </dt>
-                    <dd>@s.Description</dd>
+                    <dd>@h.Description</dd>
                 }
             </dl>
         }

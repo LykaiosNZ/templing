@@ -2,44 +2,15 @@ using Microsoft.JSInterop;
 
 namespace Songler.Services;
 
-public record ShortcutInfo(string Keys, string Description, string Group);
-
 /// <summary>
-/// Global keyboard shortcut registry. Components register handlers (scoped by an owner object)
-/// and remove them on dispose. The most recently registered handler for a combo wins.
+/// Global keyboard shortcut registry. Components register handlers for <see cref="Hotkeys"/> entries (scoped by an
+/// owner object) and remove them on dispose. The most recently registered handler for a combo wins.
 /// </summary>
 public class Shortcuts(IJSRuntime js) : IAsyncDisposable
 {
     private IJSObjectReference? _mod;
     private DotNetObjectReference<Shortcuts>? _ref;
     private readonly List<(object owner, string combo, Func<Task> handler)> _handlers = new();
-
-    /// <summary>Documented shortcuts for the help dialog.</summary>
-    public static readonly ShortcutInfo[] All =
-    [
-        new("Space", "Start / stop metronome (or timer)", "Metronome"),
-        new("R", "Restart section (with count-in)", "Metronome"),
-        new("↑ / ↓", "Tempo +1 / −1", "Metronome"),
-        new("Shift + ↑ / ↓", "Tempo +5 / −5", "Metronome"),
-        new("← / →", "Previous / next section", "Metronome"),
-        new("T", "Tap tempo", "Metronome"),
-        new("C", "Toggle count-in", "Metronome"),
-        new("X", "Toggle speed trainer (ramp)", "Metronome"),
-        new("I", "Toggle interval trainer", "Metronome"),
-        new("L", "Stop and log this session", "Metronome"),
-        new("Esc", "Stop", "Metronome"),
-        new("N", "Log practice manually", "General"),
-        new("/", "Search library", "General"),
-        new("?", "Show keyboard shortcuts", "General"),
-        new("G then D", "Go to dashboard", "Navigation"),
-        new("G then L", "Go to library", "Navigation"),
-        new("G then M", "Go to metronome", "Navigation"),
-        new("G then T", "Go to practice timer", "Navigation"),
-        new("G then P", "Go to plans", "Navigation"),
-        new("G then H", "Go to history", "Navigation"),
-        new("G then S", "Go to stats", "Navigation"),
-        new("G then ,", "Go to settings", "Navigation"),
-    ];
 
     public async Task InitAsync()
     {
@@ -50,17 +21,17 @@ public class Shortcuts(IJSRuntime js) : IAsyncDisposable
         await Sync();
     }
 
-    public IDisposable Register(object owner, string combo, Func<Task> handler) => Register(owner, new[] { combo }, handler);
-
-    public IDisposable Register(object owner, IEnumerable<string> combos, Func<Task> handler)
+    /// <summary>Binds a handler to every combo of a hotkey from <see cref="Hotkeys"/> (the only way to bind a key,
+    /// so the shortcuts dialog always lists it). Dispose the result, or call <see cref="Unregister"/>, to unbind.</summary>
+    public IDisposable Register(object owner, Hotkey key, Func<Task> handler)
     {
-        foreach (var c in combos) _handlers.Add((owner, c, handler));
+        foreach (var c in key.Combos) _handlers.Add((owner, c, handler));
         _ = Sync();
         return new Unreg(this, owner);
     }
 
-    public IDisposable Register(object owner, string combo, Action handler) =>
-        Register(owner, combo, () => { handler(); return Task.CompletedTask; });
+    public IDisposable Register(object owner, Hotkey key, Action handler) =>
+        Register(owner, key, () => { handler(); return Task.CompletedTask; });
 
     public void Unregister(object owner)
     {

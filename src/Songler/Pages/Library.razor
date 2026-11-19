@@ -145,7 +145,7 @@ else
     protected override void OnInitialized()
     {
         Store.Changed += OnStoreChanged;
-        _keys = Keys.Register(this, "/", () => Keys.FocusAsync("#library-search").AsTask());
+        _keys = Keys.Register(this, Hotkeys.SearchLibrary, () => Keys.FocusAsync("#library-search").AsTask());
         Refresh();
     }
 
