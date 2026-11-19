@@ -54,6 +54,7 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
   - Hiding the rail leaves a 56 px strip of quick controls rather than a copy of the sections: `RailToggle`s for the features, plus `RailVolume` (click turns sound on or off, hover shows the slider).
   - Below `lg` the same sections open as a bottom sheet from an Options button in the page head.
   - The rail starts open; hiding it lasts for the session.
+  - Put `<OptionsRail>` last in the page markup. MudBlazor gives every `div` after a right-hand drawer a right margin the width of the drawer, so anything placed after it (e.g. the tab view) gets squeezed.
   - Tooltips on controls at the rail's right edge (Save, ⋮, strip buttons, Hide options) use `Placement.Left`. Below or above, they hit the window edge, wrap and jitter.
 - Must work at phone width (≥ 360 px): wide tables switch to compact rows (`hide-phone` / `show-phone-block`).
 

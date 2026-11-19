@@ -166,6 +166,12 @@
 
     </section>
 
+    @if (Metro.Source == MetronomeSource.Piece && Metro.Piece is { ScoreFileId: not null } scorePiece)
+    {
+        <div>
+            <TabView Piece="scorePiece" Part="Metro.PlayingSection" Dark="Store.Settings.DarkMode" />
+        </div>
+    }
 </div>
 
 <OptionsRail @ref="_rail">
@@ -288,12 +294,6 @@
     </ChildContent>
 </OptionsRail>
 
-@if (Metro.Source == MetronomeSource.Piece && Metro.Piece is { ScoreFileId: not null } scorePiece)
-{
-    <div class="mt-4">
-        <TabView Piece="scorePiece" Part="Metro.PlayingSection" Dark="Store.Settings.DarkMode" />
-    </div>
-}
 
 @code {
     [Parameter] public string? PieceId { get; set; }
