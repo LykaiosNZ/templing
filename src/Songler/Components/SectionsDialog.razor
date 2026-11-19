@@ -5,10 +5,7 @@
         <MudText Typo="Typo.h6">Sections &amp; tempo changes</MudText>
     </TitleContent>
     <DialogContent>
-        <MudText Typo="Typo.body2" Class="muted mb-3">
-            Each section has its own tempo and time signature. Give sections a bar count and turn on <em>Play through</em> to step through them automatically.
-        </MudText>
-        <SectionsEditor Sections="_sections" OnChanged="StateHasChanged" />
+        <SectionsEditor Sections="_sections" QuickAdd="false" OnChanged="StateHasChanged" />
         @if (_sections.Count > 1)
         {
             <div class="d-flex gap-4 mt-3 flex-wrap">

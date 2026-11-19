@@ -233,7 +233,7 @@ else
         Snackbar.Add(_piece.Archived ? "Archived: hidden from the library unless \"Show archived\" is on" : "Unarchived", Severity.Info);
     }
 
-    static string SubName(int s) => s switch { 1 => "Beats", 2 => "8ths", 3 => "Triplets", 4 => "16ths", 6 => "Sextuplets", _ => s.ToString() };
+    static string SubName(int s) => Section.ClickName(s);
 
     string ProgressSub
     {

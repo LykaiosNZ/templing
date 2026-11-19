@@ -1,91 +1,200 @@
-@* Edits a tempo map: sections with their own tempo, meter, subdivision and length. *@
+@* Edits a tempo map: sections with their own tempo, meter, clicks and length. Rows work like plan steps: a one-line
+   summary that expands to its fields, drag by the grip to reorder (Move up / down stay for keyboard and touch).
+   Score-linked sections keep their meter and bars from the score, shown as text. *@
 
-<div class="sections-editor" role="list" aria-label="Sections">
-    @for (int i = 0; i < Sections.Count; i++)
+<div class="sections-editor">
+    <div class="d-flex justify-space-between align-center flex-wrap gap-2">
+        <MudText Typo="Typo.subtitle2">Sections (@Sections.Count)@(TotalBars is { } tb ? $" · {tb} bars" : "")</MudText>
+        <div class="d-flex gap-2 align-center flex-wrap">
+            @HeaderContent
+            <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Add" OnClick="Add">Add section</MudButton>
+        </div>
+    </div>
+    @if (QuickAdd)
     {
-        var idx = i;
-        var s = Sections[i];
-        <div class="section-row @(idx == Current ? "current" : "")" role="listitem" @key="s.Id">
-            @if (OnSelect.HasDelegate)
+        <div class="d-flex flex-wrap gap-1 align-center" role="group" aria-label="Add a named section">
+            @foreach (var part in PieceTypeExt.SongParts)
             {
-                <MudTooltip Text="Select section">
-                    <MudIconButton Size="Size.Small" Icon="@(idx == Current ? Icons.Material.Rounded.RadioButtonChecked : Icons.Material.Rounded.RadioButtonUnchecked)"
-                                   Color="@(idx == Current ? Color.Primary : Color.Default)" aria-label="@($"Select section {s.Name}")"
-                                   aria-pressed="@(idx == Current ? "true" : "false")" OnClick="() => OnSelect.InvokeAsync(idx)" />
-                </MudTooltip>
+                var name = part;
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Icon="@Icons.Material.Rounded.Add" OnClick="() => AddNamed(name)">@name</MudChip>
             }
-            <MudTextField @bind-Value="s.Name" @bind-Value:after="Changed" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-name" />
-            <MudNumericField T="double" @bind-Value="s.Bpm" @bind-Value:after="Changed" Label="@BpmLabel" Min="20" Max="400" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num" />
-            <MudNumericField T="int" @bind-Value="s.BeatsPerBar" @bind-Value:after="Changed" Label="Beats" Disabled="s.FromScore" Min="1" Max="32" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num-s" />
-            <MudSelect T="int" @bind-Value="s.BeatUnit" @bind-Value:after="Changed" Label="Unit" Disabled="s.FromScore" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="sec-num-s">
-                @foreach (var u in new[] { 2, 4, 8, 16 }) { <MudSelectItem T="int" Value="u">/@u</MudSelectItem> }
-            </MudSelect>
-            <MudSelect T="int" @bind-Value="s.Subdivision" @bind-Value:after="Changed" Label="Clicks" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="sec-sub">
-                <MudSelectItem T="int" Value="1">Beats</MudSelectItem>
-                <MudSelectItem T="int" Value="2">8ths</MudSelectItem>
-                <MudSelectItem T="int" Value="3">Triplets</MudSelectItem>
-                <MudSelectItem T="int" Value="4">16ths</MudSelectItem>
-                <MudSelectItem T="int" Value="6">Sextuplets</MudSelectItem>
-            </MudSelect>
-            @* the note lives in the label, not helper text, so the row stays level *@
-            <MudTooltip Text="@(s.FromScore ? (s.MixedMeter ? "From the score · mixed meter" : "From the score") : null)" Disabled="!s.FromScore">
-                <MudNumericField T="int" @bind-Value="s.Bars" @bind-Value:after="Changed" Label="@(s.FromScore ? "Bars (score)" : s.Bars == 0 ? "Bars (loop)" : "Bars")" Disabled="s.FromScore" Min="0" Max="999" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num-s" />
-            </MudTooltip>
-            <div class="sec-actions">
-                <MudTooltip Text="Move up">
-                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowUpward" Disabled="idx == 0" aria-label="@($"Move {s.Name} up")" OnClick="() => Move(idx, -1)" />
-                </MudTooltip>
-                <MudTooltip Text="Move down">
-                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowDownward" Disabled="idx == Sections.Count - 1" aria-label="@($"Move {s.Name} down")" OnClick="() => Move(idx, 1)" />
-                </MudTooltip>
-                <MudTooltip Text="Duplicate">
-                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ContentCopy" aria-label="@($"Duplicate {s.Name}")" OnClick="() => Duplicate(idx)" />
-                </MudTooltip>
-                <MudTooltip Text="Remove">
-                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Close" Disabled="Sections.Count == 1" aria-label="@($"Remove {s.Name}")" OnClick="() => Remove(idx)" />
-                </MudTooltip>
-            </div>
         </div>
     }
-    <MudButton StartIcon="@Icons.Material.Rounded.Add" Variant="Variant.Text" Color="Color.Primary" OnClick="Add" Class="mt-1">Add section</MudButton>
+    <div class="edit-rows" role="list" aria-label="Sections">
+        @for (int i = 0; i < Sections.Count; i++)
+        {
+            var idx = i;
+            var s = Sections[i];
+            var open = _open.Contains(s.Id);
+            <div class="edit-row @(open ? "open" : "") @(s.Id == _drag.DraggingId ? "dragging" : "")" role="listitem" @key="s.Id"
+                 data-drag-row @ondragover:preventDefault="true" @ondragenter="() => DragEnter(idx)" @ondrop="_drag.Drop" @ondrop:preventDefault="true">
+                <div class="er-head">
+                    <span class="er-drag" draggable="true" data-drag-handle aria-hidden="true" @ondragstart="() => _drag.Start(s)" @ondragend="DragEnd">
+                        <MudIcon Icon="@Icons.Material.Rounded.DragIndicator" Size="Size.Small" />
+                    </span>
+                    <button type="button" class="er-summary" aria-expanded="@(open ? "true" : "false")" aria-controls="@($"sec-body-{s.Id}")" @onclick="() => Toggle(s)">
+                        <MudIcon Icon="@Icons.Material.Rounded.ExpandMore" Size="Size.Small" Class="er-chevron" />
+                        <SectionSummary Section="s" Index="idx" />
+                    </button>
+                    <span class="er-actions">
+                        <MudTooltip Text="Move up">
+                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowUpward" Disabled="idx == 0" aria-label="@($"Move {s.Name} up")" OnClick="() => Move(idx, -1)" />
+                        </MudTooltip>
+                        <MudTooltip Text="Move down">
+                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowDownward" Disabled="idx == Sections.Count - 1" aria-label="@($"Move {s.Name} down")" OnClick="() => Move(idx, 1)" />
+                        </MudTooltip>
+                        <MudTooltip Text="Duplicate">
+                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ContentCopy" aria-label="@($"Duplicate {s.Name}")" OnClick="() => Duplicate(idx)" />
+                        </MudTooltip>
+                        <MudTooltip Text="Remove">
+                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Close" Disabled="Sections.Count == 1" aria-label="@($"Remove {s.Name}")" OnClick="() => Remove(idx)" />
+                        </MudTooltip>
+                    </span>
+                </div>
+                @if (open)
+                {
+                    <div class="er-body sec-body" id="@($"sec-body-{s.Id}")">
+                        <MudTextField @bind-Value="s.Name" @bind-Value:after="Changed" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-name" />
+                        <MudNumericField T="double" @bind-Value="s.Bpm" @bind-Value:after="Changed" Label="@BpmLabel" Min="20" Max="400" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num" />
+                        @if (!s.FromScore)
+                        {
+                            <MudNumericField T="int" @bind-Value="s.BeatsPerBar" @bind-Value:after="Changed" Label="Beats" Min="1" Max="32" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num-s" />
+                            <MudSelect T="int" @bind-Value="s.BeatUnit" @bind-Value:after="Changed" Label="Unit" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="sec-num-s">
+                                @foreach (var u in new[] { 2, 4, 8, 16 }) { <MudSelectItem T="int" Value="u">/@u</MudSelectItem> }
+                            </MudSelect>
+                        }
+                        <MudSelect T="int" @bind-Value="s.Subdivision" @bind-Value:after="Changed" Label="Clicks" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="sec-sub">
+                            @foreach (var (v, label) in Section.Subdivisions) { <MudSelectItem T="int" Value="v">@label</MudSelectItem> }
+                        </MudSelect>
+                        @if (s.FromScore)
+                        {
+                            <span class="sec-score muted small">@s.Meter · @s.Length bars · from the score</span>
+                        }
+                        else
+                        {
+                            var loop = s.Bars == 0;
+                            <MudTooltip Text="@($"Loop: {(loop ? "on" : "off")}")">
+                                <MudIconButton Icon="@Icons.Material.Rounded.Repeat" Size="Size.Small" Class="@(loop ? "opt-toggle on" : "opt-toggle")" aria-label="Loop"
+                                               aria-pressed="@(loop ? "true" : "false")" OnClick="() => ToggleLoop(s)" />
+                            </MudTooltip>
+                            @if (!loop)
+                            {
+                                <MudNumericField T="int" @bind-Value="s.Bars" @bind-Value:after="Changed" Label="Bars" Min="1" Max="999" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num-s" />
+                            }
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
 </div>
 
 @code {
     [Parameter] public List<Section> Sections { get; set; } = new();
     [Parameter] public EventCallback OnChanged { get; set; }
-    [Parameter] public int Current { get; set; } = -1;
-    [Parameter] public EventCallback<int> OnSelect { get; set; }
     [Parameter] public string BpmLabel { get; set; } = "BPM";
+    /// <summary>Extra header controls, left of Add section (e.g. the piece editor's score import).</summary>
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
+    /// <summary>Show the "+ Intro", "+ Verse"… chips.</summary>
+    [Parameter] public bool QuickAdd { get; set; } = true;
+    /// <summary>A new piece: the first named section replaces the untouched default "Main" instead of adding beside it.</summary>
+    [Parameter] public bool ReplaceDefault { get; set; }
+
+    // sections whose fields are showing; the rest show as one-line summaries
+    readonly HashSet<string> _open = new();
+    DragReorder<Section>? _dragger;
+    DragReorder<Section> _drag => _dragger ??= new(() => Sections, s => s.Id);
+    bool _skipRender;
+    List<Section>? _seen;
+
+    /// <summary>Total length when every section has one (looping sections have no end).</summary>
+    int? TotalBars => Sections.Count > 0 && Sections.All(s => s.Length > 0) ? Sections.Sum(s => s.Length) : null;
+
+    protected override void OnParametersSet()
+    {
+        // a lone section (e.g. a new piece's default) opens straight away; a list starts collapsed
+        if (!ReferenceEquals(_seen, Sections))
+        {
+            _seen = Sections;
+            _open.Clear();
+            if (Sections.Count == 1) _open.Add(Sections[0].Id);
+        }
+    }
+
+    protected override bool ShouldRender()
+    {
+        if (!_skipRender) return true;
+        _skipRender = false;
+        return false;
+    }
 
     Task Changed() => OnChanged.InvokeAsync();
 
+    void Toggle(Section s) { if (!_open.Remove(s.Id)) _open.Add(s.Id); }
+    void OpenOnly(Section s) { _open.Clear(); _open.Add(s.Id); }
+
+    void DragEnter(int i) { if (!_drag.Enter(i)) _skipRender = true; }
+    Task DragEnd() => _drag.End() ? Changed() : Task.CompletedTask;
+
+    Section NewAfter(Section? last, string name) => last is null ? new Section { Name = name } : new Section
+    {
+        Name = name, Bpm = last.Bpm, BeatsPerBar = last.BeatsPerBar, BeatUnit = last.BeatUnit, Subdivision = last.Subdivision,
+        Bars = last.FromScore ? 0 : last.Bars,
+    };
+
     Task Add()
     {
-        var last = Sections.LastOrDefault();
-        Sections.Add(last is null ? new Section() : new Section
-        {
-            Name = $"Section {Sections.Count + 1}", Bpm = last.Bpm, BeatsPerBar = last.BeatsPerBar, BeatUnit = last.BeatUnit,
-            Subdivision = last.Subdivision, Bars = last.Bars
-        });
+        var s = NewAfter(Sections.LastOrDefault(), Unique($"Section {Sections.Count + 1}"));
+        Sections.Add(s);
+        OpenOnly(s);
         return Changed();
+    }
+
+    Task AddNamed(string name)
+    {
+        var last = Sections.LastOrDefault();
+        if (ReplaceDefault && Sections.Count == 1 && last is { Name: "Main", FromScore: false })
+        {
+            last.Name = Unique(name);
+            OpenOnly(last);
+            return Changed();
+        }
+        var s = NewAfter(last, Unique(name));
+        Sections.Add(s);
+        OpenOnly(s);
+        return Changed();
+    }
+
+    string Unique(string name)
+    {
+        if (!Sections.Any(s => s.Name == name)) return name;
+        for (int i = 2; ; i++) if (!Sections.Any(s => s.Name == $"{name} {i}")) return $"{name} {i}";
     }
 
     Task Duplicate(int i)
     {
         var c = Sections[i].Clone();
         c.Id = Guid.NewGuid().ToString("N")[..8];
-        c.Name += " (copy)";
+        c.Name = Unique(c.Name + " (copy)");
         Sections.Insert(i + 1, c);
+        OpenOnly(c);
         return Changed();
     }
 
-    Task Remove(int i) { Sections.RemoveAt(i); return Changed(); }
+    Task Remove(int i) { _open.Remove(Sections[i].Id); Sections.RemoveAt(i); return Changed(); }
 
     Task Move(int i, int d)
     {
         var j = i + d;
         if (j < 0 || j >= Sections.Count) return Task.CompletedTask;
         (Sections[i], Sections[j]) = (Sections[j], Sections[i]);
+        return Changed();
+    }
+
+    /// <summary>Loop on = no length (stored as 0 bars); off = a bar count, starting at 8.</summary>
+    Task ToggleLoop(Section s)
+    {
+        s.Bars = s.Bars == 0 ? 8 : 0;
         return Changed();
     }
 }

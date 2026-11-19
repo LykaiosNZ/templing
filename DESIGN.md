@@ -79,9 +79,10 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 - **Placeholders, not defaults:** example names ("My routine") are placeholders. Don't pre-fill a value the user has to delete. A useful suggestion (e.g. "128 bpm · 4/4" for a new custom metronome) goes in the placeholder too.
 - **Asking for a name** (save as, rename): `PromptDialog.ShowAsync`. The field is focused with its text selected, Enter saves, and Save says why it's disabled ("Add a name", "You already have “…”" via `taken`).
 - **Page actions beyond the main one go in a ⋮ menu** (e.g. a custom metronome: Save changes, Edit sections…, Rename…, Delete…). A page with a single action may show it as an icon button with a tooltip (Save as custom metronome).
-- **Reorderable lists drag** by a grip handle (`DragIndicator`, `data-drag-handle` / `data-drag-row`, see `js/drag.js`). The list reorders live while dragging and the dragged row is outlined in accent (no browser ghost); Esc puts it back, and keep Move up / Move down buttons for keyboard and touch. Never attach a Blazor handler to `dragover` (it fires continuously and re-renders on every call); use `@ondragover:preventDefault` alone and update state on `dragenter` / `drop`.
+- **Reorderable lists drag** by a grip handle (`DragIndicator`, `data-drag-handle` / `data-drag-row`, see `js/drag.js`), using the shared `DragReorder<T>` helper and the `edit-row` / `er-*` row classes (plan steps, sections). The list reorders live while dragging and the dragged row is outlined in accent (no browser ghost); Esc puts it back, and keep Move up / Move down buttons for keyboard and touch. Never attach a Blazor handler to `dragover` (it fires continuously and re-renders on every call); use `@ondragover:preventDefault` alone and update state on `dragenter` / `drop`.
 - **Dialogs whose content grows** (editors with add buttons: piece, plan, sections, score import) open at the top (`Position = DialogPosition.TopCenter`), so adding rows grows them downwards and the add buttons stay under the pointer. Short dialogs stay centred.
-- **Long editable lists collapse:** each row is a one-line summary that expands to its fields (plan steps). New rows open expanded; the summary uses the same component as the read-only view (`PlanStepSummary`).
+- **Long editable lists collapse:** each row is a one-line summary that expands to its fields (plan steps, sections). New rows open expanded (a lone row opens straight away); summaries are their own components (`PlanStepSummary`, `SectionSummary`).
+- **Sections:** length is a Loop toggle (Repeat icon, `opt-toggle`) plus Bars (1+) when not looping; stored as 0 bars = loop. Score-linked sections show their meter and bars as text ("4/4 · 32 bars · from the score") instead of disabled fields.
 - **Rows that open something:** the whole row is clickable with a hover highlight. A pencil appears on hover and stays reachable by keyboard. Links inside the row still work.
 
 ## Icons
@@ -104,6 +105,7 @@ Reuse these instead of rebuilding them. When two screens show the same thing, th
 | `IntervalsEditor` | Work / rest / rounds + presets (Metronome intervals, Timer countdown) |
 | `DurationInput` | Any duration field |
 | `PlanStepSummary` | One-line plan step (Plans list, plan editor rows) |
+| `SectionsEditor`, `SectionSummary` | Tempo-map editor (piece editor, custom metronome sections): header with count, quick-add chips, collapsible rows |
 | `LogTable` | Practice log lists (History, Piece detail) |
 | `GoalBar` | Goal progress bar (`MudProgressLinear`: accent, green when reached) |
 | `StatTile` | Headline numbers (pass `Seconds` for durations so the unit words render small) |

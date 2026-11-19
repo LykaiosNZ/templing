@@ -386,7 +386,7 @@
         }
     }
 
-    static string SubName(int s) => s switch { 1 => "beats", 2 => "8ths", 3 => "triplets", 4 => "16ths", 6 => "sextuplets", _ => $"{s}/beat" };
+    static string SubName(int s) => Section.ClickName(s).ToLowerInvariant();
 
     protected override async Task OnParametersSetAsync()
     {

@@ -25,18 +25,18 @@
                     var piece = Store.GetPiece(s.PieceId);
                     var open = _open.Contains(s.Id);
                     var missing = PlanStepSummary.IsMissing(s, Store);
-                    <div class="plan-step-row @(s.Kind == PlanStepKind.Rest ? "rest" : "") @(open ? "open" : "") @(missing ? "missing" : "") @(s.Id == _dragId ? "dragging" : "")" role="listitem" @key="s.Id"
-                         data-drag-row @ondragover:preventDefault="true" @ondragenter="() => DragEnter(idx)" @ondrop="Drop" @ondrop:preventDefault="true">
-                        <div class="ps-head">
-                            <span class="ps-drag" draggable="true" data-drag-handle aria-hidden="true"
-                                  @ondragstart="() => DragStart(s)" @ondragend="DragEnd">
+                    <div class="edit-row @(s.Kind == PlanStepKind.Rest ? "rest" : "") @(open ? "open" : "") @(missing ? "missing" : "") @(s.Id == _drag.DraggingId ? "dragging" : "")" role="listitem" @key="s.Id"
+                         data-drag-row @ondragover:preventDefault="true" @ondragenter="() => DragEnter(idx)" @ondrop="_drag.Drop" @ondrop:preventDefault="true">
+                        <div class="er-head">
+                            <span class="er-drag" draggable="true" data-drag-handle aria-hidden="true"
+                                  @ondragstart="() => _drag.Start(s)" @ondragend="() => _drag.End()">
                                 <MudIcon Icon="@Icons.Material.Rounded.DragIndicator" Size="Size.Small" />
                             </span>
-                            <button type="button" class="ps-summary" aria-expanded="@(open ? "true" : "false")" aria-controls="@($"ps-body-{s.Id}")" @onclick="() => Toggle(s)">
-                                <MudIcon Icon="@Icons.Material.Rounded.ExpandMore" Size="Size.Small" Class="ps-chevron" />
+                            <button type="button" class="er-summary" aria-expanded="@(open ? "true" : "false")" aria-controls="@($"er-body-{s.Id}")" @onclick="() => Toggle(s)">
+                                <MudIcon Icon="@Icons.Material.Rounded.ExpandMore" Size="Size.Small" Class="er-chevron" />
                                 <PlanStepSummary Step="s" Index="idx" />
                             </button>
-                            <span class="ps-actions">
+                            <span class="er-actions">
                                 <MudTooltip Text="Move up">
                                     <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowUpward" Disabled="idx == 0" aria-label="@($"Move step {idx + 1} up")" OnClick="() => Move(idx, -1)" />
                                 </MudTooltip>
@@ -53,7 +53,7 @@
                         </div>
                         @if (open)
                         {
-                            <div class="ps-body" id="@($"ps-body-{s.Id}")">
+                            <div class="er-body" id="@($"er-body-{s.Id}")">
                                 @if (s.Kind == PlanStepKind.Rest)
                                 {
                                     <DurationInput Seconds="s.Minutes * 60" SecondsChanged="v => s.Minutes = (v ?? 120) / 60" Label="Length" MinSeconds="15" MaxSeconds="3600" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-dur-field" />
@@ -147,41 +147,11 @@
         }
     }
 
-    // Drag to reorder (the up/down buttons stay for keyboard and touch). The list reorders live as the
-    // dragged step passes over others, so the list itself is the preview; js/drag.js hides the browser's ghost.
-    // dragover has no handler (it fires continuously and each call would re-render the dialog).
-    string? _dragId, _justSwapped;
-    List<PlanStep>? _dragStartOrder;
-    bool _dropped;
+    // drag to reorder (the up/down buttons stay for keyboard and touch); see DragReorder
+    DragReorder<PlanStep>? _dragger;
+    DragReorder<PlanStep> _drag => _dragger ??= new(() => _m.Steps, s => s.Id);
 
-    void DragStart(PlanStep s) { _dragId = s.Id; _dragStartOrder = _m.Steps.ToList(); _dropped = false; _justSwapped = null; }
-
-    void DragEnter(int i)
-    {
-        var target = _m.Steps[i];
-        // dragenter fires for every child crossed; ignore the dragged row itself, and the row it just swapped
-        // with (after a swap with a taller row the pointer can land on it, which would swap straight back)
-        if (_dragId == null || target.Id == _dragId || target.Id == _justSwapped)
-        {
-            if (target.Id == _dragId) _justSwapped = null;
-            _skipRender = true;
-            return;
-        }
-        var from = _m.Steps.FindIndex(x => x.Id == _dragId);
-        var dragged = _m.Steps[from];
-        _m.Steps.RemoveAt(from);
-        _m.Steps.Insert(i, dragged);
-        _justSwapped = target.Id;
-    }
-
-    void Drop() => _dropped = true;
-
-    void DragEnd()
-    {
-        // cancelled (Esc, or dropped outside the list): put the steps back
-        if (!_dropped && _dragStartOrder != null) { _m.Steps.Clear(); _m.Steps.AddRange(_dragStartOrder); }
-        _dragId = null; _dragStartOrder = null; _justSwapped = null;
-    }
+    void DragEnter(int i) { if (!_drag.Enter(i)) _skipRender = true; }
 
     bool _skipRender;
     protected override bool ShouldRender()

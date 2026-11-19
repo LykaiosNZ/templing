@@ -64,6 +64,13 @@ public class Section
     public int Length => FromScore ? ScoreBars!.Count : Bars;
     public bool MixedMeter => FromScore && ScoreBars!.Any(b => b[1] != ScoreBars![0][1] || b[2] != ScoreBars[0][2]);
     public string Meter => $"{BeatsPerBar}/{BeatUnit}{(MixedMeter ? " (mixed)" : "")}";
+
+    /// <summary>Click options, in menu order: clicks per beat and their name.</summary>
+    public static readonly (int Value, string Label)[] Subdivisions = [(1, "Beats"), (2, "8ths"), (3, "Triplets"), (4, "16ths"), (6, "Sextuplets")];
+
+    /// <summary>"Beats", "8ths", "Triplets"… for a subdivision.</summary>
+    public static string ClickName(int subdivision) =>
+        Subdivisions.FirstOrDefault(x => x.Value == subdivision).Label ?? $"{subdivision} per beat";
 }
 
 public class Piece
