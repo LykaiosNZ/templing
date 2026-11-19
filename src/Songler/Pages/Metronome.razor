@@ -212,7 +212,7 @@
             </MudSelect>
             @if (Metro.Source == MetronomeSource.Preset)
             {
-                <MudTooltip Text="More">
+                <MudTooltip Text="More" Placement="Placement.Left">
                     <MudMenu Icon="@Icons.Material.Rounded.MoreVert" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" AriaLabel="@($"More for {Metro.Title}")">
                         <MudMenuItem Icon="@Icons.Material.Rounded.Save" OnClick="() => AfterMenu(SavePreset)">Save changes</MudMenuItem>
                         <MudMenuItem Icon="@Icons.Material.Rounded.ViewAgenda" OnClick="() => AfterMenu(EditPresetSections)">Edit sections…</MudMenuItem>
@@ -223,7 +223,7 @@
             }
             else if (Metro.Source == MetronomeSource.Free)
             {
-                <MudTooltip Text="Save as custom metronome">
+                <MudTooltip Text="Save as custom metronome" Placement="Placement.Left">
                     <MudIconButton Icon="@Icons.Material.Rounded.Save" Variant="Variant.Outlined" aria-label="Save as custom metronome" OnClick="SavePreset" />
                 </MudTooltip>
             }
