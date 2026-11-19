@@ -6,29 +6,29 @@
     </TitleContent>
     <DialogContent>
         <MudText Typo="Typo.body2" Class="mb-1"><strong>@FileName</strong></MudText>
-        <MudText Typo="Typo.body2" Class="muted mb-4">Contains @Backup.Describe(File)@(File.Settings != null ? ", settings" : "").</MudText>
+        <MudText Typo="Typo.body2" Class="muted mb-4">@Backup.Describe(File, File.Settings != null)</MudText>
 
         <MudRadioGroup T="bool" @bind-Value="_includeSettings" aria-label="What to restore">
-            <div class="restore-option @(!_includeSettings ? "on" : "")">
+            @* the whole card picks the option, not just the radio and its title *@
+            <div class="restore-option @(!_includeSettings ? "on" : "")" @onclick="() => _includeSettings = false">
                 <MudRadio T="bool" Value="false" Color="Color.Primary">
-                    <strong>Songs &amp; data only</strong>
+                    <strong>Data only</strong>
                 </MudRadio>
-                <MudText Typo="Typo.caption" Class="muted d-block restore-desc">Library, practice log, plans and custom metronomes. This device keeps its current settings.</MudText>
+                <MudText Typo="Typo.caption" Class="muted d-block restore-desc">Pieces, practice log, plans and custom metronomes. Your settings stay as they are.</MudText>
             </div>
-            <div class="restore-option @(_includeSettings ? "on" : "")">
-                <MudRadio T="bool" Value="true" Color="Color.Primary" Disabled="File.Settings == null">
-                    <strong>Everything, including settings</strong>
-                </MudRadio>
-                <MudText Typo="Typo.caption" Class="muted d-block restore-desc">
-                    @(File.Settings == null
-                        ? "This backup has no settings."
-                        : "Also replaces theme, metronome sound and count-in, trainer and interval defaults, free-metronome tempo map, weekly goal and plan logging.")
-                </MudText>
-            </div>
+            @if (File.Settings != null)
+            {
+                <div class="restore-option @(_includeSettings ? "on" : "")" @onclick="() => _includeSettings = true">
+                    <MudRadio T="bool" Value="true" Color="Color.Primary">
+                        <strong>Everything, including settings</strong>
+                    </MudRadio>
+                    <MudText Typo="Typo.caption" Class="muted d-block restore-desc">Also replaces your settings.</MudText>
+                </div>
+            }
         </MudRadioGroup>
 
         <MudText Typo="Typo.caption" Class="muted d-block mt-3">
-            Entries already here are kept; anything in the backup with the same id is replaced. Guitar Pro files aren't in backups, so re-import them if needed.
+            Adds to what's here. Anything in both is replaced by the backup's version. Score files aren't included.
         </MudText>
     </DialogContent>
     <DialogActions>

@@ -7,6 +7,7 @@
     }
     else
     {
+        <div class="viz-plot">
         <svg viewBox="0 0 @W @H" class="viz-svg" @onmouseleave="() => _hover = -1">
             @* grid + y labels *@
             @foreach (var t in _ticks)
@@ -52,22 +53,18 @@
             {
                 var p = Points[_hover];
                 var x = X(p.Date); var y = Y(p.Value);
-                var tipText = Fmt(p) + (Effort.Get(p.Effort) is { } ft ? $" · {ft.Label}" : "");
-                var tw = 210.0; var th = string.IsNullOrEmpty(p.Note) ? 44 : 62;
-                var tx = Math.Clamp(x - tw / 2, L, W - R - tw);
-                var ty = y - th - 14 < 4 ? y + 14 : y - th - 14;
                 <line x1="@F(x)" x2="@F(x)" y1="@T" y2="@(H - B)" class="viz-crosshair" />
-                <g class="viz-tip" pointer-events="none">
-                    <rect x="@F(tx)" y="@F(ty)" width="@tw" height="@th" rx="8" />
-                    <SvgText x="@F(tx + 10)" y="@F(ty + 18)" class="viz-tip-muted">@p.Date.ToString("ddd d MMM yyyy")</SvgText>
-                    <SvgText x="@F(tx + 10)" y="@F(ty + 36)" class="viz-tip-strong">@tipText</SvgText>
-                    @if (!string.IsNullOrEmpty(p.Note))
-                    {
-                        <SvgText x="@F(tx + 10)" y="@F(ty + 54)" class="viz-tip-muted">@Trunc(p.Note!, 26)</SvgText>
-                    }
-                </g>
             }
         </svg>
+        @if (_hover >= 0 && _hover < Points.Count)
+        {
+            var p = Points[_hover];
+            var x = X(p.Date); var y = Y(p.Value);
+            var tipText = Fmt(p) + (Effort.Get(p.Effort) is { } ft ? $" · {ft.Label}" : "");
+            <ChartTip X="x" Y="@(y < 70 ? y + 10 : y - 10)" Below="@(y < 70)" ViewWidth="W" ViewHeight="H"
+                      Label="@Stats.Day(p.Date)" Value="@tipText" Note="@(string.IsNullOrEmpty(p.Note) ? null : Trunc(p.Note!, 60))" />
+        }
+        </div>
     }
 </div>
 

@@ -45,14 +45,17 @@ public static class Backup
         return b;
     }
 
-    /// <summary>Short description of what's in a backup, e.g. "28 pieces, 384 log entries, 2 plans".</summary>
-    public static string Describe(BackupFile b)
+    /// <summary>Short description of what's in a backup, e.g. "28 pieces, 384 log entries and settings".</summary>
+    public static string Describe(BackupFile b, bool withSettings)
     {
-        var parts = new List<string> { $"{b.Pieces?.Count ?? 0} pieces", $"{b.Logs?.Count ?? 0} log entries" };
-        if (b.Plans is { Count: > 0 } pl) parts.Add($"{pl.Count} plans");
-        if (b.Presets is { Count: > 0 } pr) parts.Add($"{pr.Count} custom metronomes");
-        return string.Join(", ", parts);
+        var parts = new List<string> { Count(b.Pieces?.Count ?? 0, "piece"), Count(b.Logs?.Count ?? 0, "log entry", "log entries") };
+        if (b.Plans is { Count: > 0 } pl) parts.Add(Count(pl.Count, "plan"));
+        if (b.Presets is { Count: > 0 } pr) parts.Add(Count(pr.Count, "custom metronome"));
+        if (withSettings) parts.Add("settings");
+        return parts.Count == 1 ? parts[0] : $"{string.Join(", ", parts.SkipLast(1))} and {parts[^1]}";
     }
+
+    static string Count(int n, string one, string? many = null) => n == 1 ? $"1 {one}" : $"{n} {many ?? one + "s"}";
 
     /// <summary>
     /// Merges a backup into the current data (same ids are replaced). Settings are only applied when
@@ -69,6 +72,6 @@ public static class Backup
         await store.ImportAsync(b.Pieces ?? [], b.Logs ?? [], b.Presets ?? [], b.Plans ?? []);
         var restoredSettings = includeSettings && b.Settings != null;
         if (restoredSettings) await store.ReplaceSettingsAsync(b.Settings!);
-        return $"Restored {Describe(b)}{(restoredSettings ? " and settings" : "")}";
+        return $"Restored {Describe(b, restoredSettings)}";
     }
 }

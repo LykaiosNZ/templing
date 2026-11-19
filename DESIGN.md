@@ -33,6 +33,7 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 - Everything on a page with a period picker follows that period. The practice calendar keeps a fixed 12 months so it doesn't change size; days outside the period are faded.
 - Cards side by side in a grid end level at the bottom (`equal-cards` on the `MudGrid`).
 - Long ranked lists show their top 8 with "Show all".
+- Chart tooltips use `ChartTip` (HTML over the svg, inside `.viz-plot`), never SVG shapes: SVG tooltips scale with the chart and can't size to their text.
 
 ## Layout
 

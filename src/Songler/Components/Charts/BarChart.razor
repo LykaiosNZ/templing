@@ -7,6 +7,7 @@
     }
     else
     {
+        <div class="viz-plot">
         <svg viewBox="0 0 @W @Height" class="viz-svg" @onmouseleave="() => _hover = -1">
             @foreach (var t in _ticks)
             {
@@ -46,22 +47,16 @@
                       @onmouseenter="() => _hover = idx" @onfocus="() => _hover = idx" @onblur="() => _hover = -1" />
             }
             <line x1="@L" x2="@(W - R)" y1="@(Height - B)" y2="@(Height - B)" class="viz-baseline" />
-            @if (_hover >= 0 && _hover < Values.Count)
-            {
-                var v = Values[_hover];
-                var tipLabel = TipLabels is { } tl && _hover < tl.Count ? tl[_hover] : _hover < Labels.Count ? Labels[_hover] : "";
-                var tipValue = ValueFormat(v);
-                var cx = L + _hover * _slot + _slot / 2;
-                var tw = 140.0; var th = 44.0;
-                var tx = Math.Clamp(cx - tw / 2, L, W - R - tw);
-                var ty = Math.Max(4, Y(v) - th - 10);
-                <g class="viz-tip" pointer-events="none">
-                    <rect x="@F(tx)" y="@F(ty)" width="@tw" height="@th" rx="8" />
-                    <SvgText x="@F(tx + 10)" y="@F(ty + 18)" class="viz-tip-muted">@tipLabel</SvgText>
-                    <SvgText x="@F(tx + 10)" y="@F(ty + 36)" class="viz-tip-strong">@tipValue</SvgText>
-                </g>
-            }
         </svg>
+        @if (_hover >= 0 && _hover < Values.Count)
+        {
+            var v = Values[_hover];
+            var tipLabel = TipLabels is { } tl && _hover < tl.Count ? tl[_hover] : _hover < Labels.Count ? Labels[_hover] : "";
+            var cx = L + _hover * _slot + _slot / 2;
+            var top = Y(v);
+            <ChartTip X="cx" Y="@(top < 50 ? top + 6 : top - 6)" Below="@(top < 50)" ViewWidth="W" ViewHeight="Height" Label="@tipLabel" Value="@ValueFormat(v)" />
+        }
+        </div>
     }
 </div>
 

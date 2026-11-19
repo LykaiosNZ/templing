@@ -38,10 +38,11 @@
             </div>
             <div class="setting-control">
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Download" OnClick="ExportJson">Export</MudButton>
-                <MudFileUpload T="IBrowserFile" FilesChanged="ImportJson" Accept=".json,application/json" Class="ma-0">
+                <MudFileUpload T="IBrowserFile" @ref="_upload" FilesChanged="ImportJson" Accept=".json,application/json" Class="ma-0">
                     <CustomContent>
                         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Restore" OnClick="@context.OpenFilePickerAsync">Restore…</MudButton>
                     </CustomContent>
+                    <SelectedTemplate />
                 </MudFileUpload>
             </div>
         </div>
@@ -80,6 +81,8 @@
     async Task ExportCsv() =>
         await Store.DownloadAsync($"songler-log-{DateTime.Today:yyyy-MM-dd}.csv", LogCsv.ExportLogCsv(Store), "text/csv");
 
+    MudFileUpload<IBrowserFile>? _upload;
+
     async Task ImportJson(IBrowserFile? picked)
     {
         if (picked == null) return;
@@ -99,9 +102,22 @@
             }
             Snackbar.Add(summary, Severity.Success);
         }
-        catch (Exception ex)
+        catch (FormatException ex) when (ex.Message.StartsWith("This backup"))
         {
-            Snackbar.Add($"Restore failed: {ex.Message}", Severity.Error);
+            Snackbar.Add(ex.Message, Severity.Error);   // older / newer version: already readable
+        }
+        catch (Exception ex) when (ex is System.Text.Json.JsonException or FormatException or NotSupportedException)
+        {
+            Snackbar.Add("That file isn't a Songler backup.", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't restore that backup.", Severity.Error);
+        }
+        finally
+        {
+            // forget the picked file, so the same file can be chosen again and no file chip lingers
+            if (_upload != null) await _upload.ClearAsync();
         }
     }
 

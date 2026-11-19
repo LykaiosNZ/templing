@@ -1,6 +1,7 @@
 @* GitHub-style practice calendar. Sequential single-hue ramp by minutes; practiced-but-untimed days use the first step. *@
 
 <div class="viz heatmap" role="img" aria-label="@AriaLabel">
+    <div class="viz-plot">
     <svg viewBox="0 0 @F(_w) @F(_h)" class="viz-svg" @onmouseleave="() => _hover = null">
         @foreach (var (label, x) in _months)
         {
@@ -16,18 +17,14 @@
             <rect x="@F(cell.X)" y="@F(cell.Y)" width="@Cell" height="@Cell" rx="2.5" class="hm-cell hm-@cell.Level @(cell.Date == Today ? "today" : "") @(From is { } f && cell.Date < f.Date ? "out" : "")"
                   @onmouseenter="() => _hover = cell" />
         }
-        @if (_hover is { } h)
-        {
-            var tw = 150.0; var th = 40.0;
-            var tx = Math.Clamp(h.X - tw / 2, 0, _w - tw);
-            var ty = h.Y > th + 8 ? h.Y - th - 6 : h.Y + Cell + 6;
-            <g class="viz-tip" pointer-events="none">
-                <rect x="@F(tx)" y="@F(ty)" width="@tw" height="@th" rx="7" />
-                <SvgText x="@F(tx + 9)" y="@F(ty + 16)" class="viz-tip-muted">@h.Date.ToString("ddd d MMM yyyy")</SvgText>
-                <SvgText x="@F(tx + 9)" y="@F(ty + 32)" class="viz-tip-strong">@Describe(h)</SvgText>
-            </g>
-        }
     </svg>
+    @if (_hover is { } h)
+    {
+        var below = h.Y < Top + 2 * Step;
+        <ChartTip X="h.X + Cell / 2" Y="@(below ? h.Y + Cell : h.Y)" Below="below" ViewWidth="_w" ViewHeight="_h"
+                  Label="@Stats.Day(h.Date)" Value="@Describe(h)" />
+    }
+    </div>
     <div class="hm-legend" aria-hidden="true">
         <span class="muted">Less</span>
         @for (int i = 0; i <= 4; i++) { <span class="hm-swatch hm-@i"></span> }
