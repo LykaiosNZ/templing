@@ -54,6 +54,7 @@ kbd {
 .mini-player.running { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .mud-layout a.mini-info { display: flex; flex-direction: column; line-height: 1.15; color: var(--ink); text-decoration: none; min-width: 0; }
 .mini-title { font-size: .72rem; color: var(--muted); max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mini-muted { vertical-align: -3px; margin-left: 4px; color: var(--muted); font-size: 1rem !important; }
 .mini-tempo { font-family: var(--mono); font-weight: 700; font-size: .9rem; white-space: nowrap; }
 .mini-tempo .muted { font-weight: 500; }
 .mini-tempo .phase { margin-left: 4px; }
@@ -251,7 +252,11 @@ kbd {
 .sec-actions { display: flex; margin-left: auto; }
 
 /* shortcuts dialog */
-.shortcut-list { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; margin: 4px 0 16px; align-items: center; }
+.shortcut-list { display: grid; grid-template-columns: max-content 1fr; gap: 7px 18px; margin: 0 0 8px; align-items: center; }
+.shortcut-list .shortcut-group { grid-column: 1 / -1; margin-top: 14px; }
+.shortcut-list .shortcut-group:first-child { margin-top: 0; }
+.shortcut-note { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.shortcut-list kbd { font-size: .82rem; padding: 2px 7px; min-width: 1.9em; text-align: center; display: inline-block; }
 .shortcut-list dt { white-space: nowrap; }
 .shortcut-list dd { margin: 0; color: var(--mud-palette-text-secondary); }
 .shortcut-list .sep { margin: 0 4px; font-size: .8em; }

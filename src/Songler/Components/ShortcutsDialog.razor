@@ -1,10 +1,12 @@
 @* Generated from Hotkeys.All, the same entries the key handlers bind to, so the list can't drift from what works. *@
 <MudDialog>
     <DialogContent>
-        @foreach (var g in Hotkeys.All.GroupBy(h => h.Group))
-        {
-            <MudText Typo="Typo.overline" Class="muted">@g.Key</MudText>
-            <dl class="shortcut-list">
+        @* one grid for every group, so the descriptions line up down the whole list *@
+        <dl class="shortcut-list">
+            @foreach (var g in Hotkeys.All.GroupBy(h => h.Group))
+            {
+                var note = Hotkeys.GroupNote(g.Key);
+                <dt class="shortcut-group stat-label">@g.Key@if (note != null) {<span class="shortcut-note"> · @note</span>}</dt>
                 @foreach (var h in g)
                 {
                     <dt>
@@ -29,9 +31,8 @@
                     </dt>
                     <dd>@h.Description</dd>
                 }
-            </dl>
-        }
-        <MudText Typo="Typo.caption" Class="muted">Shortcuts are ignored while typing in a field. Metronome keys work on every page.</MudText>
+            }
+        </dl>
     </DialogContent>
 </MudDialog>
 

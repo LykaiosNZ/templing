@@ -67,6 +67,8 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
 
     /// <summary>Timer mode: no click at all (e.g. playing along to Guitar Pro); intervals and cues still run.</summary>
     public bool Silent { get; private set; }
+    /// <summary>Click muted for now (the M key). Not saved: the volume setting stays as it is.</summary>
+    public bool Muted { get; private set; }
     /// <summary>True while a rest-only countdown is running (not practice time).</summary>
     public bool RestOnlyRunning => IsRunning && _override is { RestOnly: true };
 
@@ -138,6 +140,14 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         Silent = true;
         _override = new(false, 0, 0, 0, minutes * 60, true);
         await StartAsync();
+    }
+
+    public async Task SetMutedAsync(bool muted)
+    {
+        if (Muted == muted) return;
+        Muted = muted;
+        await PushConfig();
+        Changed?.Invoke();
     }
 
     /// <summary>Leave timer mode so the metronome clicks again.</summary>
@@ -351,7 +361,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
             step = CurrentStep,
             factor = Factor,
             countIn = new { enabled = s.CountIn, bars = s.CountInBars },
-            volume = s.Volume,
+            volume = Muted ? 0 : s.Volume,
             sound = s.Sound,
             accentFirst = s.AccentFirst,
             flash = s.Flash,

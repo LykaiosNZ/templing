@@ -95,6 +95,11 @@
         Go(Hotkeys.GoPlans, "plans"); Go(Hotkeys.GoHistory, "history"); Go(Hotkeys.GoStats, "stats"); Go(Hotkeys.GoSettings, "settings");
         _keys.Add(Keys.Register(this, Hotkeys.Help, ShowShortcuts));
         _keys.Add(Keys.Register(this, Hotkeys.LogPractice, QuickLog));
+        _keys.Add(Keys.Register(this, Hotkeys.SearchLibrary, async () =>
+        {
+            if (!Nav.ToBaseRelativePath(Nav.Uri).StartsWith("library", StringComparison.OrdinalIgnoreCase)) Nav.NavigateTo("library");
+            await Keys.FocusAsync("#library-search"); // waits for the field to render
+        }));
         _keys.Add(Keys.Register(this, Hotkeys.StartStop, () => Metro.ToggleAsync()));
         _keys.Add(Keys.Register(this, Hotkeys.Stop, () => Metro.StopAsync()));
         _keys.Add(Keys.Register(this, Hotkeys.RestartSection, () => Metro.RestartSectionAsync()));
@@ -105,6 +110,11 @@
         _keys.Add(Keys.Register(this, Hotkeys.NextSection, () => Metro.NextStepAsync()));
         _keys.Add(Keys.Register(this, Hotkeys.PrevSection, () => Metro.PrevStepAsync()));
         _keys.Add(Keys.Register(this, Hotkeys.Tap, () => Metro.TapAsync()));
+        _keys.Add(Keys.Register(this, Hotkeys.Mute, async () =>
+        {
+            await Metro.SetMutedAsync(!Metro.Muted);
+            Snackbar.Add($"Sound {(Metro.Muted ? "off" : "on")}", Severity.Normal);
+        }));
         _keys.Add(Keys.Register(this, Hotkeys.CountIn, async () =>
         {
             Metro.Settings.CountIn = !Metro.Settings.CountIn;

@@ -29,9 +29,31 @@ public static class Hotkeys
         return h;
     }
 
-    const string Metronome = "Metronome", General = "General", Navigation = "Navigation";
+    const string General = "General", Navigation = "Navigation", Metronome = "Metronome", Plan = "Plan";
 
-    public static readonly Hotkey StartStop = Add(Metronome, "Start / stop metronome (or timer)", "Space");
+    /// <summary>Short note shown beside a group's heading in the shortcuts dialog.</summary>
+    public static string? GroupNote(string group) => group switch
+    {
+        Metronome => "on every page",
+        Plan => "while a plan runs",
+        _ => null,
+    };
+
+    public static readonly Hotkey LogPractice = Add(General, "Log practice", "n");
+    public static readonly Hotkey SearchLibrary = Add(General, "Search library", "/");
+    public static readonly Hotkey Help = Add(General, "Keyboard shortcuts", "?");
+
+    public static readonly Hotkey GoDashboard = Add(Navigation, "Go to dashboard", "g d");
+    public static readonly Hotkey GoLibrary = Add(Navigation, "Go to library", "g l");
+    public static readonly Hotkey GoMetronome = Add(Navigation, "Go to metronome", "g m");
+    public static readonly Hotkey GoTimer = Add(Navigation, "Go to timer", "g t");
+    public static readonly Hotkey GoPlans = Add(Navigation, "Go to plans", "g p");
+    public static readonly Hotkey GoHistory = Add(Navigation, "Go to history", "g h");
+    public static readonly Hotkey GoStats = Add(Navigation, "Go to stats", "g s");
+    public static readonly Hotkey GoSettings = Add(Navigation, "Go to settings", "g ,");
+
+    public static readonly Hotkey StartStop = Add(Metronome, "Start / stop the metronome or timer", "Space");
+    public static readonly Hotkey Stop = Add(Metronome, "Stop", "Escape");
     public static readonly Hotkey RestartSection = Add(Metronome, "Restart section (with count-in)", "r");
     public static readonly Hotkey TempoUp = Add(Metronome, "Tempo +1", "ArrowUp", "+", "=");
     public static readonly Hotkey TempoDown = Add(Metronome, "Tempo −1", "ArrowDown", "-");
@@ -40,24 +62,14 @@ public static class Hotkeys
     public static readonly Hotkey PrevSection = Add(Metronome, "Previous section", "ArrowLeft", "[");
     public static readonly Hotkey NextSection = Add(Metronome, "Next section", "ArrowRight", "]");
     public static readonly Hotkey Tap = Add(Metronome, "Tap tempo", "t");
-    public static readonly Hotkey CountIn = Add(Metronome, "Toggle count-in", "c");
-    public static readonly Hotkey SpeedTrainer = Add(Metronome, "Toggle speed trainer (ramp)", "x");
-    public static readonly Hotkey IntervalTrainer = Add(Metronome, "Toggle interval trainer", "i");
-    public static readonly Hotkey LogSession = Add(Metronome, "Stop and log this session", "l");
-    public static readonly Hotkey Stop = Add(Metronome, "Stop", "Escape");
+    public static readonly Hotkey Mute = Add(Metronome, "Sound on / off", "m");
+    public static readonly Hotkey CountIn = Add(Metronome, "Count-in on / off", "c");
+    public static readonly Hotkey SpeedTrainer = Add(Metronome, "Speed trainer on / off", "x");
+    public static readonly Hotkey IntervalTrainer = Add(Metronome, "Interval trainer on / off", "i");
+    public static readonly Hotkey LogSession = Add(Metronome, "Stop and log", "l");
 
-    public static readonly Hotkey LogPractice = Add(General, "Log practice manually", "n");
-    public static readonly Hotkey SearchLibrary = Add(General, "Search library", "/");
-    public static readonly Hotkey Help = Add(General, "Show keyboard shortcuts", "?");
-
-    public static readonly Hotkey GoDashboard = Add(Navigation, "Go to dashboard", "g d");
-    public static readonly Hotkey GoLibrary = Add(Navigation, "Go to library", "g l");
-    public static readonly Hotkey GoMetronome = Add(Navigation, "Go to metronome", "g m");
-    public static readonly Hotkey GoTimer = Add(Navigation, "Go to practice timer", "g t");
-    public static readonly Hotkey GoPlans = Add(Navigation, "Go to plans", "g p");
-    public static readonly Hotkey GoHistory = Add(Navigation, "Go to history", "g h");
-    public static readonly Hotkey GoStats = Add(Navigation, "Go to stats", "g s");
-    public static readonly Hotkey GoSettings = Add(Navigation, "Go to settings", "g ,");
+    public static readonly Hotkey PrevPlanStep = Add(Plan, "Previous step", "Shift+ArrowLeft");
+    public static readonly Hotkey NextPlanStep = Add(Plan, "Next step (finish on the last)", "Shift+ArrowRight");
 
     /// <summary>
     /// How a combo reads in the shortcuts dialog: key caps and separators,

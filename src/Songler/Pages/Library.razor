@@ -3,7 +3,6 @@
 @inject DataStore Store
 @inject IDialogService Dialogs
 @inject NavigationManager Nav
-@inject Shortcuts Keys
 
 <PageTitle>Library · Songler</PageTitle>
 
@@ -140,12 +139,10 @@ else
     bool _showArchived;
     record Row(Piece Piece, PieceStats Stats, PracticeLog? Feel, List<SectionStats>? Parts);
     List<Row> _rows = new();
-    IDisposable? _keys;
 
     protected override void OnInitialized()
     {
         Store.Changed += OnStoreChanged;
-        _keys = Keys.Register(this, Hotkeys.SearchLibrary, () => Keys.FocusAsync("#library-search").AsTask());
         Refresh();
     }
 
@@ -192,5 +189,5 @@ else
     async Task Log(Piece piece) =>
         await LogDialog.ShowAsync(Dialogs, new PracticeLog { PieceId = piece.Id, PieceName = piece.Name, Unit = piece.Unit }, true);
 
-    public void Dispose() { Store.Changed -= OnStoreChanged; _keys?.Dispose(); }
+    public void Dispose() => Store.Changed -= OnStoreChanged;
 }

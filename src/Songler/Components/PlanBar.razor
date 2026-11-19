@@ -6,6 +6,7 @@
 @inject DataStore Store
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
+@inject Shortcuts Keys
 
 @if (Runner.Active && Runner.Plan is { } plan && Runner.Current is { } step)
 {
@@ -75,6 +76,8 @@ else if (Runner.Summary is { } sum)
         Runner.Changed += OnChanged;
         Metro.Changed += OnChanged;
         Runner.StepFinished += OnStepFinished;
+        Keys.Register(this, Hotkeys.PrevPlanStep, async () => { if (Runner.Active && Runner.Index > 0) await JumpTo(Runner.Index - 1); });
+        Keys.Register(this, Hotkeys.NextPlanStep, async () => { if (Runner.Active) await Skip(); });
     }
 
     void OnChanged() => InvokeAsync(StateHasChanged);
@@ -161,5 +164,6 @@ else if (Runner.Summary is { } sum)
         Runner.Changed -= OnChanged;
         Metro.Changed -= OnChanged;
         Runner.StepFinished -= OnStepFinished;
+        Keys.Unregister(this);
     }
 }

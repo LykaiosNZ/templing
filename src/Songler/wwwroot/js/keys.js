@@ -66,8 +66,12 @@ export function init(ref) {
 
 export function setBindings(list) { bound = new Set(list); }
 
-export function focus(selector) {
-    const el = document.querySelector(selector);
-    if (el) { el.focus(); if (el.select) el.select(); }
+// Focus an element, waiting up to a second for it to render (e.g. right after navigating to its page).
+export async function focus(selector) {
+    for (let t = 0; t < 60; t++) {
+        const el = document.querySelector(selector);
+        if (el) { el.focus(); if (el.select) el.select(); return; }
+        await new Promise(r => requestAnimationFrame(r));
+    }
 }
 
