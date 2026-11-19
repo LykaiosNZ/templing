@@ -59,7 +59,7 @@ else
                             }
                         </td>
                         <td class="notes">@l.Notes</td>
-                        <td class="act" @onclick:stopPropagation="true"><MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" Class="row-edit" aria-label="@($"Edit entry {l.ItemName} {l.Date:d MMM}")" OnClick="() => Edit(log)" /></td>
+                        <td class="act" @onclick:stopPropagation="true"><MudTooltip Text="Edit entry"><MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" Class="row-edit" aria-label="@($"Edit entry {l.ItemName} {l.Date:d MMM}")" OnClick="() => Edit(log)" /></MudTooltip></td>
                     </tr>
                 }
             </tbody>
@@ -83,7 +83,7 @@ else
                             @if (what != null) { <span class="log-what">@what</span> }
                             <span class="mono">@l.ValueText</span>
                             <span class="mono muted">@(l.DurationSec is { } d ? Stats.Duration(d) : "—")</span>
-                            <span class="log-edit" @onclick:stopPropagation="true"><MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit entry {l.ItemName} {l.Date:d MMM}")" OnClick="() => Edit(log)" /></span>
+                            <span class="log-edit" @onclick:stopPropagation="true"><MudTooltip Text="Edit entry"><MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit entry {l.ItemName} {l.Date:d MMM}")" OnClick="() => Edit(log)" /></MudTooltip></span>
                         </div>
                         @if (Effort.Get(l.Effort) is { } feel || !string.IsNullOrWhiteSpace(l.Notes))
                         {

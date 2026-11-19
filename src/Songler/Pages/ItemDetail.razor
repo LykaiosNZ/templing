@@ -27,10 +27,12 @@ else
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.HourglassBottom" Href="@($"timer/item/{_item.Id}")">Timer</MudButton>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.AddTask" OnClick="AddLog">Log</MudButton>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Edit" OnClick="Edit">Edit</MudButton>
-            <MudMenu Icon="@Icons.Material.Rounded.MoreHoriz" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" AriaLabel="More actions">
-                <MudMenuItem Icon="@(_item.Archived ? Icons.Material.Rounded.Unarchive : Icons.Material.Rounded.Archive)" OnClick="ToggleArchive">@(_item.Archived ? "Unarchive" : "Archive")</MudMenuItem>
-                <MudMenuItem Icon="@Icons.Material.Rounded.Delete" IconColor="Color.Error" OnClick="Delete">Delete…</MudMenuItem>
-            </MudMenu>
+            <MudTooltip Text="More">
+                <MudMenu Icon="@Icons.Material.Rounded.MoreHoriz" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" AriaLabel="More actions">
+                    <MudMenuItem Icon="@(_item.Archived ? Icons.Material.Rounded.Unarchive : Icons.Material.Rounded.Archive)" OnClick="ToggleArchive">@(_item.Archived ? "Unarchive" : "Archive")</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Rounded.Delete" IconColor="Color.Error" OnClick="Delete">Delete…</MudMenuItem>
+                </MudMenu>
+            </MudTooltip>
         </div>
     </div>
 
@@ -152,8 +154,12 @@ else
                                         </td>
                                         <td class="small muted">@(ps.LastDate is null ? "not yet" : Stats.Ago(ps.LastDate, DateTime.Today))@(ps.TotalSec > 0 ? $" · {Stats.Duration(ps.TotalSec)}" : "")</td>
                                         <td class="act" style="white-space:nowrap">
-                                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.AddTask" aria-label="@($"Log {s.Name}")" OnClick="() => AddLogFor(s.Id)" />
-                                            <MudIconButton Size="Size.Small" Icon="@Mdi.Metronome" Color="Color.Primary" Href="@($"metronome/item/{_item.Id}/{s.Id}")" aria-label="@($"Practise {s.Name} with the metronome")" />
+                                            <MudTooltip Text="Log practice">
+                                                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.AddTask" aria-label="@($"Log {s.Name}")" OnClick="() => AddLogFor(s.Id)" />
+                                            </MudTooltip>
+                                            <MudTooltip Text="Practise with the metronome">
+                                                <MudIconButton Size="Size.Small" Icon="@Mdi.Metronome" Color="Color.Primary" Href="@($"metronome/item/{_item.Id}/{s.Id}")" aria-label="@($"Practise {s.Name} with the metronome")" />
+                                            </MudTooltip>
                                         </td>
                                     </tr>
                                 }

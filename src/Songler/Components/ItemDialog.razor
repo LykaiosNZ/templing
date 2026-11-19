@@ -7,7 +7,8 @@
     </TitleContent>
     <DialogContent>
         <div class="d-flex flex-column gap-4">
-            <MudTextField @bind-Value="_m.Name" Label="Name" Required="true" AutoFocus="true" Immediate="true" />
+            <MudTextField @bind-Value="_m.Name" Label="Name" AutoFocus="true" Immediate="true" OnBlur="() => _nameTouched = true"
+                          Error="@(_nameTouched && string.IsNullOrWhiteSpace(_m.Name))" ErrorText="Enter a name" />
             <div>
                 <MudText Typo="Typo.subtitle2" Class="mb-1">Type</MudText>
                 <MudToggleGroup T="ItemType" Value="_m.Type" ValueChanged="TypeChanged" Color="Color.Primary" Size="Size.Small" Outlined="true" CheckMark="false" aria-label="Item type">
@@ -18,37 +19,32 @@
                         </MudToggleItem>
                     }
                 </MudToggleGroup>
-                <MudText Typo="Typo.caption" Class="muted d-block mt-1">@_m.Type.Description()</MudText>
+            </div>
+            <div class="d-flex gap-4 align-end flex-wrap">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="mb-1">Measure progress in</MudText>
+                    <MudToggleGroup T="TempoUnit" @bind-Value="_m.Unit" Color="Color.Primary" Size="Size.Small" Outlined="true" CheckMark="true" Style="width:320px">
+                        <MudToggleItem Value="TempoUnit.Bpm" Text="BPM" />
+                        <MudToggleItem Value="TempoUnit.Percent" Text="% of song tempo" />
+                    </MudToggleGroup>
+                </div>
+                <MudNumericField T="double?" @bind-Value="_m.Goal" Label="@($"Goal ({(_m.Unit == TempoUnit.Percent ? "%" : "bpm")})")" Min="1" Max="400" Style="max-width:160px" />
             </div>
             <div>
-                <MudText Typo="Typo.subtitle2" Class="mb-1">Measure progress in</MudText>
-                <MudToggleGroup T="TempoUnit" @bind-Value="_m.Unit" Color="Color.Primary" Size="Size.Small" Outlined="true" CheckMark="true" Style="max-width:380px">
-                    <MudToggleItem Value="TempoUnit.Bpm" Text="BPM" />
-                    <MudToggleItem Value="TempoUnit.Percent" Text="% of song tempo" />
-                </MudToggleGroup>
-                <MudText Typo="Typo.caption" Class="muted d-block mt-1">
-                    @(_m.Unit == TempoUnit.Percent
-                        ? "Great for songs: section tempos are the real song tempos and you work up to 100%."
-                        : "Great for exercises: track the metronome BPM directly.")
-                </MudText>
-            </div>
-            <MudNumericField T="double?" @bind-Value="_m.Goal" Label="@($"Goal ({(_m.Unit == TempoUnit.Percent ? "%" : "bpm")})")" Min="1" Max="400" Style="max-width:220px" />
-            <div>
-                <MudText Typo="Typo.subtitle2">@(_m.Type == ItemType.Song ? "Song parts" : "Sections & tempo map")</MudText>
-                <MudText Typo="Typo.caption" Class="muted d-block mb-2">
-                    @if (_m.Type == ItemType.Song)
+                <div class="d-flex align-center gap-2 mb-2 flex-wrap">
+                    <MudText Typo="Typo.subtitle2">Sections</MudText>
+                    <MudSpacer />
+                    @if (_m.ScoreFileName != null)
                     {
-                        <span>Add each part you want to work on. Each part gets its own tempo, time signature and progress; logging without a part counts as a full run-through. Set <em>Bars</em> to play the song through in order.</span>
+                        <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Rounded.MusicNote" OnClose="DetachScore">@_m.ScoreFileName</MudChip>
                     }
-                    else
-                    {
-                        <span>Each section has its own tempo and time signature. Most riffs and exercises only need one. Set <em>Bars</em> to play several sections through in order.</span>
-                    }
-                </MudText>
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.QueueMusic" OnClick="ImportScore">
+                        @(_m.ScoreFileId == null ? "Import parts from Guitar Pro…" : "Re-import from score file…")
+                    </MudButton>
+                </div>
                 @if (_m.Type == ItemType.Song)
                 {
-                    <div class="d-flex flex-wrap gap-1 mb-2 align-center" role="group" aria-label="Quick-add song part">
-                        <MudText Typo="Typo.caption" Class="muted mr-1">Quick add:</MudText>
+                    <div class="d-flex flex-wrap gap-1 mb-2 align-center" role="group" aria-label="Add a song part">
                         @foreach (var part in ItemTypeExt.SongParts)
                         {
                             var name = part;
@@ -56,22 +52,13 @@
                         }
                     </div>
                 }
-                <div class="d-flex align-center gap-2 mb-2 flex-wrap">
-                    <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.QueueMusic" OnClick="ImportScore">
-                        @(_m.ScoreFileId == null ? "Import parts from Guitar Pro…" : "Re-import from score file…")
-                    </MudButton>
-                    @if (_m.ScoreFileName != null)
-                    {
-                        <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Rounded.MusicNote" OnClose="DetachScore">@_m.ScoreFileName</MudChip>
-                    }
-                </div>
                 <SectionsEditor Sections="_m.Sections" BpmLabel="@(_m.Unit == TempoUnit.Percent ? "Song BPM" : "BPM")" OnChanged="StateHasChanged" />
             </div>
-            <MudTextField @bind-Value="_m.Link" Label="Link (tab, video, backing track)" />
+            <MudTextField @bind-Value="_m.Link" Label="Link" />
             <MudTextField @bind-Value="_m.Notes" Label="Notes" Lines="2" Sizing="InputSizing.Auto" MaxLines="8" />
             @if (!IsNew)
             {
-                <MudSwitch T="bool" @bind-Value="_m.Archived" Color="Color.Primary" Label="Archived (hidden from library)" />
+                <MudSwitch T="bool" @bind-Value="_m.Archived" Color="Color.Primary" Label="Archived" />
             }
         </div>
     </DialogContent>
@@ -86,6 +73,7 @@
     [Parameter] public PracticeItem Item { get; set; } = new();
     [Parameter] public bool IsNew { get; set; }
     PracticeItem _m = new();
+    bool _nameTouched;
 
     public static async Task<PracticeItem?> ShowAsync(IDialogService dialogs, PracticeItem? item = null)
     {
@@ -155,6 +143,7 @@
 
     async Task Save()
     {
+        if (string.IsNullOrWhiteSpace(_m.Name)) { _nameTouched = true; return; }
         _m.Name = _m.Name.Trim();
         if (_m.Sections.Count == 0) _m.Sections.Add(new Section());
         await Store.SaveItemAsync(_m);

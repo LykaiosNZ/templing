@@ -8,9 +8,11 @@
         <div class="section-row @(idx == Current ? "current" : "")" role="listitem" @key="s.Id">
             @if (OnSelect.HasDelegate)
             {
-                <MudIconButton Size="Size.Small" Icon="@(idx == Current ? Icons.Material.Rounded.RadioButtonChecked : Icons.Material.Rounded.RadioButtonUnchecked)"
-                               Color="@(idx == Current ? Color.Primary : Color.Default)" aria-label="@($"Select section {s.Name}")"
-                               aria-pressed="@(idx == Current ? "true" : "false")" OnClick="() => OnSelect.InvokeAsync(idx)" />
+                <MudTooltip Text="Select section">
+                    <MudIconButton Size="Size.Small" Icon="@(idx == Current ? Icons.Material.Rounded.RadioButtonChecked : Icons.Material.Rounded.RadioButtonUnchecked)"
+                                   Color="@(idx == Current ? Color.Primary : Color.Default)" aria-label="@($"Select section {s.Name}")"
+                                   aria-pressed="@(idx == Current ? "true" : "false")" OnClick="() => OnSelect.InvokeAsync(idx)" />
+                </MudTooltip>
             }
             <MudTextField @bind-Value="s.Name" @bind-Value:after="Changed" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-name" />
             <MudNumericField T="double" @bind-Value="s.Bpm" @bind-Value:after="Changed" Label="@BpmLabel" Min="20" Max="400" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num" />
@@ -27,14 +29,22 @@
             </MudSelect>
             <MudNumericField T="int" @bind-Value="s.Bars" @bind-Value:after="Changed" Label="Bars" Disabled="s.FromScore" HelperText="@(s.FromScore ? (s.MixedMeter ? "from score · mixed meter" : "from score") : s.Bars == 0 ? "loop" : null)" Min="0" Max="999" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num-s" />
             <div class="sec-actions">
-                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowUpward" Disabled="idx == 0" aria-label="@($"Move {s.Name} up")" OnClick="() => Move(idx, -1)" />
-                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowDownward" Disabled="idx == Sections.Count - 1" aria-label="@($"Move {s.Name} down")" OnClick="() => Move(idx, 1)" />
-                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ContentCopy" aria-label="@($"Duplicate {s.Name}")" OnClick="() => Duplicate(idx)" />
-                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Close" Disabled="Sections.Count == 1" aria-label="@($"Remove {s.Name}")" OnClick="() => Remove(idx)" />
+                <MudTooltip Text="Move up">
+                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowUpward" Disabled="idx == 0" aria-label="@($"Move {s.Name} up")" OnClick="() => Move(idx, -1)" />
+                </MudTooltip>
+                <MudTooltip Text="Move down">
+                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowDownward" Disabled="idx == Sections.Count - 1" aria-label="@($"Move {s.Name} down")" OnClick="() => Move(idx, 1)" />
+                </MudTooltip>
+                <MudTooltip Text="Duplicate">
+                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ContentCopy" aria-label="@($"Duplicate {s.Name}")" OnClick="() => Duplicate(idx)" />
+                </MudTooltip>
+                <MudTooltip Text="Remove">
+                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Close" Disabled="Sections.Count == 1" aria-label="@($"Remove {s.Name}")" OnClick="() => Remove(idx)" />
+                </MudTooltip>
             </div>
         </div>
     }
-    <MudButton StartIcon="@Icons.Material.Rounded.Add" Variant="Variant.Text" Color="Color.Primary" OnClick="Add" Class="mt-1">Add section / tempo change</MudButton>
+    <MudButton StartIcon="@Icons.Material.Rounded.Add" Variant="Variant.Text" Color="Color.Primary" OnClick="Add" Class="mt-1">Add section</MudButton>
 </div>
 
 @code {

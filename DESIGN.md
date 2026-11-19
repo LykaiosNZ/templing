@@ -48,6 +48,7 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 ## Controls
 
 - **Buttons:** at most one filled primary button per view (or per card when that card is the active one). Secondary actions are outlined; tertiary ones are text buttons.
+- **Every icon-only button has a tooltip** (`MudTooltip`) naming what it does ("Move up", "Edit entry", "More"), plus an accessible name (`aria-label`, or `AriaLabel` on `MudMenu`) that can carry more context ("Move Verse up"). Tooltips never include keyboard shortcuts.
 - **Destructive actions** (delete) go in a ⋮ menu, not next to everyday buttons, and always confirm.
 - **Menus:** set the name with `AriaLabel="…"` on `MudMenu`. Plain `aria-label` lands on a wrapper and the button ends up unnamed.
 - **On/off options:** icon toggles (`opt-toggle`, `aria-pressed`, tooltip "Name: on/off") or dots. Not "On"/"Off" text, and no duplicate switches for the same setting.

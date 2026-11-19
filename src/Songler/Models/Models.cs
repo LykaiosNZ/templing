@@ -25,14 +25,6 @@ public static class ItemTypeExt
         _ => MudBlazor.Icons.Material.Rounded.MusicNote
     };
 
-    public static string Description(this ItemType t) => t switch
-    {
-        ItemType.Song => "A whole song, broken into sections (intro, verse, solo…). Track each part and the full run-through.",
-        ItemType.RiffLick => "A one-off riff or lick, usually a single passage.",
-        ItemType.Exercise => "Technique work tracked by metronome BPM.",
-        _ => "Anything else: scales, theory, ear training…"
-    };
-
     /// <summary>Display order: songs first.</summary>
     public static readonly ItemType[] Ordered = [ItemType.Song, ItemType.RiffLick, ItemType.Exercise, ItemType.Other];
 

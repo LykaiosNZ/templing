@@ -3,9 +3,11 @@
 @inject NavigationManager Nav
 
 <div class="mini-player @(Metro.IsRunning ? "running" : "") @(Idle ? "idle" : "")" role="group" aria-label="Metronome">
-    <MudIconButton Size="Size.Small" Icon="@(Metro.IsRunning ? Icons.Material.Rounded.Stop : Icons.Material.Rounded.PlayArrow)"
-                   Color="Color.Primary" Variant="Variant.Filled" aria-label="@(Metro.IsRunning ? "Stop" : "Start")"
-                   OnClick="() => Metro.ToggleAsync()" />
+    <MudTooltip Text="@(Metro.IsRunning ? "Stop" : "Start")">
+        <MudIconButton Size="Size.Small" Icon="@(Metro.IsRunning ? Icons.Material.Rounded.Stop : Icons.Material.Rounded.PlayArrow)"
+                       Color="Color.Primary" Variant="Variant.Filled" aria-label="@(Metro.IsRunning ? "Stop" : "Start")"
+                       OnClick="() => Metro.ToggleAsync()" />
+    </MudTooltip>
     <a href="@Href" class="mini-info" aria-label="@($"Open {(Metro.Silent ? "timer" : "metronome")}: {Metro.Title}, {Main}")">
         <span class="mini-title">@Metro.Title</span>
         <span class="mini-tempo">

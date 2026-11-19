@@ -17,20 +17,22 @@
 
 <MudLayout Class="@(_dark ? "theme-dark" : "theme-light")">
     <MudAppBar Elevation="0" Dense="false" Class="app-bar">
-        <MudIconButton Icon="@Icons.Material.Rounded.Menu" Color="Color.Inherit" Edge="Edge.Start"
-                       aria-label="Toggle navigation" OnClick="@(() => _drawer = !_drawer)" />
+        <MudTooltip Text="Menu">
+            <MudIconButton Icon="@Icons.Material.Rounded.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                           aria-label="Toggle navigation" OnClick="@(() => _drawer = !_drawer)" />
+        </MudTooltip>
         <a href="" class="brand" aria-label="Songler home">
             <span class="brand-mark" aria-hidden="true">♪</span>
             <span class="brand-name">Songler</span>
         </a>
         <MudSpacer />
         <MiniPlayer />
-        <MudTooltip Text="Log practice (N)">
+        <MudTooltip Text="Log practice">
             <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Rounded.AddTask" Color="Color.Inherit"
                        Class="hide-phone appbar-log" OnClick="QuickLog">Log</MudButton>
             <MudIconButton Icon="@Icons.Material.Rounded.AddTask" Color="Color.Inherit" aria-label="Log practice" Class="show-phone" OnClick="QuickLog" />
         </MudTooltip>
-        <MudTooltip Text="Keyboard shortcuts (?)">
+        <MudTooltip Text="Keyboard shortcuts">
             <MudIconButton Icon="@Icons.Material.Rounded.Keyboard" Color="Color.Inherit" aria-label="Keyboard shortcuts" OnClick="ShowShortcuts" />
         </MudTooltip>
         <MudTooltip Text="@(_dark ? "Light mode" : "Dark mode")">

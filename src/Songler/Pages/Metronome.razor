@@ -53,7 +53,9 @@
         {
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.ViewAgenda" OnClick="EditPresetSections">Edit sections…</MudButton>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Save" OnClick="SavePreset">Save</MudButton>
-            <MudIconButton Icon="@Icons.Material.Rounded.Delete" Variant="Variant.Outlined" aria-label="Delete custom metronome" OnClick="DeletePreset" />
+            <MudTooltip Text="Delete custom metronome">
+                <MudIconButton Icon="@Icons.Material.Rounded.Delete" Variant="Variant.Outlined" aria-label="Delete custom metronome" OnClick="DeletePreset" />
+            </MudTooltip>
         }
         else if (Metro.Source == MetronomeSource.Free)
         {
@@ -92,7 +94,9 @@
             }
 
             <div class="tempo-row">
-                <MudIconButton Icon="@Icons.Material.Rounded.Remove" Variant="Variant.Outlined" Size="Size.Large" aria-label="Slower" OnClick="() => Metro.NudgeAsync(-1)" />
+                <MudTooltip Text="Slower">
+                    <MudIconButton Icon="@Icons.Material.Rounded.Remove" Variant="Variant.Outlined" Size="Size.Large" aria-label="Slower" OnClick="() => Metro.NudgeAsync(-1)" />
+                </MudTooltip>
                 <div class="tempo-display" aria-live="polite">
                     <div id="metro-pulse" class="pulse" aria-hidden="true"></div>
                     <div class="tempo-value">@Metro.Value.ToString("0")<span class="tempo-unit">@(Metro.Unit == TempoUnit.Percent ? "%" : "")</span></div>
@@ -113,7 +117,9 @@
                         }
                     </div>
                 </div>
-                <MudIconButton Icon="@Icons.Material.Rounded.Add" Variant="Variant.Outlined" Size="Size.Large" aria-label="Faster" OnClick="() => Metro.NudgeAsync(1)" />
+                <MudTooltip Text="Faster">
+                    <MudIconButton Icon="@Icons.Material.Rounded.Add" Variant="Variant.Outlined" Size="Size.Large" aria-label="Faster" OnClick="() => Metro.NudgeAsync(1)" />
+                </MudTooltip>
             </div>
 
             <div class="tempo-slider">

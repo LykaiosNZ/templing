@@ -36,10 +36,12 @@ else
                         <MudTooltip Text="Edit">
                             <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit {plan.Name}")" OnClick="() => Edit(plan)" />
                         </MudTooltip>
-                        <MudMenu Icon="@Icons.Material.Rounded.MoreVert" Size="Size.Small" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" AriaLabel="@($"More for {plan.Name}")">
-                            <MudMenuItem Icon="@Icons.Material.Rounded.ContentCopy" OnClick="() => Duplicate(plan)">Duplicate</MudMenuItem>
-                            <MudMenuItem Icon="@Icons.Material.Rounded.Delete" OnClick="() => Delete(plan)">Delete</MudMenuItem>
-                        </MudMenu>
+                        <MudTooltip Text="More">
+                            <MudMenu Icon="@Icons.Material.Rounded.MoreVert" Size="Size.Small" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" AriaLabel="@($"More for {plan.Name}")">
+                                <MudMenuItem Icon="@Icons.Material.Rounded.ContentCopy" OnClick="() => Duplicate(plan)">Duplicate</MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Rounded.Delete" OnClick="() => Delete(plan)">Delete</MudMenuItem>
+                            </MudMenu>
+                        </MudTooltip>
                     </div>
                 </div>
                 <ol class="plan-list">

@@ -66,10 +66,18 @@
                             }
                         }
                         <span class="ps-actions">
-                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowUpward" Disabled="idx == 0" aria-label="@($"Move step {idx + 1} up")" OnClick="() => Move(idx, -1)" />
-                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowDownward" Disabled="idx == _m.Steps.Count - 1" aria-label="@($"Move step {idx + 1} down")" OnClick="() => Move(idx, 1)" />
-                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ContentCopy" aria-label="@($"Duplicate step {idx + 1}")" OnClick="() => Duplicate(idx)" />
-                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Close" aria-label="@($"Remove step {idx + 1}")" OnClick="() => _m.Steps.RemoveAt(idx)" />
+                            <MudTooltip Text="Move up">
+                                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowUpward" Disabled="idx == 0" aria-label="@($"Move step {idx + 1} up")" OnClick="() => Move(idx, -1)" />
+                            </MudTooltip>
+                            <MudTooltip Text="Move down">
+                                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ArrowDownward" Disabled="idx == _m.Steps.Count - 1" aria-label="@($"Move step {idx + 1} down")" OnClick="() => Move(idx, 1)" />
+                            </MudTooltip>
+                            <MudTooltip Text="Duplicate">
+                                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.ContentCopy" aria-label="@($"Duplicate step {idx + 1}")" OnClick="() => Duplicate(idx)" />
+                            </MudTooltip>
+                            <MudTooltip Text="Remove">
+                                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Close" aria-label="@($"Remove step {idx + 1}")" OnClick="() => _m.Steps.RemoveAt(idx)" />
+                            </MudTooltip>
                         </span>
                     </div>
                 }
