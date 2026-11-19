@@ -100,32 +100,54 @@ else if (Runner.Summary is { } sum)
             saved = true;
         }
         else saved = await LogDialog.ShowAsync(Dialogs, log, isNew: true);
-        if (saved) await Runner.RecordLoggedAsync(log.DurationSec);
-        Metro.ResetSession();
+        if (saved)
+        {
+            await Runner.RecordLoggedAsync(log.DurationSec);
+            Metro.ResetSession();
+        }
         return saved;
     }
 
+    /// <summary>The step reached its end: log it (asking, unless auto-log is on) and move on. Backing out of the dialog discards it.</summary>
     async Task LogAndAdvance(PlanStep step)
     {
-        if (Metro.SessionActiveSec >= 1) await LogCurrent(step, ask: !Store.Settings.AutoLogPlanSteps);
+        if (Metro.SessionActiveSec >= 1 && !await LogCurrent(step, ask: !Store.Settings.AutoLogPlanSteps)) Metro.ResetSession();
         await Runner.AdvanceAsync();
     }
 
+    /// <summary>Finish step before its end: always asks, even with auto-log on, since the step didn't run its course. Backing out stays.</summary>
     async Task FinishEarly()
     {
-        if (Runner.Current is { } s) await LogAndAdvance(s);
+        if (Runner.Current is not { } s) return;
+        if (Metro.SessionActiveSec >= 1 && !await LogCurrent(s, ask: true)) return;
+        await Runner.AdvanceAsync();
     }
 
-    /// <summary>Before leaving a step with practice time on it: log it, discard it, or stay. Returns false to stay.</summary>
+    /// <summary>
+    /// Before leaving a step that's running or has practice time: log it, discard it, or keep going. Logging always
+    /// shows the log dialog (auto-log is only for steps that reach their end); backing out of it stays. Returns false to stay.
+    /// </summary>
     async Task<bool> ConfirmLeave(string verb)
     {
-        if (!HasUnlogged || Runner.Current is not { } step) return true;
-        var r = await ConfirmDialog.ShowAsync(Dialogs, $"{verb}?",
-            $"You have {Stats.Duration((int)Metro.SessionActiveSec)} on {Runner.Describe(step)} that hasn't been logged.",
-            "Log it", cancel: "Keep going", alt: "Discard", altDestructive: true);
-        if (r == null) return false;
-        if (r == true) await LogCurrent(step, ask: true);
-        else Metro.ResetSession();
+        if (Runner.Current is not { } step) return true;
+        if (HasUnlogged)
+        {
+            var r = await ConfirmDialog.ShowAsync(Dialogs, $"{verb}?",
+                $"You have {Stats.Duration((int)Metro.SessionActiveSec)} on {Runner.Describe(step)} that hasn't been logged.",
+                "Log it", cancel: "Keep going", alt: "Discard", altDestructive: true);
+            if (r == null) return false;
+            await Metro.StopAsync();
+            if (r == true) return await LogCurrent(step, ask: true);
+            Metro.ResetSession();
+            return true;
+        }
+        if (Metro.IsRunning)
+        {
+            var ok = await ConfirmDialog.ShowAsync(Dialogs, $"{verb}?",
+                $"{(step.Kind == PlanStepKind.Rest ? "Your rest" : "This step")} is still running.", verb, cancel: "Keep going");
+            if (ok != true) return false;
+            await Metro.StopAsync();
+        }
         return true;
     }
 
@@ -145,7 +167,7 @@ else if (Runner.Summary is { } sum)
 
     async Task End()
     {
-        if (HasUnlogged)
+        if (HasUnlogged || Metro.IsRunning)
         {
             if (!await ConfirmLeave("End plan")) return;
         }

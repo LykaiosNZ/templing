@@ -48,24 +48,6 @@ kbd {
 .brand-name { font-weight: 800; font-size: 1.15rem; letter-spacing: -.02em; }
 .app-drawer { border-right: 1px solid var(--mud-palette-lines-default) !important; }
 
-.mini-player {
-    display: flex; align-items: center; gap: 10px; padding: 4px 14px 4px 5px; margin-right: 8px;
-    border-radius: 999px; border: 1px solid var(--mud-palette-lines-default); background: var(--card);
-}
-.mini-player.running { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.mud-layout a.mini-info { display: flex; flex-direction: column; line-height: 1.15; color: var(--ink); text-decoration: none; min-width: 0; }
-.mini-title { font-size: .72rem; color: var(--muted); max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mini-muted { vertical-align: -3px; margin-left: 4px; color: var(--muted); font-size: 1rem !important; }
-.mini-tempo { font-family: var(--mono); font-weight: 700; font-size: .9rem; white-space: nowrap; }
-.mini-tempo .muted { font-weight: 500; }
-.mini-tempo .phase { margin-left: 4px; }
-/* phones: compact mini player (tempo only), hidden when nothing is loaded */
-@media (max-width: 700px) {
-    .mini-player { padding-right: 10px; gap: 6px; margin-right: 2px; }
-    .mini-player.idle { display: none; }
-    .mini-title, .mini-extra { display: none; }
-    .mini-tempo { font-size: .82rem; }
-}
 .show-phone { display: none !important; }
 @media (max-width: 700px) { .hide-phone { display: none !important; } .show-phone { display: inline-flex !important; } }
 .appbar-log { margin: 0 6px; border-color: var(--mud-palette-lines-inputs) !important; }

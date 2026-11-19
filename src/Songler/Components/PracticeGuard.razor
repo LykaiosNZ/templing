@@ -1,0 +1,30 @@
+@* Practice stays on its page. Leaving the Metronome or Timer while it runs asks first, and stopping is the way out;
+   the browser warns too on reload or close. Moving within the page (another piece or section) doesn't ask, and
+   plans stop the engine themselves before changing step, so they never hit this. *@
+@implements IDisposable
+@inject MetronomeService Metro
+@inject IDialogService Dialogs
+@inject NavigationManager Nav
+
+<NavigationLock OnBeforeInternalNavigation="Confirm" ConfirmExternalNavigation="Metro.IsRunning" />
+
+@code {
+    /// <summary>This page's routes ("metronome", "timer"): navigating among them isn't leaving.</summary>
+    [Parameter, EditorRequired] public string Route { get; set; } = "";
+
+    async Task Confirm(LocationChangingContext ctx)
+    {
+        if (!Metro.IsRunning) return;
+        var path = Nav.ToBaseRelativePath(ctx.TargetLocation);
+        if (path.Equals(Route, StringComparison.OrdinalIgnoreCase) || path.StartsWith(Route + "/", StringComparison.OrdinalIgnoreCase)) return;
+        var what = Metro.Silent ? "timer" : "metronome";
+        var ok = await ConfirmDialog.ShowAsync(Dialogs, $"Stop the {what}?", $"Leaving this page stops the {what}.", "Stop and leave", cancel: "Keep going");
+        if (ok == true) await Metro.StopAsync();
+        else ctx.PreventNavigation();
+    }
+
+    // ConfirmExternalNavigation follows the running state
+    protected override void OnInitialized() => Metro.Changed += OnChanged;
+    void OnChanged() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Metro.Changed -= OnChanged;
+}

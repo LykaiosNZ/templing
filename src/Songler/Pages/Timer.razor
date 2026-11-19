@@ -11,6 +11,9 @@
 
 <PageTitle>@(Metro.IsRunning ? $"{Clock} · " : "")Timer · Songler</PageTitle>
 
+<PracticeGuard Route="timer" />
+<PracticeKeys Timer="true" StartStop="Toggle" />
+
 <div class="page-head">
     <div>
         @if (Metro.Piece is { } it && Metro.Source == MetronomeSource.Piece)

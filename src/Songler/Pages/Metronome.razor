@@ -13,6 +13,9 @@
 
 <PageTitle>@(Metro.Source == MetronomeSource.Free ? "Free metronome" : $"{Metro.Title} · Metronome") · Songler</PageTitle>
 
+<PracticeGuard Route="metronome" />
+<PracticeKeys />
+
 <div class="page-head">
     <div>
         @if (Metro.Source != MetronomeSource.Free)

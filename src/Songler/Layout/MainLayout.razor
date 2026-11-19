@@ -26,7 +26,6 @@
             <span class="brand-name">Songler</span>
         </a>
         <MudSpacer />
-        <MiniPlayer />
         <MudTooltip Text="Log practice">
             <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Rounded.AddTask" Color="Color.Inherit"
                        Class="hide-phone appbar-log" OnClick="QuickLog">Log</MudButton>
@@ -85,7 +84,6 @@
         await Keys.InitAsync();
         await Metro.InitAsync();
         await Runner.RestoreAsync(); // resume a plan that was running before a refresh
-        Metro.Finished += OnFinished;
         RegisterGlobalKeys();
         _ready = true;
     }
@@ -102,70 +100,7 @@
             if (!Nav.ToBaseRelativePath(Nav.Uri).StartsWith("library", StringComparison.OrdinalIgnoreCase)) Nav.NavigateTo("library");
             await Keys.FocusAsync("#library-search"); // waits for the field to render
         }));
-        _keys.Add(Keys.Register(this, Hotkeys.StartStop, () => Metro.ToggleAsync()));
-        _keys.Add(Keys.Register(this, Hotkeys.Stop, () => Metro.StopAsync()));
-        _keys.Add(Keys.Register(this, Hotkeys.RestartSection, () => Metro.RestartSectionAsync()));
-        _keys.Add(Keys.Register(this, Hotkeys.TempoUp, () => Metro.NudgeAsync(1)));
-        _keys.Add(Keys.Register(this, Hotkeys.TempoDown, () => Metro.NudgeAsync(-1)));
-        _keys.Add(Keys.Register(this, Hotkeys.TempoUp5, () => Metro.NudgeAsync(5)));
-        _keys.Add(Keys.Register(this, Hotkeys.TempoDown5, () => Metro.NudgeAsync(-5)));
-        _keys.Add(Keys.Register(this, Hotkeys.NextSection, () => Metro.NextStepAsync()));
-        _keys.Add(Keys.Register(this, Hotkeys.PrevSection, () => Metro.PrevStepAsync()));
-        _keys.Add(Keys.Register(this, Hotkeys.Tap, () => Metro.TapAsync()));
-        _keys.Add(Keys.Register(this, Hotkeys.Mute, async () =>
-        {
-            await Metro.SetMutedAsync(!Metro.Muted);
-            Snackbar.Add($"Sound {(Metro.Muted ? "off" : "on")}", Severity.Normal);
-        }));
-        _keys.Add(Keys.Register(this, Hotkeys.CountIn, async () =>
-        {
-            Metro.Settings.CountIn = !Metro.Settings.CountIn;
-            await Metro.ApplyAsync();
-            Snackbar.Add($"Count-in {(Metro.Settings.CountIn ? "on" : "off")}", Severity.Normal);
-        }));
-        _keys.Add(Keys.Register(this, Hotkeys.SpeedTrainer, async () =>
-        {
-            Metro.Training.Enabled = !Metro.Training.Enabled;
-            await Metro.ApplyAsync();
-            Snackbar.Add($"Speed trainer {(Metro.Training.Enabled ? "on" : "off")}", Severity.Normal);
-        }));
-        _keys.Add(Keys.Register(this, Hotkeys.IntervalTrainer, async () =>
-        {
-            Metro.Settings.Interval.Enabled = !Metro.Settings.Interval.Enabled;
-            await Metro.ApplyAsync();
-            Snackbar.Add($"Interval trainer {(Metro.Settings.Interval.Enabled ? "on" : "off")}", Severity.Normal);
-        }));
-        _keys.Add(Keys.Register(this, Hotkeys.LogSession, LogMetronomeSession));
-    }
-
-    private async void OnFinished(string reason)
-    {
-        // the timer page shows its own end-of-session panel
-        if (Nav.Uri.Contains("/timer") || Runner.Active) return;
-        await InvokeAsync(() =>
-        {
-            if (reason == "rest") { Snackbar.Add("Rest's over. Back to it!", Severity.Info); return; }
-            var msg = reason switch
-            {
-                "interval" => "Interval session complete — nice work!",
-                "training" => "Speed trainer reached its target tempo.",
-                _ => "Finished."
-            };
-            Snackbar.Add(msg, Severity.Success, o =>
-            {
-                o.Action = "Log it";
-                o.ActionColor = Color.Primary;
-                o.OnClick = _ => LogMetronomeSession();
-            });
-        });
-    }
-
-    private async Task LogMetronomeSession()
-    {
-        await Metro.StopAsync();
-        var log = Metro.BuildSessionLog();
-        var saved = await LogDialog.ShowAsync(Dialogs, log, isNew: true);
-        if (saved) { Metro.ResetSession(); Snackbar.Add("Session logged", Severity.Success); }
+        // the practice keys (Space, tempo…) belong to the Metronome and Timer pages: see PracticeKeys
     }
 
     private async Task QuickLog()
@@ -187,7 +122,6 @@
 
     public void Dispose()
     {
-        Metro.Finished -= OnFinished;
         Keys.Unregister(this);
     }
 }

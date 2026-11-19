@@ -1,0 +1,51 @@
+@* The practice shortcuts (Hotkeys' "Metronome" group), live only on the Metronome and Timer pages: practice stays on
+   its page, so Space on the Library never starts a click you can't see. The Timer gets the keys that mean something there. *@
+@implements IDisposable
+@inject Shortcuts Keys
+@inject MetronomeService Metro
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+@code {
+    /// <summary>The Timer page: start/stop, stop, sound and log only (no tempo, sections or metronome options).</summary>
+    [Parameter] public bool Timer { get; set; }
+    /// <summary>What Space does (the Timer starts its countdown rather than the click).</summary>
+    [Parameter] public Func<Task>? StartStop { get; set; }
+
+    readonly List<IDisposable> _keys = new();
+
+    protected override void OnInitialized()
+    {
+        void Key(Hotkey k, Func<Task> run) => _keys.Add(Keys.Register(this, k, run));
+        async Task Toggle(string name, Func<bool> flip)
+        {
+            var on = flip();
+            await Metro.ApplyAsync();
+            Snackbar.Add($"{name} {(on ? "on" : "off")}", Severity.Normal);
+        }
+
+        Key(Hotkeys.StartStop, () => StartStop?.Invoke() ?? Metro.ToggleAsync());
+        Key(Hotkeys.Stop, () => Metro.StopAsync());
+        Key(Hotkeys.Mute, async () =>
+        {
+            await Metro.SetMutedAsync(!Metro.Muted);
+            Snackbar.Add($"Sound {(Metro.Muted ? "off" : "on")}", Severity.Normal);
+        });
+        Key(Hotkeys.LogSession, () => SessionPanel.LogAsync(Metro, Dialogs, Snackbar));
+        if (Timer) return;
+
+        Key(Hotkeys.RestartSection, () => Metro.RestartSectionAsync());
+        Key(Hotkeys.TempoUp, () => Metro.NudgeAsync(1));
+        Key(Hotkeys.TempoDown, () => Metro.NudgeAsync(-1));
+        Key(Hotkeys.TempoUp5, () => Metro.NudgeAsync(5));
+        Key(Hotkeys.TempoDown5, () => Metro.NudgeAsync(-5));
+        Key(Hotkeys.NextSection, () => Metro.NextStepAsync());
+        Key(Hotkeys.PrevSection, () => Metro.PrevStepAsync());
+        Key(Hotkeys.Tap, () => Metro.TapAsync());
+        Key(Hotkeys.CountIn, () => Toggle("Count-in", () => Metro.Settings.CountIn = !Metro.Settings.CountIn));
+        Key(Hotkeys.SpeedTrainer, () => Toggle("Speed trainer", () => Metro.Training.Enabled = !Metro.Training.Enabled));
+        Key(Hotkeys.IntervalTrainer, () => Toggle("Interval trainer", () => Metro.Settings.Interval.Enabled = !Metro.Settings.Interval.Enabled));
+    }
+
+    public void Dispose() { foreach (var k in _keys) k.Dispose(); }
+}

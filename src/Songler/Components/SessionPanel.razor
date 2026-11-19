@@ -17,7 +17,7 @@
             }
             else
             {
-                <span>@(Metro.LastFinishReason == "interval" ? "Done!" : "Paused.") <strong>@Stats.Clock(Metro.SessionActiveSec)</strong> practised@(Detail is { } d ? $" · {d}" : "").</span>
+                <span>@Heading <strong>@Stats.Clock(Metro.SessionActiveSec)</strong> practised@(Detail is { } d ? $" · {d}" : "").</span>
             }
         </div>
         <div class="session-end-actions">
@@ -55,6 +55,14 @@ else if (HasTime && !Runner.Active)
 
     bool HasTime => Metro.SessionActiveSec >= 1;
 
+    /// <summary>Why it stopped: the intervals finished, the speed trainer hit its target, or you stopped it.</summary>
+    string Heading => Metro.LastFinishReason switch
+    {
+        "interval" => "Done!",
+        "training" => "Target tempo reached.",
+        _ => "Paused.",
+    };
+
     // the practised time ticks while playing, without any parameter changing
     protected override void OnInitialized() => Metro.Changed += OnChanged;
     void OnChanged() => InvokeAsync(StateHasChanged);
@@ -62,14 +70,17 @@ else if (HasTime && !Runner.Active)
 
     async Task Log()
     {
-        await Metro.StopAsync();
-        var log = Metro.BuildSessionLog();
-        if (await LogDialog.ShowAsync(Dialogs, log, isNew: true))
-        {
-            Metro.ResetSession();
-            Snackbar.Add("Session logged", Severity.Success);
-            await OnClosed.InvokeAsync();
-        }
+        if (await LogAsync(Metro, Dialogs, Snackbar)) await OnClosed.InvokeAsync();
+    }
+
+    /// <summary>Stops, then logs the session through the log dialog (the panel's Log, the L key, the "Log it" snackbar).</summary>
+    public static async Task<bool> LogAsync(MetronomeService metro, IDialogService dialogs, ISnackbar snackbar)
+    {
+        await metro.StopAsync();
+        if (!await LogDialog.ShowAsync(dialogs, metro.BuildSessionLog(), isNew: true)) return false;
+        metro.ResetSession();
+        snackbar.Add("Session logged", Severity.Success);
+        return true;
     }
 
     async Task Discard()

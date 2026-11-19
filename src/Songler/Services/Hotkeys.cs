@@ -34,7 +34,7 @@ public static class Hotkeys
     /// <summary>Short note shown beside a group's heading in the shortcuts dialog.</summary>
     public static string? GroupNote(string group) => group switch
     {
-        Metronome => "on every page",
+        Metronome => "on the Metronome page (Space, Esc, M and L on the Timer too)",
         Plan => "while a plan runs",
         _ => null,
     };

@@ -151,6 +151,8 @@ public class PlanRunner
     {
         var s = Current;
         if (s == null) { await EndAsync(true); return; }
+        // a new step: whatever was playing belongs to the last one (and practice pages ask before you leave them while running)
+        if (navigate && _metro.IsRunning) await _metro.StopAsync();
         State = StepState.Ready;
         Summary = null;
         await SaveRunAsync();

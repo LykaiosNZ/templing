@@ -45,6 +45,8 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 - **Page head:** `h1` on the left (optional overline above, optional info line below); the page's primary action on the right.
 - **Toolbars** (search + filters above a list): search box first, then filters, selects at the end. Everything in a toolbar is `Variant.Outlined`, `Margin.Dense`.
 - **Cards** (`section.card`) with a `card-title`.
+- **Practice stays on its page.** The Metronome and Timer share one engine, so only one runs at a time, and it runs only while you're on its page. There's no mini player. Leaving the page while it runs asks first ("Stop the metronome?", `PracticeGuard`); moving within the page (another piece) and plan steps don't. The practice shortcuts live on those pages too (`PracticeKeys`).
+- **Plan steps:** leaving a step that's running or has practice time asks first: Log it (always through the log dialog), Discard or Keep going. Backing out of the log dialog stays on the step. Auto-log only applies to steps that reach their end; Finish step always asks.
 - **Options rail** (`OptionsRail`, Metronome and Timer): the page's settings sit in a 320 px rail on the right, and the page itself is one centred column (`practice-col`).
   - The rail is for configuration only: no summaries, totals or explanations.
   - The source select (and Save or ⋮) goes at the top, then `RailSection`s.
@@ -114,6 +116,7 @@ Reuse these instead of rebuilding them. When two screens show the same thing, th
 | `IntervalsEditor` | Work / rest / rounds, a "Load preset" select (an action: it always reads "Load preset") and Audio cues (Metronome intervals, Timer countdown) |
 | `OptionsRail`, `RailSection`, `RailToggle`, `RailVolume` | The Metronome / Timer options rail, its sections, and the hidden rail's strip controls |
 | `VolumeControl` | Sound on/off + volume slider (rail Sound section, strip pop-up) |
+| `PracticeGuard`, `PracticeKeys` | On the Metronome and Timer pages: ask before leaving while running; the practice shortcuts |
 | `SessionPanel` | Practised time on the Metronome and Timer, inside the stage. Hidden until there's time; one line while playing; once stopped, Log + Discard + page extras (Timer: +5 min, +10 min, Rest). Hidden while a plan runs. |
 | `DurationInput` | Any duration field |
 | `PlanStepSummary` | One-line plan step (Plans list, plan editor rows) |
