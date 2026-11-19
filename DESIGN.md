@@ -63,8 +63,9 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
   - **Period pickers are selects** (label "Period", options "Last 30 days" … "All time"), not toggle groups. Segmented toggles are for switching a panel or a mode, not for ranges.
   - Option order: most relevant first (e.g. items by most recently logged), not alphabetical, unless the list is a fixed set.
 - **Hide controls that don't apply; don't disable them.** A greyed-out field ("Rest" with 1 round) makes you work out why. Show it once it applies. Disable only when the control's presence matters (e.g. Move up on the first row), and then make the reason obvious.
-- **A disabled primary button says why** next to it ("Step 2 has no item", "Add a name"), so nothing is blocked silently.
+- **A disabled primary button says why** next to it, phrased as what to do ("Select an item for step 2", "Add a name"), so nothing is blocked silently.
 - **Placeholders, not defaults:** example names ("My routine") are placeholders. Don't pre-fill a value the user has to delete.
+- **Reorderable lists drag** by a grip handle (`DragIndicator`, `data-drag-handle` / `data-drag-row`, see `js/drag.js`), and keep Move up / Move down buttons for keyboard and touch.
 - **Long editable lists collapse:** each row is a one-line summary that expands to its fields (plan steps). New rows open expanded; the summary uses the same component as the read-only view (`PlanStepSummary`).
 - **Rows that open something:** the whole row is clickable with a hover highlight. A pencil appears on hover and stays reachable by keyboard. Links inside the row still work.
 

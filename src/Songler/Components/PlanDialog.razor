@@ -25,8 +25,13 @@
                     var item = Store.GetItem(s.ItemId);
                     var open = _open.Contains(s.Id);
                     var missing = PlanStepSummary.IsMissing(s, Store);
-                    <div class="plan-step-row @(s.Kind == PlanStepKind.Rest ? "rest" : "") @(open ? "open" : "") @(missing ? "missing" : "")" role="listitem" @key="s.Id">
+                    <div class="plan-step-row @(s.Kind == PlanStepKind.Rest ? "rest" : "") @(open ? "open" : "") @(missing ? "missing" : "") @DropClass(idx)" role="listitem" @key="s.Id"
+                         data-drag-row @ondragover="() => DragOver(idx)" @ondragover:preventDefault="true" @ondrop="() => Drop(idx)" @ondrop:preventDefault="true">
                         <div class="ps-head">
+                            <span class="ps-drag" draggable="true" data-drag-handle aria-hidden="true"
+                                  @ondragstart="() => _dragFrom = idx" @ondragend="() => { _dragFrom = null; _dragOver = null; }">
+                                <MudIcon Icon="@Icons.Material.Rounded.DragIndicator" Size="Size.Small" />
+                            </span>
                             <button type="button" class="ps-summary" aria-expanded="@(open ? "true" : "false")" aria-controls="@($"ps-body-{s.Id}")" @onclick="() => Toggle(s)">
                                 <MudIcon Icon="@Icons.Material.Rounded.ExpandMore" Size="Size.Small" Class="ps-chevron" />
                                 <PlanStepSummary Step="s" Index="idx" />
@@ -136,10 +141,25 @@
             return noItem.Count switch
             {
                 0 => null,
-                1 => $"Step {noItem[0]} has no item",
-                _ => $"Steps {string.Join(", ", noItem.SkipLast(1))} and {noItem[^1]} have no item"
+                1 => $"Select an item for step {noItem[0]}",
+                _ => $"Select an item for steps {string.Join(", ", noItem.SkipLast(1))} and {noItem[^1]}"
             };
         }
+    }
+
+    // drag to reorder (the up/down buttons stay for keyboard and touch)
+    int? _dragFrom, _dragOver;
+    void DragOver(int i) { if (_dragFrom != null) _dragOver = i; }
+    string? DropClass(int i) => _dragFrom is { } f && _dragOver == i && i != f ? (i < f ? "drop-before" : "drop-after") : _dragFrom == i ? "dragging" : null;
+    void Drop(int to)
+    {
+        if (_dragFrom is { } from && from != to)
+        {
+            var s = _m.Steps[from];
+            _m.Steps.RemoveAt(from);
+            _m.Steps.Insert(to, s);
+        }
+        _dragFrom = null; _dragOver = null;
     }
 
     void Toggle(PlanStep s) { if (!_open.Remove(s.Id)) _open.Add(s.Id); }
