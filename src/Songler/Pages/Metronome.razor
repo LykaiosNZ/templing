@@ -30,291 +30,276 @@
             <FeelHint Piece="piece" />
         }
     </div>
-    <div class="d-flex gap-2 flex-wrap align-center">
-        <MudSelect T="string" Value="@SourceKey" ValueChanged="LoadSource" Label="Metronome" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="toolbar-select">
-            <MudSelectItem T="string" Value="@("free")">Free metronome</MudSelectItem>
-            @if (Store.Presets.Count > 0)
-            {
-                <MudSelectItem T="string" Value="@("group:custom")" Disabled="true" Class="select-group">Custom metronomes</MudSelectItem>
-                @foreach (var p in Store.Presets.OrderBy(p => p.Name))
-                {
-                    <MudSelectItem T="string" Value="@($"preset:{p.Id}")">@p.Name</MudSelectItem>
-                }
-            }
-            <MudSelectItem T="string" Value="@("group:library")" Disabled="true" Class="select-group">Library</MudSelectItem>
-            @foreach (var i in Store.PiecesByRecent())
-            {
-                <MudSelectItem T="string" Value="@($"piece:{i.Id}")">@i.Name</MudSelectItem>
-            }
-        </MudSelect>
-        @if (Metro.Source == MetronomeSource.Preset)
-        {
-            <MudTooltip Text="More">
-                <MudMenu Icon="@Icons.Material.Rounded.MoreVert" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" AriaLabel="@($"More for {Metro.Title}")">
-                    <MudMenuItem Icon="@Icons.Material.Rounded.Save" OnClick="() => AfterMenu(SavePreset)">Save changes</MudMenuItem>
-                    <MudMenuItem Icon="@Icons.Material.Rounded.ViewAgenda" OnClick="() => AfterMenu(EditPresetSections)">Edit sections…</MudMenuItem>
-                    <MudMenuItem Icon="@Icons.Material.Rounded.Edit" OnClick="() => AfterMenu(RenamePreset)">Rename…</MudMenuItem>
-                    <MudMenuItem Icon="@Icons.Material.Rounded.Delete" IconColor="Color.Error" OnClick="() => AfterMenu(DeletePreset)">Delete…</MudMenuItem>
-                </MudMenu>
-            </MudTooltip>
-        }
-        else if (Metro.Source == MetronomeSource.Free)
-        {
-            <MudTooltip Text="Save as custom metronome">
-                <MudIconButton Icon="@Icons.Material.Rounded.Save" Variant="Variant.Outlined" aria-label="Save as custom metronome" OnClick="SavePreset" />
-            </MudTooltip>
-        }
-    </div>
+    <MudHidden Breakpoint="Breakpoint.LgAndUp">
+        <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Rounded.Tune" OnClick="() => _rail?.OpenSheet()">Options</MudButton>
+    </MudHidden>
 </div>
 
-<MudGrid Spacing="4">
-    <MudItem xs="12" lg="7">
-        <section class="stage @(Metro.IsRunning ? "running" : "") phase-@Metro.State.phase" aria-label="Metronome controls">
-            @if (Metro.Sections.Count > 1)
-            {
-                <div class="section-picker">
-                    <MudTooltip Text="Previous section">
-                        <MudIconButton Icon="@Icons.Material.Rounded.SkipPrevious" aria-label="Previous section" OnClick="() => Metro.PrevStepAsync()" />
-                    </MudTooltip>
-                    <MudSelect T="int" Value="CurStep" ValueChanged="i => Metro.SetStepAsync(i)" ToStringFunc="SectionLabel" Label="Section"
-                               Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="section-select" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter">
-                        @for (int i = 0; i < Metro.Sections.Count; i++)
-                        {
-                            var idx = i;
-                            var sec = Metro.Sections[i];
-                            <MudSelectItem T="int" Value="idx">
-                                <div class="sec-opt">
-                                    <span class="sec-opt-name">@(idx + 1). @sec.Name</span>
-                                    <span class="sec-opt-meta">@sec.Bpm.ToString("0") bpm · @sec.Meter@(sec.Length > 0 ? $" · {sec.Length} bars" : "")</span>
-                                </div>
-                            </MudSelectItem>
-                        }
-                    </MudSelect>
-                    <MudTooltip Text="Next section">
-                        <MudIconButton Icon="@Icons.Material.Rounded.SkipNext" aria-label="Next section" OnClick="() => Metro.NextStepAsync()" />
-                    </MudTooltip>
-                </div>
-            }
-
-            <div class="tempo-row">
-                <MudTooltip Text="Slower">
-                    <MudIconButton Icon="@Icons.Material.Rounded.Remove" Variant="Variant.Outlined" Size="Size.Large" aria-label="Slower" OnClick="() => Metro.NudgeAsync(-1)" />
+<div class="practice-col">
+    <section class="stage @(Metro.IsRunning ? "running" : "") phase-@Metro.State.phase" aria-label="Metronome controls">
+        @if (Metro.Sections.Count > 1)
+        {
+            <div class="section-picker">
+                <MudTooltip Text="Previous section">
+                    <MudIconButton Icon="@Icons.Material.Rounded.SkipPrevious" aria-label="Previous section" OnClick="() => Metro.PrevStepAsync()" />
                 </MudTooltip>
-                <div class="tempo-display" aria-live="polite">
-                    <div id="metro-pulse" class="pulse" aria-hidden="true"></div>
-                    <div class="tempo-value">@Metro.Value.ToString("0")<span class="tempo-unit">@(Metro.Unit == TempoUnit.Percent ? "%" : "")</span></div>
-                    <div class="tempo-sub">
-                        @if (Metro.Unit == TempoUnit.Percent)
-                        {
-                            <span>@Metro.PlayingBpm.ToString("0") bpm</span>
-                        }
-                        else
-                        {
-                            <span>bpm</span>
-                        }
-                        <span> · @Metro.PlayingSection.Meter</span>
-                        <span> · @SubName(Metro.PlayingSection.Subdivision)</span>
-                        @if (Metro.Source != MetronomeSource.Piece && Metro.Sections.Count > 1 && Math.Abs(Metro.Factor - 1) > 0.001 && !Metro.IsRunning)
-                        {
-                            <MudLink Class="ml-2" OnClick="() => Metro.ResetFactorAsync()" Typo="Typo.body2">reset ×@Metro.Factor.ToString("0.00")</MudLink>
-                        }
-                    </div>
-                </div>
-                <MudTooltip Text="Faster">
-                    <MudIconButton Icon="@Icons.Material.Rounded.Add" Variant="Variant.Outlined" Size="Size.Large" aria-label="Faster" OnClick="() => Metro.NudgeAsync(1)" />
-                </MudTooltip>
-            </div>
-
-            <div class="tempo-slider">
-                <MudSlider T="double" Value="Metro.Value" ValueChanged="v => Metro.SetValueAsync(v)" Min="Metro.Min" Max="@(Metro.Unit == TempoUnit.Percent ? 150 : 300)" Step="1"
-                           Color="Color.Primary" aria-label="Tempo" />
-            </div>
-
-            <div id="metro-beats" class="beats" aria-hidden="true">
-                @for (int b = 0; b < (Metro.IsRunning ? Metro.State.beats : Metro.PlayingSection.BeatsPerBar); b++)
-                {
-                    <span class="beat-dot @(b == 0 && Metro.Settings.AccentFirst ? "accent" : "")"></span>
-                }
-            </div>
-
-            <div class="status-line" role="status" aria-live="polite">
-                @if (Metro.IsRunning)
-                {
-                    @switch (Metro.State.phase)
+                <MudSelect T="int" Value="CurStep" ValueChanged="i => Metro.SetStepAsync(i)" ToStringFunc="SectionLabel" Label="Section"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="section-select" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter">
+                    @for (int i = 0; i < Metro.Sections.Count; i++)
                     {
-                        case "countin":
-                            <span class="phase countin">Count-in @Metro.State.count</span>
-                            break;
-                        case "rest":
-                            <span class="phase rest">Rest · @Stats.Clock(Metro.State.remaining ?? 0)</span>
-                            break;
-                        default:
-                            <span class="phase work">Playing</span>
-                            <span class="muted">Bar @(Metro.State.barInPart + 1)@(Metro.PlayingSection.Length > 0 ? $"/{Metro.PlayingSection.Length}" : "") · @Metro.State.beats/@Metro.State.unit</span>
-                            @if (Metro.State.remaining is { } rem)
-                            {
-                                <span class="muted">· @Stats.Clock(rem) left</span>
-                            }
-                            break;
+                        var idx = i;
+                        var sec = Metro.Sections[i];
+                        <MudSelectItem T="int" Value="idx">
+                            <div class="sec-opt">
+                                <span class="sec-opt-name">@(idx + 1). @sec.Name</span>
+                                <span class="sec-opt-meta">@sec.Bpm.ToString("0") bpm · @sec.Meter@(sec.Length > 0 ? $" · {sec.Length} bars" : "")</span>
+                            </div>
+                        </MudSelectItem>
                     }
-                    @if (Metro.EffectiveIntervals.Enabled)
+                </MudSelect>
+                <MudTooltip Text="Next section">
+                    <MudIconButton Icon="@Icons.Material.Rounded.SkipNext" aria-label="Next section" OnClick="() => Metro.NextStepAsync()" />
+                </MudTooltip>
+            </div>
+        }
+
+        <div class="tempo-row">
+            <MudTooltip Text="Slower">
+                <MudIconButton Icon="@Icons.Material.Rounded.Remove" Variant="Variant.Outlined" Size="Size.Large" aria-label="Slower" OnClick="() => Metro.NudgeAsync(-1)" />
+            </MudTooltip>
+            <div class="tempo-display" aria-live="polite">
+                <div id="metro-pulse" class="pulse" aria-hidden="true"></div>
+                <div class="tempo-value">@Metro.Value.ToString("0")<span class="tempo-unit">@(Metro.Unit == TempoUnit.Percent ? "%" : "")</span></div>
+                <div class="tempo-sub">
+                    @if (Metro.Unit == TempoUnit.Percent)
                     {
-                        <span class="muted">· Round @Metro.State.round@(Metro.EffectiveIntervals.Rounds > 0 ? $"/{Metro.EffectiveIntervals.Rounds}" : "")</span>
-                    }
-                }
-            </div>
-
-            @if (Metro.Training.Enabled)
-            {
-                var tr = Metro.Training;
-                var prog = Metro.IsRunning ? (Metro.State.trainingProgress ?? 0) : 0;
-                <div class="training-bar">
-                    <span>@tr.Start.ToString("0")</span>
-                    <MudProgressLinear Value="@(prog * 100)" Color="Color.Primary" Rounded="true" Size="Size.Medium" aria-label="Speed trainer progress" />
-                    <span>@tr.End.ToString("0")@(Metro.Unit == TempoUnit.Percent ? "%" : "")</span>
-                </div>
-                @if (TrainingNextText is { } next)
-                {
-                    <div class="training-next">@next</div>
-                }
-            }
-
-            <div class="transport">
-                <MudTooltip Text="Restart section">
-                    <MudIconButton Icon="@Icons.Material.Rounded.Replay" aria-label="Restart section" OnClick="() => Metro.RestartSectionAsync()" />
-                </MudTooltip>
-                <button class="play-btn @(Metro.IsRunning ? "on" : "")" @onclick="() => Metro.ToggleAsync()" aria-label="@(Metro.IsRunning ? "Stop" : "Start")">
-                    <MudIcon Icon="@(Metro.IsRunning ? Icons.Material.Rounded.Stop : Icons.Material.Rounded.PlayArrow)" Style="font-size:2.6rem" />
-                </button>
-                <MudTooltip Text="Tap tempo">
-                    <MudButton Variant="Variant.Outlined" OnClick="() => Metro.TapAsync()" aria-label="Tap tempo" Class="tap-btn">Tap</MudButton>
-                </MudTooltip>
-            </div>
-
-            <div class="quick-toggles" role="group" aria-label="Options">
-                <MudTooltip Text="@($"Count-in: {(Metro.Settings.CountIn ? "on" : "off")}")">
-                    <MudIconButton Icon="@Icons.Material.Rounded.HourglassTop" Class="@ToggleClass(Metro.Settings.CountIn)" aria-label="Count-in" aria-pressed="@Pressed(Metro.Settings.CountIn)"
-                                   OnClick="() => Toggle(() => Metro.Settings.CountIn = !Metro.Settings.CountIn)" />
-                </MudTooltip>
-                <MudTooltip Text="@($"Speed trainer: {(Metro.Training.Enabled ? "on" : "off")}")">
-                    <MudIconButton Icon="@Icons.Material.Rounded.TrendingUp" Class="@ToggleClass(Metro.Training.Enabled)" aria-label="Speed trainer" aria-pressed="@Pressed(Metro.Training.Enabled)"
-                                   OnClick="() => Toggle(() => Metro.Training.Enabled = !Metro.Training.Enabled)" />
-                </MudTooltip>
-                <MudTooltip Text="@($"Intervals: {(Metro.Settings.Interval.Enabled ? "on" : "off")}")">
-                    <MudIconButton Icon="@Icons.Material.Rounded.Timelapse" Class="@ToggleClass(Metro.Settings.Interval.Enabled)" aria-label="Intervals" aria-pressed="@Pressed(Metro.Settings.Interval.Enabled)"
-                                   OnClick="() => Toggle(() => Metro.Settings.Interval.Enabled = !Metro.Settings.Interval.Enabled)" />
-                </MudTooltip>
-                @if (Metro.Sections.Count > 1)
-                {
-                    <MudTooltip Text="@($"Play through sections: {(Metro.PlayThrough ? "on" : "off")}")">
-                        <MudIconButton Icon="@Icons.Material.Rounded.PlaylistPlay" Class="@ToggleClass(Metro.PlayThrough)" aria-label="Play through sections" aria-pressed="@Pressed(Metro.PlayThrough)"
-                                       OnClick="() => Toggle(() => Metro.PlayThrough = !Metro.PlayThrough)" />
-                    </MudTooltip>
-                }
-            </div>
-        </section>
-
-        <section class="card mt-4 session-card" aria-label="Session">
-            <div class="card-head">
-                <div class="d-flex align-center gap-1">
-                    <h2 class="card-title">This session</h2>
-                    <MudTooltip Text="Only time the click is playing counts. Count-ins, rests and pauses are excluded.">
-                        <MudIcon Icon="@Icons.Material.Rounded.Info" Size="Size.Small" Class="muted" aria-label="How active time is counted" />
-                    </MudTooltip>
-                </div>
-                <MudButton Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Rounded.RestartAlt" OnClick="() => Metro.ResetSession()" Disabled="Metro.SessionActiveSec < 1">Reset</MudButton>
-            </div>
-            <div class="session-stats">
-                <StatTile Label="Active time" Value="@Stats.Clock(Metro.SessionActiveSec)" Icon="@Icons.Material.Rounded.Timer" />
-                <StatTile Label="Tempo" Value="@SessionRange" Icon="@Icons.Material.Rounded.Speed" />
-                <div class="session-log">
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.AddTask" OnClick="LogSession" FullWidth="true">Log session</MudButton>
-                </div>
-            </div>
-        </section>
-    </MudItem>
-
-    <MudItem xs="12" lg="5">
-        <section class="card" aria-label="Metronome settings">
-            <MudToggleGroup T="string" @bind-Value="_panel" Color="Color.Primary" Size="Size.Small" Outlined="true" CheckMark="false" Class="settings-switcher" aria-label="Settings">
-                <MudToggleItem Value="@("trainer")"><span class="seg-label">Trainer<span class="@DotClass(Metro.Training.Enabled)" title="@OnOff(Metro.Training.Enabled)" aria-label="@OnOff(Metro.Training.Enabled)"></span></span></MudToggleItem>
-                <MudToggleItem Value="@("intervals")"><span class="seg-label">Intervals<span class="@DotClass(Metro.Settings.Interval.Enabled)" title="@OnOff(Metro.Settings.Interval.Enabled)" aria-label="@OnOff(Metro.Settings.Interval.Enabled)"></span></span></MudToggleItem>
-                <MudToggleItem Value="@("sound")"><span class="seg-label">Sound</span></MudToggleItem>
-            </MudToggleGroup>
-            <div class="settings-panel">
-            @if (_panel == "trainer")
-            {
-                    @if (Metro.TrainingPinned)
-                    {
-                        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">Set by your plan for this step. Changes here only affect this step.</MudAlert>
-                    }
-                    var tr = Metro.Training; var u = Metro.Unit == TempoUnit.Percent ? "%" : "bpm";
-                    <div class="form-grid">
-                        <MudNumericField T="double" @bind-Value="tr.Start" @bind-Value:after="Apply" Label="@($"Start ({u})")" Min="Metro.Min" Max="Metro.Max" />
-                        <MudNumericField T="double" @bind-Value="tr.End" @bind-Value:after="Apply" Label="@($"End ({u})")" Min="Metro.Min" Max="Metro.Max" />
-                    </div>
-                    <MudToggleGroup T="RampMode" @bind-Value="tr.Mode" @bind-Value:after="Apply" Color="Color.Primary" Size="Size.Small" Outlined="true" Class="my-3">
-                        <MudToggleItem Value="RampMode.OverTime" Text="Over a time period" />
-                        <MudToggleItem Value="RampMode.EveryNBars" Text="Step every N bars" />
-                    </MudToggleGroup>
-                    @if (tr.Mode == RampMode.OverTime)
-                    {
-                        <DurationInput Seconds="tr.DurationMin * 60" SecondsChanged="async v => { tr.DurationMin = (v ?? 300) / 60; await Apply(); }" Label="Over (time playing)"
-                                       MinSeconds="15" MaxSeconds="7200" />
+                        <span>@Metro.PlayingBpm.ToString("0") bpm</span>
                     }
                     else
                     {
-                        <div class="form-grid">
-                            <MudNumericField T="double" @bind-Value="tr.Increment" @bind-Value:after="Apply" Label="@($"Change by ({u})")" Min="0.5" Max="50" />
-                            <MudNumericField T="int" @bind-Value="tr.EveryBars" @bind-Value:after="Apply" Label="Every (bars)" Min="1" Max="64" />
-                        </div>
+                        <span>bpm</span>
                     }
-                    <MudCheckBox T="bool" @bind-Value="tr.StopAtEnd" @bind-Value:after="Apply" Color="Color.Primary" Label="Stop at end" />
-                    <MudText Typo="Typo.caption" Class="muted d-block mt-2">@TrainerSummary</MudText>
-            }
-            else if (_panel == "intervals")
+                    <span> · @Metro.PlayingSection.Meter</span>
+                    <span> · @SubName(Metro.PlayingSection.Subdivision)</span>
+                    @if (Metro.Source != MetronomeSource.Piece && Metro.Sections.Count > 1 && Math.Abs(Metro.Factor - 1) > 0.001 && !Metro.IsRunning)
+                    {
+                        <MudLink Class="ml-2" OnClick="() => Metro.ResetFactorAsync()" Typo="Typo.body2">reset ×@Metro.Factor.ToString("0.00")</MudLink>
+                    }
+                </div>
+            </div>
+            <MudTooltip Text="Faster">
+                <MudIconButton Icon="@Icons.Material.Rounded.Add" Variant="Variant.Outlined" Size="Size.Large" aria-label="Faster" OnClick="() => Metro.NudgeAsync(1)" />
+            </MudTooltip>
+        </div>
+
+        <div class="tempo-slider">
+            <MudSlider T="double" Value="Metro.Value" ValueChanged="v => Metro.SetValueAsync(v)" Min="Metro.Min" Max="@(Metro.Unit == TempoUnit.Percent ? 150 : 300)" Step="1"
+                       Color="Color.Primary" aria-label="Tempo" />
+        </div>
+
+        <div id="metro-beats" class="beats" aria-hidden="true">
+            @for (int b = 0; b < (Metro.IsRunning ? Metro.State.beats : Metro.PlayingSection.BeatsPerBar); b++)
             {
-                    <IntervalsEditor Settings="Metro.Settings.Interval" />
+                <span class="beat-dot @(b == 0 && Metro.Settings.AccentFirst ? "accent" : "")"></span>
+            }
+        </div>
+
+        <div class="status-line" role="status" aria-live="polite">
+            @if (Metro.IsRunning)
+            {
+                @switch (Metro.State.phase)
+                {
+                    case "countin":
+                        <span class="phase countin">Count-in @Metro.State.count</span>
+                        break;
+                    case "rest":
+                        <span class="phase rest">Rest · @Stats.Clock(Metro.State.remaining ?? 0)</span>
+                        break;
+                    default:
+                        <span class="phase work">Playing</span>
+                        <span class="muted">Bar @(Metro.State.barInPart + 1)@(Metro.PlayingSection.Length > 0 ? $"/{Metro.PlayingSection.Length}" : "") · @Metro.State.beats/@Metro.State.unit</span>
+                        @if (Metro.State.remaining is { } rem)
+                        {
+                            <span class="muted">· @Stats.Clock(rem) left</span>
+                        }
+                        break;
+                }
+                @if (Metro.EffectiveIntervals.Enabled)
+                {
+                    <span class="muted">· Round @Metro.State.round@(Metro.EffectiveIntervals.Rounds > 0 ? $"/{Metro.EffectiveIntervals.Rounds}" : "")</span>
+                }
+            }
+        </div>
+
+        @if (Metro.Training.Enabled)
+        {
+            var tr = Metro.Training;
+            var prog = Metro.IsRunning ? (Metro.State.trainingProgress ?? 0) : 0;
+            <div class="training-bar">
+                <span>@tr.Start.ToString("0")</span>
+                <MudProgressLinear Value="@(prog * 100)" Color="Color.Primary" Rounded="true" Size="Size.Medium" aria-label="Speed trainer progress" />
+                <span>@tr.End.ToString("0")@(Metro.Unit == TempoUnit.Percent ? "%" : "")</span>
+            </div>
+            @if (TrainingNextText is { } next)
+            {
+                <div class="training-next">@next</div>
+            }
+        }
+
+        <div class="transport">
+            <MudTooltip Text="Restart section">
+                <MudIconButton Icon="@Icons.Material.Rounded.Replay" aria-label="Restart section" OnClick="() => Metro.RestartSectionAsync()" />
+            </MudTooltip>
+            <button class="play-btn @(Metro.IsRunning ? "on" : "")" @onclick="() => Metro.ToggleAsync()" aria-label="@(Metro.IsRunning ? "Stop" : "Start")">
+                <MudIcon Icon="@(Metro.IsRunning ? Icons.Material.Rounded.Stop : Icons.Material.Rounded.PlayArrow)" Style="font-size:2.6rem" />
+            </button>
+            <MudTooltip Text="Tap tempo">
+                <MudButton Variant="Variant.Outlined" OnClick="() => Metro.TapAsync()" aria-label="Tap tempo" Class="tap-btn">Tap</MudButton>
+            </MudTooltip>
+        </div>
+
+    </section>
+
+    <section class="card session-card" aria-label="Session">
+        <div class="card-head">
+            <div class="d-flex align-center gap-1">
+                <h2 class="card-title">This session</h2>
+                <MudTooltip Text="Only time the click is playing counts. Count-ins, rests and pauses are excluded.">
+                    <MudIcon Icon="@Icons.Material.Rounded.Info" Size="Size.Small" Class="muted" aria-label="How active time is counted" />
+                </MudTooltip>
+            </div>
+            <MudButton Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Rounded.RestartAlt" OnClick="() => Metro.ResetSession()" Disabled="Metro.SessionActiveSec < 1">Reset</MudButton>
+        </div>
+        <div class="session-stats">
+            <StatTile Label="Active time" Value="@Stats.Clock(Metro.SessionActiveSec)" Icon="@Icons.Material.Rounded.Timer" />
+            <StatTile Label="Tempo" Value="@SessionRange" Icon="@Icons.Material.Rounded.Speed" />
+            <div class="session-log">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.AddTask" OnClick="LogSession" FullWidth="true">Log session</MudButton>
+            </div>
+        </div>
+    </section>
+</div>
+
+<OptionsRail @ref="_rail">
+    <Strip>
+        <RailToggle Title="Speed trainer" Icon="@Icons.Material.Rounded.TrendingUp" On="Metro.Training.Enabled" OnToggle="() => SetTraining(!Metro.Training.Enabled)" />
+        <RailToggle Title="Intervals" Icon="@Icons.Material.Rounded.Timelapse" On="Metro.Settings.Interval.Enabled" OnToggle="() => SetIntervals(!Metro.Settings.Interval.Enabled)" />
+        <RailToggle Title="Count-in" Icon="@Icons.Material.Rounded.HourglassTop" On="Metro.Settings.CountIn" OnToggle="() => SetCountIn(!Metro.Settings.CountIn)" />
+        @if (Metro.Sections.Count > 1)
+        {
+            <RailToggle Title="Play through sections" Icon="@Icons.Material.Rounded.PlaylistPlay" On="Metro.PlayThrough" OnToggle="() => SetPlayThrough(!Metro.PlayThrough)" />
+        }
+        <MudDivider Class="rail-strip-divider" />
+        <RailVolume />
+    </Strip>
+    <ChildContent>
+        <div class="rail-src">
+            <MudSelect T="string" Value="@SourceKey" ValueChanged="LoadSource" Label="Metronome" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                <MudSelectItem T="string" Value="@("free")">Free metronome</MudSelectItem>
+                @if (Store.Presets.Count > 0)
+                {
+                    <MudSelectItem T="string" Value="@("group:custom")" Disabled="true" Class="select-group">Custom metronomes</MudSelectItem>
+                    @foreach (var p in Store.Presets.OrderBy(p => p.Name))
+                    {
+                        <MudSelectItem T="string" Value="@($"preset:{p.Id}")">@p.Name</MudSelectItem>
+                    }
+                }
+                <MudSelectItem T="string" Value="@("group:library")" Disabled="true" Class="select-group">Library</MudSelectItem>
+                @foreach (var i in Store.PiecesByRecent())
+                {
+                    <MudSelectItem T="string" Value="@($"piece:{i.Id}")">@i.Name</MudSelectItem>
+                }
+            </MudSelect>
+            @if (Metro.Source == MetronomeSource.Preset)
+            {
+                <MudTooltip Text="More">
+                    <MudMenu Icon="@Icons.Material.Rounded.MoreVert" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" AriaLabel="@($"More for {Metro.Title}")">
+                        <MudMenuItem Icon="@Icons.Material.Rounded.Save" OnClick="() => AfterMenu(SavePreset)">Save changes</MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Rounded.ViewAgenda" OnClick="() => AfterMenu(EditPresetSections)">Edit sections…</MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Rounded.Edit" OnClick="() => AfterMenu(RenamePreset)">Rename…</MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Rounded.Delete" IconColor="Color.Error" OnClick="() => AfterMenu(DeletePreset)">Delete…</MudMenuItem>
+                    </MudMenu>
+                </MudTooltip>
+            }
+            else if (Metro.Source == MetronomeSource.Free)
+            {
+                <MudTooltip Text="Save as custom metronome">
+                    <MudIconButton Icon="@Icons.Material.Rounded.Save" Variant="Variant.Outlined" aria-label="Save as custom metronome" OnClick="SavePreset" />
+                </MudTooltip>
+            }
+        </div>
+
+        <RailSection Title="Speed trainer" Icon="@Icons.Material.Rounded.TrendingUp" On="Metro.Training.Enabled" OnChanged="SetTraining">
+            @{ var tr = Metro.Training; var u = Metro.Unit == TempoUnit.Percent ? "%" : "bpm"; }
+            @if (Metro.TrainingPinned)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true">Set by your plan for this step. Changes here only affect this step.</MudAlert>
+            }
+            <div class="form-grid">
+                <MudNumericField T="double" @bind-Value="tr.Start" @bind-Value:after="Apply" Label="@($"Start ({u})")" Min="Metro.Min" Max="Metro.Max" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <MudNumericField T="double" @bind-Value="tr.End" @bind-Value:after="Apply" Label="@($"End ({u})")" Min="Metro.Min" Max="Metro.Max" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </div>
+            <MudToggleGroup T="RampMode" @bind-Value="tr.Mode" @bind-Value:after="Apply" Color="Color.Primary" Size="Size.Small" Outlined="true" CheckMark="false" Class="rail-seg">
+                <MudToggleItem Value="RampMode.OverTime" Text="Over time" />
+                <MudToggleItem Value="RampMode.EveryNBars" Text="Every N bars" />
+            </MudToggleGroup>
+            @if (tr.Mode == RampMode.OverTime)
+            {
+                <DurationInput Seconds="tr.DurationMin * 60" SecondsChanged="async v => { tr.DurationMin = (v ?? 300) / 60; await Apply(); }" Label="Over (time playing)"
+                               MinSeconds="15" MaxSeconds="7200" Variant="Variant.Outlined" Margin="Margin.Dense" />
             }
             else
             {
-                    var s = Metro.Settings;
-                    @if (Metro.Source == MetronomeSource.Free)
-                    {
-                        var fs = Metro.Sections[0];
-                        <div class="d-flex gap-3 flex-wrap mb-3">
-                            <MudNumericField T="int" @bind-Value="fs.BeatsPerBar" @bind-Value:after="Apply" Label="Beats per bar" Min="1" Max="32" Style="max-width:120px" />
-                            <MudSelect T="int" @bind-Value="fs.BeatUnit" @bind-Value:after="Apply" Label="Beat unit" Style="max-width:100px">
-                                @foreach (var bu in new[] { 2, 4, 8, 16 }) { <MudSelectItem T="int" Value="bu">/@bu</MudSelectItem> }
-                            </MudSelect>
-                            <MudSelect T="int" @bind-Value="fs.Subdivision" @bind-Value:after="Apply" Label="Clicks" Style="max-width:140px">
-                                <MudSelectItem T="int" Value="1">Beats</MudSelectItem>
-                                <MudSelectItem T="int" Value="2">8ths</MudSelectItem>
-                                <MudSelectItem T="int" Value="3">Triplets</MudSelectItem>
-                                <MudSelectItem T="int" Value="4">16ths</MudSelectItem>
-                                <MudSelectItem T="int" Value="6">Sextuplets</MudSelectItem>
-                            </MudSelect>
-                        </div>
-                    }
-                    <MudSelect T="int" @bind-Value="s.CountInBars" @bind-Value:after="Apply" Label="Count-in length" Style="max-width:200px" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.HourglassTop"
-                               AdornmentColor="@(s.CountIn ? Color.Primary : Color.Default)" AdornmentAriaLabel="@($"Count-in {OnOff(s.CountIn).ToLower()}")">
-                        <MudSelectItem T="int" Value="1">1 bar</MudSelectItem>
-                        <MudSelectItem T="int" Value="2">2 bars</MudSelectItem>
-                    </MudSelect>
-                    <MudSelect T="string" @bind-Value="s.Sound" @bind-Value:after="SoundChanged" Label="Click sound" Class="mt-3" Style="max-width:200px">
-                        <MudSelectItem T="string" Value="@("click")">Click</MudSelectItem>
-                        <MudSelectItem T="string" Value="@("wood")">Woodblock</MudSelectItem>
-                        <MudSelectItem T="string" Value="@("beep")">Beep</MudSelectItem>
-                    </MudSelect>
-                    <MudText Typo="Typo.body2" Class="mt-4">Volume</MudText>
-                    <MudSlider T="double" @bind-Value="s.Volume" @bind-Value:after="Apply" Min="0" Max="1.5" Step="0.05" Color="Color.Primary" aria-label="Volume" />
-                    <MudSwitch T="bool" @bind-Value="s.AccentFirst" @bind-Value:after="Apply" Color="Color.Primary" Label="Accent the first beat of the bar" />
-                    <MudSwitch T="bool" @bind-Value="s.Flash" @bind-Value:after="Apply" Color="Color.Primary" Label="Visual flash on each beat" />
+                <div class="form-grid">
+                    <MudNumericField T="double" @bind-Value="tr.Increment" @bind-Value:after="Apply" Label="@($"Change by ({u})")" Min="0.5" Max="50" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudNumericField T="int" @bind-Value="tr.EveryBars" @bind-Value:after="Apply" Label="Every (bars)" Min="1" Max="64" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </div>
             }
-            </div>
-        </section>
-    </MudItem>
-</MudGrid>
+            <MudCheckBox T="bool" @bind-Value="tr.StopAtEnd" @bind-Value:after="Apply" Color="Color.Primary" Label="Stop at end" Dense="true" />
+        </RailSection>
+
+        <RailSection Title="Intervals" Icon="@Icons.Material.Rounded.Timelapse" On="Metro.Settings.Interval.Enabled" OnChanged="SetIntervals">
+            <IntervalsEditor Settings="Metro.Settings.Interval" />
+        </RailSection>
+
+        <RailSection Title="Count-in" Icon="@Icons.Material.Rounded.HourglassTop" On="Metro.Settings.CountIn" OnChanged="SetCountIn">
+            <MudNumericField T="int" @bind-Value="Metro.Settings.CountInBars" @bind-Value:after="Apply" Label="Bars" Min="1" Max="16" Variant="Variant.Outlined" Margin="Margin.Dense" Class="rail-num" />
+        </RailSection>
+
+        @if (Metro.Sections.Count > 1)
+        {
+            <RailSection Title="Play through sections" Icon="@Icons.Material.Rounded.PlaylistPlay" On="Metro.PlayThrough" OnChanged="SetPlayThrough" />
+        }
+
+        @if (Metro.Source == MetronomeSource.Free)
+        {
+            var fs = Metro.Sections[0];
+            <RailSection Title="Time signature" Icon="@Icons.Material.Rounded.MusicNote">
+                <div class="form-grid three">
+                    <MudNumericField T="int" @bind-Value="fs.BeatsPerBar" @bind-Value:after="Apply" Label="Beats" Min="1" Max="32" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudSelect T="int" @bind-Value="fs.BeatUnit" @bind-Value:after="Apply" Label="Unit" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                        @foreach (var bu in new[] { 2, 4, 8, 16 }) { <MudSelectItem T="int" Value="bu">/@bu</MudSelectItem> }
+                    </MudSelect>
+                    <MudSelect T="int" @bind-Value="fs.Subdivision" @bind-Value:after="Apply" Label="Clicks" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                        @foreach (var (v, label) in Section.Subdivisions) { <MudSelectItem T="int" Value="v">@label</MudSelectItem> }
+                    </MudSelect>
+                </div>
+            </RailSection>
+        }
+
+        <RailSection Title="Sound" Icon="@Icons.Material.Rounded.VolumeUp">
+            @{ var s = Metro.Settings; }
+            <MudSelect T="string" @bind-Value="s.Sound" @bind-Value:after="SoundChanged" Label="Click sound" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                <MudSelectItem T="string" Value="@("click")">Click</MudSelectItem>
+                <MudSelectItem T="string" Value="@("wood")">Woodblock</MudSelectItem>
+                <MudSelectItem T="string" Value="@("beep")">Beep</MudSelectItem>
+            </MudSelect>
+            <VolumeControl />
+            <MudSwitch T="bool" @bind-Value="s.AccentFirst" @bind-Value:after="Apply" Color="Color.Primary" Label="Accent the first beat" Class="rail-line-switch" />
+            <MudSwitch T="bool" @bind-Value="s.Flash" @bind-Value:after="Apply" Color="Color.Primary" Label="Flash on each beat" Class="rail-line-switch" />
+        </RailSection>
+    </ChildContent>
+</OptionsRail>
 
 @if (Metro.Source == MetronomeSource.Piece && Metro.Piece is { ScoreFileId: not null } scorePiece)
 {
@@ -327,14 +312,10 @@
     [Parameter] public string? PieceId { get; set; }
     [Parameter] public string? SectionId { get; set; }
     [Parameter] public string? PresetId { get; set; }
-    string _panel = "trainer";
+    OptionsRail? _rail;
 
     int CurStep => Metro.IsRunning ? Metro.State.step : Metro.CurrentStep;
     string SectionLabel(int i) => i >= 0 && i < Metro.Sections.Count ? $"{i + 1}. {Metro.Sections[i].Name}" : "";
-    static string ToggleClass(bool on) => on ? "opt-toggle on" : "opt-toggle";
-    static string Pressed(bool on) => on ? "true" : "false";
-    static string DotClass(bool on) => on ? "seg-dot on" : "seg-dot";
-    static string OnOff(bool on) => on ? "On" : "Off";
 
     double Factor => Metro.IsRunning ? Metro.State.factor : Metro.Factor;
 
@@ -372,20 +353,6 @@
         }
     }
 
-    string TrainerSummary
-    {
-        get
-        {
-            var tr = Metro.Training; var u = Metro.Unit == TempoUnit.Percent ? "%" : " bpm";
-            if (tr.Mode == RampMode.OverTime)
-                return $"From {tr.Start:0} to {tr.End:0}{u} over {tr.DurationMin:0.#} min of playing, then {(tr.StopAtEnd ? "stop" : "hold")}.";
-            var steps = Math.Ceiling(Math.Abs(tr.End - tr.Start) / Math.Max(0.5, tr.Increment));
-            var beats = steps * tr.EveryBars * Metro.RefSection.BeatsPerBar;
-            var avgBpm = Metro.Unit == TempoUnit.Percent ? Metro.RefSection.Bpm * (tr.Start + tr.End) / 200 : (tr.Start + tr.End) / 2;
-            return $"{tr.Increment:0.#}{u} every {tr.EveryBars} bars · ≈{Stats.Clock(beats * 60 / Math.Max(20, avgBpm))} to reach {tr.End:0}{u}.";
-        }
-    }
-
     static string SubName(int s) => Section.ClickName(s).ToLowerInvariant();
 
     protected override async Task OnParametersSetAsync()
@@ -419,6 +386,10 @@
     async Task SoundChanged() { await Metro.ApplyAsync(); await Metro.PreviewSoundAsync(); }
 
     async Task Toggle(Action a) { a(); await Metro.ApplyAsync(); }
+    Task SetTraining(bool on) => Toggle(() => Metro.Training.Enabled = on);
+    Task SetIntervals(bool on) => Toggle(() => Metro.Settings.Interval.Enabled = on);
+    Task SetCountIn(bool on) => Toggle(() => Metro.Settings.CountIn = on);
+    Task SetPlayThrough(bool on) => Toggle(() => Metro.PlayThrough = on);
 
 
     async Task LogSession()

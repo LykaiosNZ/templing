@@ -44,7 +44,14 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 - **Sidebar:** Dashboard and Library at the top, then **Practice** (Metronome, Timer, Plans) and **Progress** (History, Stats) under small uppercase headings (`nav-heading stat-label`), then a divider and Settings & data. New screens go in the group that matches what they're for.
 - **Page head:** `h1` on the left (optional overline above, optional info line below); the page's primary action on the right.
 - **Toolbars** (search + filters above a list): search box first, then filters, selects at the end. Everything in a toolbar is `Variant.Outlined`, `Margin.Dense`.
-- **Cards** (`section.card`) with a `card-title`. A card's on/off state shows as a dot after the title (`seg-dot`), not as text.
+- **Cards** (`section.card`) with a `card-title`.
+- **Options rail** (`OptionsRail`, Metronome and Timer): the page's settings sit in a 320 px rail on the right, and the page itself is one centred column (`practice-col`).
+  - The rail is for configuration only: no summaries, totals or explanations.
+  - The source select (and Save or ⋮) goes at the top, then `RailSection`s.
+  - A feature you switch on and off (Speed trainer, Intervals, Count-in, Play through) is a section with a switch in its head, and its fields show only while it's on. Other sections (Time signature, Sound, Countdown) are always open. Sections don't collapse.
+  - Hiding the rail leaves a 56 px strip of quick controls rather than a copy of the sections: `RailToggle`s for the features, plus `RailVolume` (click turns sound on or off, hover shows the slider).
+  - Below `lg` the same sections open as a bottom sheet from an Options button in the page head.
+  - The rail starts open; hiding it lasts for the session.
 - Must work at phone width (≥ 360 px): wide tables switch to compact rows (`hide-phone` / `show-phone-block`).
 
 ## Settings
@@ -64,7 +71,8 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 - **No helper text under fields** in rows of fields: it pushes the field out of line. Examples go in the placeholder ("120, 65–145 or 85%"); a short note goes in the label ("Bars (loop)").
 - **Menu items that open a dialog** end with "…" and start it via `AfterMenu(...)`, not by awaiting it in `OnClick` (MudMenu stays open until the handler returns).
 - **Menus:** set the name with `AriaLabel="…"` on `MudMenu`. Plain `aria-label` lands on a wrapper and the button ends up unnamed.
-- **On/off options:** icon toggles (`opt-toggle`, `aria-pressed`, tooltip "Name: on/off") or dots. Not "On"/"Off" text, and no duplicate switches for the same setting.
+- **On/off options:** icon toggles (`opt-toggle`, `aria-pressed`, tooltip "Name: on/off"), lit while on, or the switch in a rail section's head. Not "On"/"Off" text. The rail's strip toggles are the hidden-rail stand-ins for the section switches, not extra copies on the page.
+- **Sound on/off** is shown as on/off (lit = sound on), not as a mute button that lights up when muted. It's `Metro.Muted`, not saved; moving the volume slider turns the sound back on.
 - **Selects:**
   - In toolbars and compact editor rows (plan steps, sections): `Variant.Outlined`, `Margin.Dense`, `Dense="true"`, fixed width via `toolbar-select` (ellipsis on overflow).
   - In forms (dialogs, settings panels): the default variant, matching the text fields beside them.
@@ -102,7 +110,9 @@ Reuse these instead of rebuilding them. When two screens show the same thing, th
 | Component | Used for |
 | --- | --- |
 | `ScoreImportDialog` (`ScoreImportDialog.Title`) | Guitar Pro / MusicXML import; every entry point uses `Title` for its label |
-| `IntervalsEditor` | Work / rest / rounds + presets (Metronome intervals, Timer countdown) |
+| `IntervalsEditor` | Work / rest / rounds, a "Load preset" select (an action: it always reads "Load preset") and Audio cues (Metronome intervals, Timer countdown) |
+| `OptionsRail`, `RailSection`, `RailToggle`, `RailVolume` | The Metronome / Timer options rail, its sections, and the hidden rail's strip controls |
+| `VolumeControl` | Sound on/off + volume slider (rail Sound section, strip pop-up) |
 | `DurationInput` | Any duration field |
 | `PlanStepSummary` | One-line plan step (Plans list, plan editor rows) |
 | `SectionsEditor`, `SectionSummary` | Tempo-map editor (piece editor, custom metronome sections): header with count, quick-add chips, collapsible rows |

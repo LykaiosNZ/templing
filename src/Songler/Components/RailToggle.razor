@@ -1,0 +1,12 @@
+@* An on/off button in the hidden rail's strip, e.g. Speed trainer. Lit while on. *@
+
+<MudTooltip Text="@($"{Title}: {(On ? "on" : "off")}")" Placement="Placement.Left">
+    <MudIconButton Icon="@Icon" Class="@(On ? "opt-toggle on" : "opt-toggle")" aria-label="@Title" aria-pressed="@(On ? "true" : "false")" OnClick="OnToggle" />
+</MudTooltip>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter, EditorRequired] public string Icon { get; set; } = "";
+    [Parameter] public bool On { get; set; }
+    [Parameter] public EventCallback OnToggle { get; set; }
+}

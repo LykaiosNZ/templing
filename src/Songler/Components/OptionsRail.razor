@@ -1,0 +1,53 @@
+@* The options rail on the Metronome and Timer pages. It holds settings only, never read-outs.
+   Wide screens: a drawer on the right that hides to a strip of quick controls (Strip), which aren't a copy of the sections.
+   Narrower screens: the same sections in a bottom sheet, opened by the page's Options button (OpenSheet). *@
+
+<MudHidden Breakpoint="Breakpoint.MdAndDown">
+    <MudDrawer Open="_open" OpenChanged="v => _open = v" Anchor="Anchor.End" Variant="DrawerVariant.Mini" ClipMode="DrawerClipMode.Always"
+               Elevation="0" Width="320px" MiniWidth="56px" Class="options-rail" aria-label="Options">
+        @if (_open)
+        {
+            <div class="rail-head">
+                <h2 class="rail-title">Options</h2>
+                <MudTooltip Text="Hide options" Placement="Placement.Left">
+                    <MudIconButton Icon="@Icons.Material.Rounded.KeyboardDoubleArrowRight" Size="Size.Small" aria-label="Hide options" OnClick="() => _open = false" />
+                </MudTooltip>
+            </div>
+            <div class="rail-scroll">@ChildContent</div>
+        }
+        else
+        {
+            <div class="rail-strip" role="group" aria-label="Quick options">
+                <MudTooltip Text="Show options" Placement="Placement.Left">
+                    <MudIconButton Icon="@Icons.Material.Rounded.Tune" aria-label="Show options" OnClick="() => _open = true" />
+                </MudTooltip>
+                <MudDivider Class="rail-strip-divider" />
+                @Strip
+            </div>
+        }
+    </MudDrawer>
+</MudHidden>
+
+<MudHidden Breakpoint="Breakpoint.LgAndUp">
+    <MudDrawer @bind-Open="_sheet" Anchor="Anchor.Bottom" Variant="DrawerVariant.Temporary" Elevation="8" Class="options-sheet" aria-label="Options">
+        <div class="rail-head">
+            <h2 class="rail-title">Options</h2>
+            <MudIconButton Icon="@Icons.Material.Rounded.Close" Size="Size.Small" aria-label="Close options" OnClick="() => _sheet = false" />
+        </div>
+        <div class="rail-scroll">@ChildContent</div>
+    </MudDrawer>
+</MudHidden>
+
+@code {
+    /// <summary>The sections (<see cref="RailSection"/>), plus anything always shown at the top such as the source select.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    /// <summary>Quick controls for the hidden rail: <see cref="RailToggle"/>s and <see cref="RailVolume"/>.</summary>
+    [Parameter] public RenderFragment? Strip { get; set; }
+
+    // starts open; kept for the session (shared by the Metronome and Timer pages) but not saved
+    static bool _open = true;
+    bool _sheet;
+
+    /// <summary>Opens the bottom sheet (narrow screens).</summary>
+    public void OpenSheet() { _sheet = true; StateHasChanged(); }
+}

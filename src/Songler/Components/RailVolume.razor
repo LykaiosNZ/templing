@@ -1,0 +1,34 @@
+@* The hidden rail's sound button: a click turns sound on/off (lit while on), hovering shows the volume slider. *@
+@implements IDisposable
+@inject MetronomeService Metro
+
+<div class="rail-vol" @onmouseenter="Enter" @onmouseleave="Leave" @onfocusin="Enter" @onfocusout="Leave">
+    <MudIconButton Icon="@(Metro.Muted ? Icons.Material.Rounded.VolumeOff : Icons.Material.Rounded.VolumeUp)" Class="@(Metro.Muted ? "opt-toggle" : "opt-toggle on")"
+                   aria-label="Sound" aria-pressed="@(Metro.Muted ? "false" : "true")" OnClick="() => Metro.SetMutedAsync(!Metro.Muted)" />
+    <MudPopover Open="_show" AnchorOrigin="Origin.CenterLeft" TransformOrigin="Origin.CenterRight" Class="rail-vol-pop">
+        <div @onmouseenter="Enter" @onmouseleave="Leave">
+            <VolumeControl />
+        </div>
+    </MudPopover>
+</div>
+
+@code {
+    bool _show;
+    CancellationTokenSource? _hide;
+
+    protected override void OnInitialized() => Metro.Changed += OnChanged;
+    void OnChanged() => InvokeAsync(StateHasChanged);
+
+    void Enter() { _hide?.Cancel(); _show = true; }
+
+    // a short grace period, so moving from the button across to the pop-up doesn't close it
+    async Task Leave()
+    {
+        _hide?.Cancel();
+        var cts = _hide = new CancellationTokenSource();
+        try { await Task.Delay(250, cts.Token); } catch (TaskCanceledException) { return; }
+        _show = false;
+    }
+
+    public void Dispose() { Metro.Changed -= OnChanged; _hide?.Cancel(); }
+}

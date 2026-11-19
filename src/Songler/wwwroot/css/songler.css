@@ -220,17 +220,42 @@ kbd {
 .play-btn:active { transform: scale(.97); }
 .play-btn.on { background: linear-gradient(135deg, #52514e, #2c2c2a); box-shadow: 0 6px 20px rgba(0,0,0,.35); }
 .tap-btn { min-width: 64px; font-family: var(--mono); }
-.quick-toggles { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
 .opt-toggle.mud-icon-button { border: 1px solid var(--ring); color: var(--ink-2); }
 .opt-toggle.on.mud-icon-button { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
-.settings-switcher { width: 100%; }
-.settings-switcher .mud-toggle-item { flex: 1; }
-.seg-label { display: inline-flex; align-items: center; gap: 6px; }
-.card-title.seg-label { display: flex; }
-.seg-dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid currentColor; opacity: .5; display: inline-block; box-sizing: border-box; }
-.seg-dot.on { background: var(--accent); border-color: var(--accent); opacity: 1; }
-.mud-toggle-item-selected .seg-dot.on { background: currentColor; border-color: currentColor; }
-.settings-panel { padding-top: 16px; }
+/* Metronome / Timer: one centred practice column, options in the rail (OptionsRail) */
+.practice-col { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.options-rail.mud-drawer { border-left: 1px solid var(--mud-palette-divider); background: var(--mud-palette-background); }
+.options-rail .mud-drawer-content, .options-sheet .mud-drawer-content { display: flex; flex-direction: column; height: 100%; }
+.rail-head { display: flex; align-items: center; gap: 6px; padding: 10px 10px 10px 16px; border-bottom: 1px solid var(--mud-palette-divider); min-height: 52px; }
+.rail-title { font-size: .85rem; font-weight: 700; margin: 0; flex: 1; }
+.rail-scroll { overflow-y: auto; flex: 1; min-height: 0; }
+.rail-src { display: flex; gap: 8px; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--mud-palette-divider); }
+.rail-src .mud-select { flex: 1; min-width: 0; }
+.rail-sec { border-bottom: 1px solid var(--mud-palette-divider); }
+.rail-sec-head { display: flex; align-items: center; gap: 10px; padding: 10px 8px 10px 16px; min-height: 48px; }
+.rail-sec.always .rail-sec-head { padding-right: 16px; }
+.rail-sec-icon { color: var(--muted); }
+.rail-sec.on .rail-sec-icon { color: var(--accent); }
+.rail-sec.always .rail-sec-icon { color: var(--ink-2); }
+.rail-sec-title { font-size: .85rem; font-weight: 600; margin: 0; flex: 1; }
+.rail-switch.mud-switch { margin: 0; }
+.rail-sec-body { padding: 2px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+.rail-sec-body .mud-alert { margin: 0; }
+.rail-sec-body .form-grid { gap: 8px; }
+.rail-seg { width: 100%; }
+.rail-seg .mud-toggle-item { flex: 1; }
+.rail-num { max-width: 120px; }
+/* label on the left, switch on the right, like the section headers */
+.rail-line-switch.mud-input-control { margin: 0; }
+.rail-line-switch .mud-switch { flex-direction: row-reverse; justify-content: space-between; width: 100%; margin: 0; }
+.rail-line-switch .mud-switch-span { flex: 0 0 auto; }
+.volume-row { display: flex; align-items: center; gap: 8px; }
+.volume-row .volume-slider { flex: 1; }
+.volume-row.is-muted .volume-slider { opacity: .4; }
+.rail-strip { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 0; }
+.rail-strip-divider.mud-divider { width: 24px; margin: 2px 0; }
+.rail-vol-pop { padding: 10px 14px; width: 220px; }
+.options-sheet.mud-drawer { max-height: 80vh; height: auto !important; border-radius: 18px 18px 0 0; }
 .session-log { display: flex; align-items: center; min-width: 170px; }
 .session-stats { display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px; }
 .session-stats .stat-tile { background: var(--card-2); }

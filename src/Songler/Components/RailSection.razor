@@ -1,0 +1,27 @@
+@* A section of the options rail. With OnChanged (e.g. @bind-On) it gets a switch, and its fields show only while it's on;
+   without one it's always open (Sound, Time signature, Countdown). There's no collapsing either way. *@
+
+<section class="rail-sec @(Switchable ? (On ? "on" : "off") : "always")" aria-label="@Title">
+    <div class="rail-sec-head">
+        <MudIcon Icon="@Icon" Size="Size.Small" Class="rail-sec-icon" />
+        <h3 class="rail-sec-title">@Title</h3>
+        @if (Switchable)
+        {
+            <MudSwitch T="bool" Value="On" ValueChanged="OnChanged" Color="Color.Primary" aria-label="@Title" Class="rail-switch" />
+        }
+    </div>
+    @if (ChildContent != null && (!Switchable || On))
+    {
+        <div class="rail-sec-body">@ChildContent</div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter, EditorRequired] public string Icon { get; set; } = "";
+    [Parameter] public bool On { get; set; }
+    [Parameter] public EventCallback<bool> OnChanged { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    bool Switchable => OnChanged.HasDelegate;
+}

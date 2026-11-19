@@ -1,32 +1,26 @@
-@* Work / rest interval settings, shared by the Metronome (its intervals) and the Timer (its countdown). *@
+@* Work / rest interval settings, shared by the Metronome (its Intervals section) and the Timer (its Countdown). *@
 @inject MetronomeService Metro
 
 @if (Metro.StepPinned)
 {
-    <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">Your plan sets the intervals for this step. Changes here apply after the plan.</MudAlert>
+    <MudAlert Severity="Severity.Info" Dense="true">Your plan sets the intervals for this step. Changes here apply after the plan.</MudAlert>
 }
 @{ var iv = Settings; }
-<div class="d-flex gap-2 flex-wrap mb-3" role="group" aria-label="Interval presets">
-    @foreach (var p in Presets)
+@* an action, not a value: it always reads "Load preset" and fills in the fields below *@
+<MudSelect T="int?" Value="null" ValueChanged="Load" Label="Load preset" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+    @for (int i = 0; i < Presets.Count; i++)
     {
-        var preset = p;
-        var on = IsActive(iv, preset);
-        <MudButton Size="Size.Small" Variant="@(on ? Variant.Filled : Variant.Outlined)" Color="@(on ? Color.Primary : Color.Default)" aria-pressed="@(on ? "true" : "false")"
-                   OnClick="() => Set(preset)">@Label(preset)</MudButton>
+        var idx = i;
+        var label = Label(Presets[i]);
+        <MudSelectItem T="int?" Value="idx">@label</MudSelectItem>
     }
-</div>
+</MudSelect>
 <div class="form-grid three">
-    <DurationInput Seconds="iv.WorkMin * 60" SecondsChanged="async v => { iv.WorkMin = (v ?? 15) / 60; await Apply(); }" Label="Work" MinSeconds="15" MaxSeconds="7200" />
-    <DurationInput Seconds="iv.RestMin * 60" SecondsChanged="async v => { iv.RestMin = (v ?? 0) / 60; await Apply(); }" Label="Rest" MaxSeconds="3600" />
-    <MudNumericField T="int" @bind-Value="iv.Rounds" @bind-Value:after="Apply" Label="Rounds" Min="0" Max="99" HelperText="0 = endless" />
+    <DurationInput Seconds="iv.WorkMin * 60" SecondsChanged="async v => { iv.WorkMin = (v ?? 15) / 60; await Apply(); }" Label="Work" MinSeconds="15" MaxSeconds="7200" Variant="Variant.Outlined" Margin="Margin.Dense" />
+    <DurationInput Seconds="iv.RestMin * 60" SecondsChanged="async v => { iv.RestMin = (v ?? 0) / 60; await Apply(); }" Label="Rest" MaxSeconds="3600" Variant="Variant.Outlined" Margin="Margin.Dense" />
+    <MudNumericField T="int" @bind-Value="iv.Rounds" @bind-Value:after="Apply" Label="Rounds" Min="0" Max="99" HelperText="0 = endless" Variant="Variant.Outlined" Margin="Margin.Dense" />
 </div>
-@if (ShowCues)
-{
-    <MudCheckBox T="bool" @bind-Value="iv.VoiceCues" @bind-Value:after="Apply" Color="Color.Primary" Label="Audio cues (3-2-1 pips before each change)" />
-}
-<MudText Typo="Typo.caption" Class="muted d-block mt-2">
-    Total active time: @Stats.Duration((int)(iv.WorkMin * 60 * Math.Max(1, iv.Rounds)))@(iv.Rounds == 0 ? " per round" : "")
-</MudText>
+<MudSwitch T="bool" @bind-Value="iv.VoiceCues" @bind-Value:after="Apply" Color="Color.Primary" Label="Audio cues" Class="rail-line-switch" />
 
 @code {
     public record Preset(double Work, double Rest, int Rounds);
@@ -43,22 +37,20 @@
 
     [Parameter, EditorRequired] public IntervalSettings Settings { get; set; } = default!;
     [Parameter] public IReadOnlyList<Preset> Presets { get; set; } = MetronomePresets;
-    /// <summary>The timer always plays its cues (it has no click), so it hides the option.</summary>
-    [Parameter] public bool ShowCues { get; set; } = true;
 
     static string Label(Preset p)
     {
-        var work = p.Work < 1 ? $"{p.Work * 60:0} sec" : $"{p.Work:0.#} min";
-        return p.Rounds == 1 ? work : $"{p.Rounds} × {work}";
+        static string D(double min) => min < 1 ? $"{min * 60:0} sec" : $"{min:0.#} min";
+        var work = p.Rounds == 1 ? D(p.Work) : $"{p.Rounds} × {D(p.Work)}";
+        return p.Rest > 0 && p.Rounds != 1 ? $"{work} · {D(p.Rest)} rest" : work;
     }
 
-    static bool IsActive(IntervalSettings iv, Preset p) =>
-        iv.Enabled && Math.Abs(iv.WorkMin - p.Work) < 1e-6 && (p.Rounds == 1 || Math.Abs(iv.RestMin - p.Rest) < 1e-6) && iv.Rounds == p.Rounds;
-
-    async Task Set(Preset p)
+    async Task Load(int? i)
     {
+        if (i is not { } idx || idx < 0 || idx >= Presets.Count) return;
+        var p = Presets[idx];
         var iv = Settings;
-        iv.WorkMin = p.Work; iv.RestMin = p.Rest; iv.Rounds = p.Rounds; iv.Enabled = true;
+        iv.WorkMin = p.Work; iv.RestMin = p.Rest; iv.Rounds = p.Rounds;
         await Apply();
     }
 

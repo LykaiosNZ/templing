@@ -393,7 +393,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
                 workSec = (_override ?? _step)?.WorkSec ?? iv.WorkMin * 60,
                 restSec = (_override ?? _step)?.RestSec ?? iv.RestMin * 60,
                 rounds = (_override ?? _step)?.Rounds ?? iv.Rounds,
-                cues = iv.VoiceCues || Silent,
+                cues = iv.VoiceCues,
             }
         };
         await _mod.InvokeVoidAsync("configure", JsonSerializer.Serialize(cfg));

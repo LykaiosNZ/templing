@@ -1,0 +1,25 @@
+@* Sound on/off button plus the volume slider. Used in the rail's Sound section and the strip's volume pop-up.
+   Muting isn't saved (it's the M key's mute); moving the slider turns the sound back on. *@
+@implements IDisposable
+@inject MetronomeService Metro
+
+<div class="volume-row @(Metro.Muted ? "is-muted" : "")">
+    <MudTooltip Text="@($"Sound: {(Metro.Muted ? "off" : "on")}")">
+        <MudIconButton Icon="@(Metro.Muted ? Icons.Material.Rounded.VolumeOff : Icons.Material.Rounded.VolumeUp)" Size="Size.Small"
+                       aria-label="Sound" aria-pressed="@(Metro.Muted ? "false" : "true")" OnClick="() => Metro.SetMutedAsync(!Metro.Muted)" />
+    </MudTooltip>
+    <MudSlider T="double" Value="Metro.Settings.Volume" ValueChanged="SetVolume" Min="0" Max="1.5" Step="0.05" Color="Color.Primary" aria-label="Volume" Class="volume-slider" />
+</div>
+
+@code {
+    protected override void OnInitialized() => Metro.Changed += OnChanged;
+    void OnChanged() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Metro.Changed -= OnChanged;
+
+    async Task SetVolume(double v)
+    {
+        Metro.Settings.Volume = v;
+        if (Metro.Muted) await Metro.SetMutedAsync(false);
+        await Metro.ApplyAsync();
+    }
+}
