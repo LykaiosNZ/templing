@@ -289,6 +289,16 @@ kbd {
 .meter-slash { color: var(--muted); padding: 0 2px; }
 .sec-body .meter-input { flex: 0 0 auto; width: 120px; }
 .practice-col { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+/* MudContainer (MaxWidth.ExtraLarge, 1920px) centres in the space beside the drawers, so on wide screens the
+   Options rail would pull the page column left of where it sits on other pages. Keep the rail-less left edge
+   and let the column narrow instead. (100% is mud-main-content's width, already minus the rail.) */
+.mud-layout.mud-drawer-open-mini-md-right { --rail-w: 320px; }
+.mud-layout.mud-drawer-close-mini-md-right { --rail-w: 56px; }
+.mud-layout[class*="-mini-md-right"] .mud-main-content > main > .mud-container-maxwidth-xl {
+    width: auto;
+    margin-left: max(0px, (100% + var(--rail-w) - 1920px) / 2);
+    margin-right: 0;
+}
 .options-rail.mud-drawer { border-left: 1px solid var(--mud-palette-divider); background: var(--mud-palette-background); }
 .options-rail .mud-drawer-content, .options-sheet .mud-drawer-content { display: flex; flex-direction: column; height: 100%; }
 .rail-head { display: flex; align-items: center; gap: 6px; padding: 10px 10px 10px 16px; border-bottom: 1px solid var(--mud-palette-divider); min-height: 52px; }
