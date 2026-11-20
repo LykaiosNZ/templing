@@ -480,16 +480,8 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
             if (_override is { RestOnly: true }) s.active = 0; // rest countdown isn't practice
             _override = null;
             SessionBankedSec += s.active;
-            if (Training.Enabled)
-            {
-                // keep where the ramp got to
-                if (Source != MetronomeSource.Piece && Sections.Count == 1)
-                {
-                    Sections[0].Bpm = Math.Round(Sections[0].Bpm * s.factor);
-                    Factor = 1;
-                }
-                else Factor = s.factor;
-            }
+            // keep showing where the ramp got to, as a factor only: the free metronome's saved tempo stays as you set it
+            if (Training.Enabled) Factor = s.factor;
         }
         if (s.@event == "finished")
         {
