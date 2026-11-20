@@ -265,7 +265,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         await StopAsync();
         Source = MetronomeSource.Piece; Piece = piece; Preset = null;
         Sections = piece.Sections.Count > 0 ? piece.Sections.Select(s => s.Clone()).ToList() : [new Section()];
-        PlayThrough = false;
+        PlayThrough = piece.PlayThrough && Sections.Count > 1; Loop = piece.Loop;
         CurrentStep = sectionId == null ? 0 : Math.Max(0, Sections.FindIndex(s => s.Id == sectionId));
         var start = OpeningTempo(piece);
         Factor = ToFactor(start);
@@ -286,7 +286,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         Source = MetronomeSource.Preset; Preset = p; Piece = null; _pieceTraining = null;
         Sections = p.Sections.Select(s => s.Clone()).ToList();
         if (Sections.Count == 0) Sections.Add(new Section());
-        PlayThrough = p.PlayThrough;
+        PlayThrough = p.PlayThrough; Loop = p.Loop;
         CurrentStep = 0; Factor = 1;
         ResetSession();
         await PushConfig();
@@ -305,7 +305,24 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     }
 
     /// <summary>Copy the current tempo map into a new free/custom metronome.</summary>
-    public MetronomePreset ToPreset(string name) => new() { Name = name, Sections = Sections.Select(s => s.Clone()).ToList(), PlayThrough = PlayThrough };
+    public MetronomePreset ToPreset(string name) => new() { Name = name, Sections = Sections.Select(s => s.Clone()).ToList(), PlayThrough = PlayThrough, Loop = Loop };
+
+    /// <summary>
+    /// How sections play: loop the current one, or play through in order (then stop, or <paramref name="loop"/> back to
+    /// the first). Takes effect straight away, even mid-run. A piece remembers it unless <paramref name="remember"/> is false
+    /// (a plan step on one section); a custom metronome keeps it when saved.
+    /// </summary>
+    public async Task SetPlaybackAsync(bool playThrough, bool loop, bool remember = true)
+    {
+        PlayThrough = playThrough && Sections.Count > 1; Loop = loop;
+        await PushConfig();
+        if (remember && Source == MetronomeSource.Piece && Piece != null)
+        {
+            Piece.PlayThrough = PlayThrough; Piece.Loop = Loop;
+            await store.SavePieceAsync(Piece);
+        }
+        Changed?.Invoke();
+    }
 
     // ------------------------------------------------------------ transport
     public async Task StartAsync()
@@ -477,6 +494,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         if (s.@event == "finished")
         {
             LastFinishReason = s.reason;
+            if (s.reason == "end") CurrentStep = 0; // played through to the end: the next run starts from the top
             Finished?.Invoke(s.reason ?? "end");
         }
         _ = wasRunning;

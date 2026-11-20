@@ -184,6 +184,8 @@ public class PlanRunner
         var piece = _store.GetPiece(s.PieceId);
         if (piece == null) { Changed?.Invoke(); return; } // piece deleted: user can skip
         await _metro.LoadPieceAsync(piece, s.SectionId);
+        // a step on one section stays on it, whatever the piece usually does
+        if (s.SectionId != null && _metro.PlayThrough) await _metro.SetPlaybackAsync(false, _metro.Loop, remember: false);
         _metro.ResetSession();
         await _metro.SetStepIntervalsAsync(s.Minutes, s.RestMin, s.Rounds);
         if (s.Mode == StepMode.Metronome)

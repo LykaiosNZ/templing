@@ -64,6 +64,10 @@
                 <MudTooltip Text="Next section">
                     <MudIconButton Icon="@Icons.Material.Rounded.SkipNext" aria-label="Next section" OnClick="() => Metro.NextStepAsync()" />
                 </MudTooltip>
+                <MudTooltip Text="@PlaybackLabel">
+                    <MudIconButton Icon="@PlaybackIcon" Size="Size.Small" Class="@(Metro.PlayThrough ? "opt-toggle on" : "opt-toggle")"
+                                   aria-label="@($"Section playback: {PlaybackLabel}")" OnClick="CyclePlayback" />
+                </MudTooltip>
             </div>
         }
 
@@ -179,10 +183,6 @@
         <RailToggle Title="Speed trainer" Icon="@Icons.Material.Rounded.TrendingUp" On="Metro.Training.Enabled" OnToggle="() => SetTraining(!Metro.Training.Enabled)" Disabled="Metro.TrainingPinned" />
         <RailToggle Title="Intervals" Icon="@Icons.Material.Rounded.Timelapse" On="Metro.EffectiveIntervals.Enabled" OnToggle="() => SetIntervals(!Metro.Settings.Interval.Enabled)" Disabled="Metro.StepPinned" />
         <RailToggle Title="Count-in" Icon="@Icons.Material.Rounded.HourglassTop" On="Metro.Settings.CountIn" OnToggle="() => SetCountIn(!Metro.Settings.CountIn)" />
-        @if (Metro.Sections.Count > 1)
-        {
-            <RailToggle Title="Play through sections" Icon="@Icons.Material.Rounded.PlaylistPlay" On="Metro.PlayThrough" OnToggle="() => SetPlayThrough(!Metro.PlayThrough)" />
-        }
         <MudDivider Class="rail-strip-divider" />
         <RailVolume />
     </Strip>
@@ -273,11 +273,6 @@
         <RailSection Title="Count-in" Icon="@Icons.Material.Rounded.HourglassTop" On="Metro.Settings.CountIn" OnChanged="SetCountIn">
             <MudNumericField T="int" @bind-Value="Metro.Settings.CountInBars" @bind-Value:after="Apply" Label="Bars" Min="1" Max="16" Variant="Variant.Outlined" Margin="Margin.Dense" Class="rail-num" />
         </RailSection>
-
-        @if (Metro.Sections.Count > 1)
-        {
-            <RailSection Title="Play through sections" Icon="@Icons.Material.Rounded.PlaylistPlay" On="Metro.PlayThrough" OnChanged="SetPlayThrough" />
-        }
 
 
         <RailSection Title="Sound" Icon="@Icons.Material.Rounded.VolumeUp">
@@ -385,7 +380,13 @@
     Task SetTraining(bool on) => Metro.SetTrainingEnabledAsync(on);
     Task SetIntervals(bool on) => Toggle(() => Metro.Settings.Interval.Enabled = on);
     Task SetCountIn(bool on) => Toggle(() => Metro.Settings.CountIn = on);
-    Task SetPlayThrough(bool on) => Toggle(() => Metro.PlayThrough = on);
+
+    // section playback cycles like a music player's repeat button: loop this section → play through → play through and repeat
+    string PlaybackLabel => !Metro.PlayThrough ? "Loop section" : Metro.Loop ? "Play through and repeat" : "Play through";
+    string PlaybackIcon => !Metro.PlayThrough ? Icons.Material.Rounded.RepeatOne : Metro.Loop ? Icons.Material.Rounded.Repeat : Icons.Material.Rounded.PlaylistPlay;
+    Task CyclePlayback() => !Metro.PlayThrough ? Metro.SetPlaybackAsync(true, false)
+        : !Metro.Loop ? Metro.SetPlaybackAsync(true, true)
+        : Metro.SetPlaybackAsync(false, Metro.Loop);
 
 
     async Task SavePreset()
@@ -393,7 +394,7 @@
         if (Metro.Source == MetronomeSource.Preset && Metro.Preset is { } p)
         {
             p.Sections = Metro.Sections.Select(s => s.Clone()).ToList();
-            p.PlayThrough = Metro.PlayThrough;
+            p.PlayThrough = Metro.PlayThrough; p.Loop = Metro.Loop;
             await Store.SavePresetAsync(p);
             Snackbar.Add($"Saved “{p.Name}”", Severity.Success);
             return;

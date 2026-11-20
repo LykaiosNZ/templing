@@ -120,6 +120,10 @@ public class Piece
     /// </summary>
     public double? StartTempo { get; set; }
     public List<Section> Sections { get; set; } = new() { new Section() };
+    /// <summary>The metronome plays the sections in order (false: it loops the current one). Remembered from the last change.</summary>
+    public bool PlayThrough { get; set; }
+    /// <summary>When playing through: go back to the first section at the end (false: stop there).</summary>
+    public bool Loop { get; set; }
     public string? Notes { get; set; }
     public string? Link { get; set; }
     /// <summary>Attached score file (Guitar Pro / MusicXML) stored in IndexedDB, used for the tab view.</summary>
@@ -264,6 +268,8 @@ public class MetronomePreset
     public string Name { get; set; } = "Custom";
     public List<Section> Sections { get; set; } = new() { new Section() };
     public bool PlayThrough { get; set; }
+    /// <summary>When playing through: go back to the first section at the end (false: stop there).</summary>
+    public bool Loop { get; set; } = true;
     public DateTime Created { get; set; } = DateTime.Now;
 }
 
