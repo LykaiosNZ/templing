@@ -170,11 +170,7 @@ public class PlanRunner
         _metro.ResetSession();
         await _metro.SetStepIntervalsAsync(s.Minutes, s.RestMin, s.Rounds);
         if (s.Mode == StepMode.Metronome)
-            await _metro.SetStepTempoAsync(s.StartTempo, new TrainingSettings
-            {
-                Enabled = s.Trainer, Start = s.TrainerStart, End = s.TrainerEnd,
-                Mode = RampMode.OverTime, DurationMin = s.WorkMinutes, StopAtEnd = false,
-            });
+            await _metro.SetStepTempoAsync(s.StartTempo, s.TrainerSettings());
         if (navigate)
         {
             var url = s.Mode == StepMode.Timer ? $"timer/piece/{piece.Id}"

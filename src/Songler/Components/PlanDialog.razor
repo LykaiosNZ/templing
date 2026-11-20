@@ -92,12 +92,22 @@
                                             {
                                                 <MudNumericField T="double" @bind-Value="s.TrainerStart" Label="@($"From ({u})")" Min="10" Max="400" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
                                                 <MudNumericField T="double" @bind-Value="s.TrainerEnd" Label="@($"To ({u})")" Min="10" Max="400" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
-                                                <MudText Typo="Typo.caption" Class="muted">over @Stats.Duration((int)(s.WorkMinutes * 60)), then holds</MudText>
+                                                var ts = s.TrainerSettings();
+                                                <MudNumericField T="int" Value="ts.StepCount" ValueChanged="v => s.TrainerSteps = v" Label="Steps" Min="1" Max="ts.MaxSteps"
+                                                                 Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
+                                                <MudToggleGroup T="RampMode" @bind-Value="s.TrainerMode" Color="Color.Primary" Size="Size.Small" Outlined="true" CheckMark="false" Class="ps-ramp">
+                                                    <MudToggleItem Value="RampMode.OverTime" Text="Over the step" />
+                                                    <MudToggleItem Value="RampMode.EveryNBars" Text="Every N bars" />
+                                                </MudToggleGroup>
+                                                @if (s.TrainerMode == RampMode.EveryNBars)
+                                                {
+                                                    <MudNumericField T="int" @bind-Value="s.TrainerEveryBars" Label="Every (bars)" Min="1" Max="64" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
+                                                }
                                             }
                                             else
                                             {
                                                 <MudNumericField T="double?" @bind-Value="s.StartTempo" Label="@($"Start tempo ({u})")" Min="10" Max="400" Clearable="true"
-                                                                 Placeholder="last logged" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-start-field" />
+                                                                 Placeholder="piece's start" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-start-field" />
                                             }
                                         </div>
                                     }
@@ -219,7 +229,8 @@
         var copy = new PlanStep
         {
             Kind = s.Kind, PieceId = s.PieceId, SectionId = s.SectionId, Mode = s.Mode, Minutes = s.Minutes, Rounds = s.Rounds, RestMin = s.RestMin,
-            StartTempo = s.StartTempo, Trainer = s.Trainer, TrainerStart = s.TrainerStart, TrainerEnd = s.TrainerEnd
+            StartTempo = s.StartTempo, Trainer = s.Trainer, TrainerStart = s.TrainerStart, TrainerEnd = s.TrainerEnd,
+            TrainerMode = s.TrainerMode, TrainerSteps = s.TrainerSteps, TrainerEveryBars = s.TrainerEveryBars,
         };
         _m.Steps.Insert(i + 1, copy);
         OpenOnly(copy);

@@ -578,6 +578,7 @@ html.boot-light .boot { --boot-bg: #f7f6f2; --boot-ink: #0b0b0b; --boot-muted: #
 .ps-part { flex: 1 1 140px; }
 .ps-mode { flex: none; }
 .ps-num-field { flex: 0 1 100px; max-width: 110px; }
+.ps-ramp { flex: 0 0 auto; }
 .er-actions { display: flex; margin-left: auto; }
 .ps-tempo { flex-basis: 100%; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ps-tempo .ps-switch { margin-right: 4px; }

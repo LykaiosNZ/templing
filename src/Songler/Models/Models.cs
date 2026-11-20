@@ -207,12 +207,25 @@ public class PlanStep
     public double RestMin { get; set; }
 
     // ---- tempo (metronome steps), in the piece's unit (bpm or %)
-    /// <summary>Tempo to start at. Null = the last logged tempo.</summary>
+    /// <summary>Tempo to start at. Null = where the piece opens (its Start at, else the low end of the last session).</summary>
     public double? StartTempo { get; set; }
-    /// <summary>Speed trainer for this step only: ramps from TrainerStart to TrainerEnd over the step's work time.</summary>
+    /// <summary>
+    /// Speed trainer for this step only: ramps from TrainerStart to TrainerEnd, spread over the step's work time or
+    /// one jump every TrainerEveryBars bars, in TrainerSteps whole-number steps (null = one per bpm / %).
+    /// </summary>
     public bool Trainer { get; set; }
     public double TrainerStart { get; set; } = 80;
     public double TrainerEnd { get; set; } = 120;
+    public RampMode TrainerMode { get; set; } = RampMode.OverTime;
+    public int? TrainerSteps { get; set; }
+    public int TrainerEveryBars { get; set; } = 4;
+
+    /// <summary>The step's trainer as trainer settings (Over time runs across the step's work time).</summary>
+    public TrainingSettings TrainerSettings() => new()
+    {
+        Enabled = Trainer, Start = TrainerStart, End = TrainerEnd, Mode = TrainerMode, Steps = TrainerSteps,
+        EveryBars = TrainerEveryBars, DurationMin = WorkMinutes, StopAtEnd = false,
+    };
 
     public double WorkMinutes => Minutes * Math.Max(1, Rounds);
 
@@ -220,7 +233,7 @@ public class PlanStep
     {
         if (Kind != PlanStepKind.Piece || Mode != StepMode.Metronome) return "";
         var u = unit == TempoUnit.Percent ? "%" : " bpm";
-        if (Trainer) return $"trainer {TrainerStart:0} → {TrainerEnd:0}{u}";
+        if (Trainer) return $"trainer {TrainerStart:0} → {TrainerEnd:0}{u}" + (TrainerMode == RampMode.EveryNBars ? $", every {TrainerEveryBars} bars" : "");
         return StartTempo is { } t ? $"start {t:0}{u}" : "";
     }
 
