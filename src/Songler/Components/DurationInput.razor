@@ -9,13 +9,13 @@
           Class="@($"duration-input {Class}")" Style="@Style">
     <span class="seg-parts @(Variant == Variant.Text ? "seg-text" : null)" role="group" aria-label="@($"{AriaLabel ?? Label} (hours:minutes:seconds)")"
           onkeydown="@SegmentKeys">
-        <input class="seg-part" style="@($"width:{HourDigits + 0.6}ch")" inputmode="numeric" autocomplete="off" maxlength="@HourDigits" aria-label="Hours" disabled="@Disabled"
+        <input class="seg-part" style="@($"width:{HourDigits + 0.3}ch")" inputmode="numeric" autocomplete="off" maxlength="@HourDigits" aria-label="Hours" disabled="@Disabled"
                @bind="_h" @bind:event="oninput" @onchange="Commit" @onkeydown="e => Step(e, 3600)" onfocus="this.select()" />
         <span class="seg-colon" aria-hidden="true">:</span>
-        <input class="seg-part" style="width:2.6ch" inputmode="numeric" autocomplete="off" maxlength="2" aria-label="Minutes" disabled="@Disabled"
+        <input class="seg-part" style="width:2.2ch" inputmode="numeric" autocomplete="off" maxlength="2" aria-label="Minutes" disabled="@Disabled"
                @bind="_m" @bind:event="oninput" @onchange="Commit" @onkeydown="e => Step(e, 60)" onfocus="this.select()" />
         <span class="seg-colon" aria-hidden="true">:</span>
-        <input class="seg-part" style="width:2.6ch" inputmode="numeric" autocomplete="off" maxlength="2" aria-label="Seconds" disabled="@Disabled"
+        <input class="seg-part" style="width:2.2ch" inputmode="numeric" autocomplete="off" maxlength="2" aria-label="Seconds" disabled="@Disabled"
                @bind="_s" @bind:event="oninput" @onchange="Commit" @onkeydown="e => Step(e, 1)" onfocus="this.select()" />
     </span>
 </MudField>
