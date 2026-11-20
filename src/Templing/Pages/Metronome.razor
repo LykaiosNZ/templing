@@ -330,10 +330,13 @@
             if (n is null) return null;
             var tr = Metro.Training; var u = Metro.Unit == TempoUnit.Percent ? "%" : "";
             var dir = tr.End >= tr.Start ? "+" : "−";
-            // steps are whole numbers but not all the same size (+5, +6, +5…): show the one coming up
+            // steps are whole numbers but not all the same size (+5, +6, +5…), and over time a bar line can take
+            // several at once when they're shorter than a bar: the engine says which level comes next
             var cur = Math.Round(Metro.Value);
             var up = tr.End >= tr.Start;
-            var nextLevel = tr.Levels().FirstOrDefault(l => up ? l > cur : l < cur, cur);
+            var levels = tr.Levels();
+            var nextLevel = n.level is int li && li >= 0 && li < levels.Count ? levels[li]
+                          : levels.FirstOrDefault(l => up ? l > cur : l < cur, cur);
             var step = $"{dir}{Math.Abs(nextLevel - cur):0}{u}";
             string when = n.bars is int b && b > 1 ? $"{b} bars"
                         : n.beats is int bt ? $"{bt} beat{(bt == 1 ? "" : "s")}"

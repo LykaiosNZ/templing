@@ -33,6 +33,8 @@ public class TrainingNext
     public int? bars { get; set; }
     public int? beats { get; set; }
     public double? sec { get; set; }
+    /// <summary>The level the change lands on: an index into <see cref="TrainingSettings.Levels"/>. Over time, it can skip levels when they're shorter than a bar.</summary>
+    public int? level { get; set; }
 }
 
 /// <summary>

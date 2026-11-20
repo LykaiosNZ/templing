@@ -234,18 +234,51 @@ function trainingFactorAtBar() {
     return levels[Math.min(done, n)];
 }
 
-// How far until the training tempo next changes: { bars, beats } for 'bars' mode, { sec } for 'time' mode.
+// The next training tempo change: when ({ bars, beats } or { sec }) and the level it lands on ({ level }, an index
+// into cfg.training.levels). Tempo only changes on a bar line, so in 'time' mode this is the first bar line at which
+// the clock has passed the next level's time. When levels are shorter than a bar, that skips some (+1 due mid-bar
+// becomes +3 at the bar line), so the level is worked out here rather than assumed to be the next one.
+// Counted from what's sounding (st.heardBeat / st.heardBar), not from the scheduler, which runs up to a beat ahead:
+// counted from the scheduler, beat 3 of 4 already read "1 beat", and so did beat 4.
 function trainingNextStep() {
     const tr = cfg.training;
+    const levels = tr.levels || [tr.startFactor, tr.endFactor];
+    const n = Math.max(1, levels.length - 1);
+    const levelOf = f => { let i = 0; levels.forEach((l, j) => { if (Math.abs(l - f) < Math.abs(levels[i] - f)) i = j; }); return i; };
+    const now = ctx.currentTime;
+    const ahead = st.lastBarTime != null && st.lastBarTime > now; // the scheduler has decided the next bar line already
+    const heardFactor = ahead && st.heardBar ? st.heardBar.factor : st.factor;
+    const cur = levelOf(heardFactor); // the level sounding now
+    const s = stepCfg();
+    const meter = st.meter || meterAt(s, st.bar);
+    const hb = st.heardBeat;
+    const beatsLeft = hb ? Math.max(1, hb.beats - hb.beat) : meter.n; // to the end of the bar that's sounding
     if (tr.mode === 'bars') {
         const every = Math.max(1, tr.everyBars);
-        const meter = st.meter || meterAt(stepCfg(), st.bar);
-        return { bars: every - (st.trainingBars % every), beats: Math.max(1, meter.n - st.beat) };
+        const done = ahead && st.heardBar ? st.heardBar.trainingBars : st.trainingBars;
+        return { bars: every - (done % every), beats: beatsLeft, level: Math.min(n, cur + 1) };
     }
-    const n = Math.max(1, (tr.levels || []).length - 1);
+    if (ahead && levelOf(st.factor) !== cur) return { beats: beatsLeft, sec: st.lastBarTime - now, level: levelOf(st.factor) };
+    // walk the bar lines the scheduler hasn't reached, at the current tempo, until one lands on a new level
+    const dur = Math.max(1, tr.durationSec);
+    const levelAt = e => Math.min(n, Math.floor(Math.min(1, e / dur) * n + 1e-9));
     const elapsed = activeNow() - st.trainingStartActive;
-    const next = Math.min(n, Math.floor(elapsed / Math.max(1, tr.durationSec) * n + 1e-9) + 1); // the jump after this one
-    return { sec: Math.max(0, tr.durationSec * next / n - elapsed) };
+    const subs = Math.max(1, s.subdivision);
+    const beatSec = beatSeconds(s.bpm * st.factor, meter.d);
+    const atBarLine = st.beat === 0 && st.sub === 0; // waiting on a bar line it hasn't decided yet
+    let t = atBarLine ? st.nextTime : st.nextTime + (meter.n - st.beat) * beatSec - st.sub * beatSec / subs;
+    let bar = atBarLine ? st.bar : st.bar + 1;
+    for (let k = 0; k < 10000; k++) {
+        const level = levelAt(elapsed + Math.max(0, t - now));
+        if (level !== levelOf(st.factor)) {
+            const sec = Math.max(0, t - now);
+            // the first of these is the end of the sounding bar unless the scheduler is a bar line ahead
+            return k === 0 && !ahead ? { beats: beatsLeft, sec, level } : { sec, level };
+        }
+        const m = meterAt(s, bar++);
+        t += m.n * beatSeconds(s.bpm * st.factor, m.d);
+    }
+    return null;
 }
 
 function trainingDone() {
@@ -319,7 +352,8 @@ function scheduler() {
         if (st.beat === 0 && st.sub === 0) {
             st.factor = cfg.training.enabled ? trainingFactorAtBar() : cfg.factor;
             st.meter = meterAt(s, st.bar);
-            queue.push({ time: t, kind: 'bar', step: st.step, bar: st.bar, factor: st.factor });
+            st.lastBarTime = t;
+            queue.push({ time: t, kind: 'bar', step: st.step, bar: st.bar, factor: st.factor, trainingBars: st.trainingBars });
         }
         const meter = st.meter || meterAt(s, st.bar);
 
@@ -404,6 +438,9 @@ function drawLoop() {
                 scoreBar: e.scoreBar, beat: e.beat, beats: e.beats, unit: e.unit, counting: e.kind === 'count', step: e.step, bar: e.bar } }));
             changed = true;
         }
+        // what's sounding now (the scheduler runs ahead of it): the trainer countdown counts from here
+        if (e.kind === 'beat') st.heardBeat = { beat: e.beat, beats: e.beats };
+        if (e.kind === 'bar') st.heardBar = { factor: e.factor, trainingBars: e.trainingBars };
         if (e.kind === 'phase' && st.phase === 'rest') clearVisual();
         if (e.kind === 'bar' || e.kind === 'phase' || e.kind === 'workstart' || e.kind === 'count') changed = true;
         if (e.kind === 'count') st.countDisplay = e.num; else if (e.kind !== 'beat') st.countDisplay = null;
@@ -443,18 +480,20 @@ function snapshot() {
     // (a short lead so the first click isn't late), and counting that lead showed a 2:00 rest as 2:01
     if (st.phase === 'rest') remaining = st.restEnd - Math.max(now, st.restStart ?? now);
     else if (st.phase === 'work' && st.phaseEnd !== Infinity) remaining = st.phaseEnd - Math.max(now, st.workStart ?? now);
+    // the tempo sounding now: the scheduler sets the next bar's tempo up to a beat before it plays
+    const factor = st.lastBarTime != null && st.lastBarTime > now && st.heardBar ? st.heardBar.factor : st.factor;
     let trainingProgress = null, trainingNext = null;
     if (cfg.training.enabled) {
         const tr = cfg.training;
-        trainingProgress = tr.endFactor === tr.startFactor ? 1 : Math.max(0, Math.min(1, (st.factor - tr.startFactor) / (tr.endFactor - tr.startFactor)));
-        if (st.running && st.phase === 'work' && Math.abs(st.factor - tr.endFactor) > 1e-6) trainingNext = trainingNextStep();
+        trainingProgress = tr.endFactor === tr.startFactor ? 1 : Math.max(0, Math.min(1, (factor - tr.startFactor) / (tr.endFactor - tr.startFactor)));
+        if (st.running && st.phase === 'work' && Math.abs(factor - tr.endFactor) > 1e-6) trainingNext = trainingNextStep();
     }
     return {
         running: st.running,
         phase: st.running ? st.phase : 'stopped',
         step: st.step,
         bar: st.bar,
-        factor: st.factor,
+        factor,
         active: activeNow(),
         remaining,
         round: st.round,
