@@ -433,8 +433,10 @@ function snapshot() {
     if (!st) return { running: false, phase: 'stopped' };
     const now = ctx ? ctx.currentTime : 0;
     let remaining = null;
-    if (st.phase === 'rest') remaining = st.restEnd - now;
-    else if (st.phase === 'work' && st.phaseEnd !== Infinity) remaining = st.phaseEnd - now;
+    // measured from the block's start if that's still ahead: starts are scheduled a moment into the future
+    // (a short lead so the first click isn't late), and counting that lead showed a 2:00 rest as 2:01
+    if (st.phase === 'rest') remaining = st.restEnd - Math.max(now, st.restStart ?? now);
+    else if (st.phase === 'work' && st.phaseEnd !== Infinity) remaining = st.phaseEnd - Math.max(now, st.workStart ?? now);
     let trainingProgress = null, trainingNext = null;
     if (cfg.training.enabled) {
         const tr = cfg.training;
