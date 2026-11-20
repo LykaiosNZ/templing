@@ -336,6 +336,8 @@ public class AppSettings
     public List<Section> FreeSections { get; set; } = new() { new Section { Name = "Click", Bpm = 100 } };
     public bool FreePlayThrough { get; set; }
     public int WeeklyGoalMin { get; set; } = 150;
+    /// <summary>Library shows pieces as a list (rows) instead of cards.</summary>
+    public bool LibraryList { get; set; }
     /// <summary>The Metronome's interval presets; null = the built-in ones (IntervalsEditor.MetronomeDefaults).</summary>
     public List<IntervalPreset>? MetronomeIntervalPresets { get; set; }
     /// <summary>The Timer's countdown presets; null = the built-in ones (IntervalsEditor.TimerDefaults).</summary>

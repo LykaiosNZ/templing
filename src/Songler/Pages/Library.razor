@@ -30,6 +30,11 @@
     </MudChipSet>
     <MudSpacer />
     <div class="toolbar-end">
+    <MudToggleGroup T="bool" Value="Store.Settings.LibraryList" ValueChanged="SetListView" Color="Color.Primary" Size="Size.Small" Outlined="true" CheckMark="false"
+                    Class="view-toggle" aria-label="View">
+        <MudToggleItem Value="false"><MudTooltip Text="Cards"><MudIcon Icon="@Icons.Material.Rounded.GridView" Size="Size.Small" aria-label="Cards" /></MudTooltip></MudToggleItem>
+        <MudToggleItem Value="true"><MudTooltip Text="List"><MudIcon Icon="@Icons.Material.Rounded.ViewList" Size="Size.Small" aria-label="List" /></MudTooltip></MudToggleItem>
+    </MudToggleGroup>
     <MudSelect T="string" @bind-Value="_sort" @bind-Value:after="Refresh" Label="Sort" Variant="Variant.Outlined" Margin="Margin.Dense" Class="toolbar-select" Dense="true">
         <MudSelectItem T="string" Value="@("recent")">Recently practised</MudSelectItem>
         <MudSelectItem T="string" Value="@("name")">Name</MudSelectItem>
@@ -51,6 +56,52 @@
 }
 else
 {
+    @if (Store.Settings.LibraryList)
+    {
+        <div class="piece-list" role="list">
+            <div class="piece-list-head" aria-hidden="true">
+                <span class="pr-cols"><span></span><span>Piece</span><span>Tempo</span><span class="pr-wide">Progress</span><span class="pr-wide">Last practised</span><span class="pr-wide">Practice time</span></span>
+                <span></span>
+            </div>
+            @foreach (var row in _rows)
+            {
+                var piece = row.Piece; var st = row.Stats;
+                <div class="piece-row @(piece.Archived ? "archived" : "")" role="listitem">
+                    <a class="piece-row-link pr-cols" href="library/@piece.Id" aria-label="@($"{piece.Name} details")">
+                        <MudIcon Icon="@piece.Type.Icon()" Size="Size.Small" Class="fav-kind" title="@piece.Type.Label()" />
+                        <span class="pr-name">@piece.Name</span>
+                        <span class="pr-tempo">
+                            @* "150 / 180 bpm": the unit once, so it fits *@
+                            <span class="mono">@(st.Sessions == 0 ? "—" : st.Last?.ToString("0") ?? "—")</span>@if (piece.Goal is { } g)
+                            {<span class="muted"> / @g.ToString("0")</span>}<span class="muted">@piece.Unit.Suffix()</span>
+                        </span>
+                        <span class="pr-progress pr-wide">
+                            @if (st.Sessions > 0 && st.Progress is { } pr)
+                            {
+                                <GoalBar Progress="pr" AriaLabel="@($"{piece.Name} progress: {pr:P0}")" />
+                                @if (GoalChip.Reached(piece, st.Last))
+                                {
+                                    <GoalChip Piece="piece" Last="st.Last" />
+                                }
+                                else
+                                {
+                                    <span class="mono small">@pr.ToString("P0")</span>
+                                }
+                            }
+                        </span>
+                        <span class="muted small pr-wide">@(st.Sessions > 0 ? Stats.Ago(st.LastDate, DateTime.Today) : "Not started yet")</span>
+                        <span class="muted small pr-wide" title="@(st.Sessions == 1 ? "1 session" : $"{st.Sessions} sessions")">@(st.Sessions > 0 ? Stats.Duration(st.TotalSec) : "")</span>
+                    </a>
+                    <span class="pr-actions">
+                        @PracticeActions(piece)
+                        @ManageActions(piece)
+                    </span>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
     <div class="piece-grid" role="list">
         @foreach (var row in _rows)
         {
@@ -112,27 +163,41 @@ else
                     }
                 </a>
                 <div class="piece-card-actions">
-                    <MudTooltip Text="Practise with metronome">
-                        <MudIconButton Size="Size.Small" Icon="@Mdi.Metronome" Color="Color.Primary" Href="@($"metronome/piece/{piece.Id}")" aria-label="@($"Practise {piece.Name} with the metronome")" />
-                    </MudTooltip>
-                    <MudTooltip Text="Practise with timer (no click)">
-                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.HourglassBottom" Color="Color.Primary" Href="@($"timer/piece/{piece.Id}")" aria-label="@($"Practise {piece.Name} with the timer")" />
-                    </MudTooltip>
+                    @PracticeActions(piece)
                     <MudSpacer />
-                    <FavouriteToggle On="piece.Favourite" Name="@piece.Name" OnToggle="() => ToggleFavourite(piece)" />
-                    <MudTooltip Text="Log practice">
-                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.AddTask" aria-label="@($"Log practice for {piece.Name}")" OnClick="() => Log(piece)" />
-                    </MudTooltip>
-                    <MudTooltip Text="Edit">
-                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit {piece.Name}")" OnClick="() => Edit(piece)" />
-                    </MudTooltip>
+                    @ManageActions(piece)
                 </div>
             </article>
         }
     </div>
+    }
 }
 
 @code {
+    async Task SetListView(bool list) { Store.Settings.LibraryList = list; await Store.SaveSettingsAsync(); }
+
+    // the same buttons on cards and list rows
+    RenderFragment PracticeActions(Piece piece) =>
+        @<text>
+            <MudTooltip Text="Practise with metronome">
+                <MudIconButton Size="Size.Small" Icon="@Mdi.Metronome" Color="Color.Primary" Href="@($"metronome/piece/{piece.Id}")" aria-label="@($"Practise {piece.Name} with the metronome")" />
+            </MudTooltip>
+            <MudTooltip Text="Practise with timer (no click)">
+                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.HourglassBottom" Color="Color.Primary" Href="@($"timer/piece/{piece.Id}")" aria-label="@($"Practise {piece.Name} with the timer")" />
+            </MudTooltip>
+        </text>;
+
+    RenderFragment ManageActions(Piece piece) =>
+        @<text>
+            <FavouriteToggle On="piece.Favourite" Name="@piece.Name" OnToggle="() => ToggleFavourite(piece)" />
+            <MudTooltip Text="Log practice">
+                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.AddTask" aria-label="@($"Log practice for {piece.Name}")" OnClick="() => Log(piece)" />
+            </MudTooltip>
+            <MudTooltip Text="Edit">
+                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit {piece.Name}")" OnClick="() => Edit(piece)" />
+            </MudTooltip>
+        </text>;
+
     async Task ToggleFavourite(Piece p) { p.Favourite = !p.Favourite; await Store.SavePieceAsync(p); }
 
     // MudMenu only closes once a menu item's handler finishes; start dialogs after it closes instead of awaiting them inside the click

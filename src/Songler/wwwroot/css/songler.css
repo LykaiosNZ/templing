@@ -81,6 +81,29 @@ kbd {
 
 
 /* library */
+/* Library list view: one row per piece, same columns as the header; the link is the row, actions sit at the end */
+.piece-list { display: flex; flex-direction: column; }
+.piece-list-head, .piece-row { display: grid; grid-template-columns: minmax(0, 1fr) 168px; align-items: center; gap: 8px; }
+.pr-cols { display: grid; grid-template-columns: 22px minmax(140px, 2fr) minmax(130px, 1fr) 170px 100px 110px; align-items: center; gap: 12px; min-width: 0; }
+.piece-list-head { padding: 0 8px 6px; font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--grid); }
+.piece-row { padding: 2px 8px; border-bottom: 1px solid var(--grid); border-radius: 8px; }
+.piece-row:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.piece-row.archived { opacity: .6; }
+.mud-layout a.piece-row-link { color: var(--ink); text-decoration: none; padding: 8px 0; }
+.pr-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr-tempo { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pr-progress { display: flex; align-items: center; gap: 8px; }
+.pr-progress .mud-progress-linear { flex: 1; }
+.pr-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0; }
+.view-toggle .mud-toggle-item { padding: 4px 8px; }
+@media (max-width: 1100px) { .pr-cols { grid-template-columns: 22px minmax(120px, 2fr) minmax(120px, 1fr) 150px 90px; } .pr-cols > :nth-child(6) { display: none; } }
+@media (max-width: 700px) {
+    .piece-list-head { display: none; }
+    .piece-row { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    .pr-cols { grid-template-columns: 22px minmax(0, 1fr) auto; }
+    .pr-wide { display: none; }
+    .pr-actions { justify-content: flex-start; margin: -4px 0 4px 26px; }
+}
 .piece-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
 .piece-card {
     background: var(--card); border: 1px solid var(--ring); border-radius: var(--radius); display: flex; flex-direction: column;
