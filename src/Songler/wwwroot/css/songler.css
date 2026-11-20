@@ -296,6 +296,8 @@ kbd {
 .rail-sec-heading { margin: 0; }
 .rail-sec-toggle { width: 100%; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .rail-sec-toggle:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.rail-sec-toggle:disabled { cursor: default; color: inherit; }
+.rail-sec-toggle:disabled:hover { background: none; }
 .rail-sec-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .rail-sec-dot { width: 32px; height: 32px; flex: 0 0 auto; border-radius: 50%; border: 1px solid var(--ring); color: var(--ink-2); display: grid; place-items: center; transition: background .15s, border-color .15s, color .15s; }
 .rail-sec.on .rail-sec-dot { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }

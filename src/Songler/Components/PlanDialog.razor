@@ -86,7 +86,7 @@
                                         <div class="ps-tempo">
                                             <MudTooltip Text="@($"Speed trainer: {(s.Trainer ? "on" : "off")}")">
                                                 <MudIconButton Icon="@Icons.Material.Rounded.TrendingUp" Size="Size.Small" Class="@(s.Trainer ? "opt-toggle on" : "opt-toggle")" aria-label="Speed trainer"
-                                                               aria-pressed="@(s.Trainer ? "true" : "false")" OnClick="() => s.Trainer = !s.Trainer" />
+                                                               aria-pressed="@(s.Trainer ? "true" : "false")" OnClick="() => ToggleTrainer(s, piece)" />
                                             </MudTooltip>
                                             @if (s.Trainer)
                                             {
@@ -122,6 +122,20 @@
 </MudDialog>
 
 @code {
+    /// <summary>
+    /// Switching a step's trainer on starts it at the piece's Start at and ends at its goal, unless From/To were
+    /// already changed from the defaults (80 → 120).
+    /// </summary>
+    static void ToggleTrainer(PlanStep s, Piece? piece)
+    {
+        if (!s.Trainer && piece != null && s.TrainerStart == 80 && s.TrainerEnd == 120)
+        {
+            if (piece.StartTempo is { } start) s.TrainerStart = start;
+            if (piece.Goal is { } goal && goal > s.TrainerStart) s.TrainerEnd = goal;
+        }
+        s.Trainer = !s.Trainer;
+    }
+
     [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
     [Parameter] public PracticePlan Plan { get; set; } = new();
     [Parameter] public bool IsNew { get; set; }

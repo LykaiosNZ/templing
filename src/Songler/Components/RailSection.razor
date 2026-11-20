@@ -7,7 +7,7 @@
     @if (Switchable)
     {
         <h3 class="rail-sec-heading">
-            <button type="button" class="rail-sec-head rail-sec-toggle" role="switch" aria-checked="@(On ? "true" : "false")" @onclick="Toggle">
+            <button type="button" class="rail-sec-head rail-sec-toggle" role="switch" aria-checked="@(On ? "true" : "false")" disabled="@Disabled" @onclick="Toggle">
                 <span class="rail-sec-dot" aria-hidden="true"><MudIcon Icon="@Icon" Size="Size.Small" /></span>
                 <span class="rail-sec-title">@Title</span>
             </button>
@@ -32,6 +32,8 @@
     [Parameter] public bool On { get; set; }
     [Parameter] public EventCallback<bool> OnChanged { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    /// <summary>The switch can't be used (e.g. a plan step sets this feature); the fields stay visible while on.</summary>
+    [Parameter] public bool Disabled { get; set; }
 
     bool Switchable => OnChanged.HasDelegate;
 

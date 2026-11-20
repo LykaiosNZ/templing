@@ -2,15 +2,16 @@
 @inject MetronomeService Metro
 @inject DataStore Store
 
-@if (Metro.StepPinned)
+@if (Pinned)
 {
-    <MudAlert Severity="Severity.Info" Dense="true">Your plan sets the intervals for this step. Changes here apply after the plan.</MudAlert>
+    <MudAlert Severity="Severity.Info" Dense="true">Set by your plan for this step.</MudAlert>
 }
-@{ var iv = Settings; }
+@* while a plan step sets the intervals, show its values, locked; yours come back when the plan ends *@
+@{ var iv = Shown; }
 @* an action, not a value: it always reads "Load preset" and fills in the fields below *@
 @if (Presets.Count > 0)
 {
-    <MudSelect T="int?" Value="null" ValueChanged="Load" Label="Load preset" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+    <MudSelect T="int?" Value="null" ValueChanged="Load" Label="Load preset" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Disabled="Pinned">
         @for (int i = 0; i < Presets.Count; i++)
         {
             var idx = i;
@@ -21,14 +22,14 @@
 }
 @* Work · Rounds (a Repeat toggle for "until stopped", else a count), then Rest only when there's more than one round *@
 <div class="form-grid interval-grid">
-    <DurationInput Seconds="iv.WorkMin * 60" SecondsChanged="async v => { iv.WorkMin = (v ?? 15) / 60; await Apply(); }" Label="Work" MinSeconds="15" MaxSeconds="7200" Variant="Variant.Outlined" Margin="Margin.Dense" />
-    <RoundsInput Rounds="iv.Rounds" RoundsChanged="async v => { iv.Rounds = v; await Apply(); }" />
+    <DurationInput Seconds="iv.WorkMin * 60" SecondsChanged="async v => { iv.WorkMin = (v ?? 15) / 60; await Apply(); }" Label="Work" MinSeconds="15" MaxSeconds="7200" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="Pinned" />
+    <RoundsInput Rounds="iv.Rounds" RoundsChanged="async v => { iv.Rounds = v; await Apply(); }" Disabled="Pinned" />
     @if (iv.Rounds != 1)
     {
-        <DurationInput Seconds="iv.RestMin * 60" SecondsChanged="async v => { iv.RestMin = (v ?? 0) / 60; await Apply(); }" Label="Rest" MaxSeconds="3600" Variant="Variant.Outlined" Margin="Margin.Dense" />
+        <DurationInput Seconds="iv.RestMin * 60" SecondsChanged="async v => { iv.RestMin = (v ?? 0) / 60; await Apply(); }" Label="Rest" MaxSeconds="3600" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="Pinned" />
     }
 </div>
-<MudSwitch T="bool" @bind-Value="iv.VoiceCues" @bind-Value:after="Apply" Color="Color.Primary" Label="Audio cues" Class="rail-line-switch" />
+<MudSwitch T="bool" @bind-Value="Settings.VoiceCues" @bind-Value:after="Apply" Color="Color.Primary" Label="Audio cues" Class="rail-line-switch" />
 
 @code {
     public static IReadOnlyList<IntervalPreset> MetronomeDefaults { get; } = new[]
@@ -44,6 +45,14 @@
     static IntervalPreset P(double work, double rest, int rounds) => new() { WorkMin = work, RestMin = rest, Rounds = rounds };
 
     [Parameter, EditorRequired] public IntervalSettings Settings { get; set; } = default!;
+
+    /// <summary>A plan step sets the intervals right now.</summary>
+    bool Pinned => Metro.StepPinned;
+
+    /// <summary>What the fields show: the plan step's intervals while it sets them (a copy, never saved), else the user's.</summary>
+    IntervalSettings Shown => Pinned && Metro.EffectiveIntervals is var e
+        ? new IntervalSettings { Enabled = true, WorkMin = e.WorkSec / 60, RestMin = e.RestSec / 60, Rounds = e.Rounds, VoiceCues = Settings.VoiceCues }
+        : Settings;
     /// <summary>The Timer's countdown (its own presets) rather than the Metronome's intervals.</summary>
     [Parameter] public bool Timer { get; set; }
 

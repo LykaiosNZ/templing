@@ -176,8 +176,8 @@
 
 <OptionsRail @ref="_rail">
     <Strip>
-        <RailToggle Title="Speed trainer" Icon="@Icons.Material.Rounded.TrendingUp" On="Metro.Training.Enabled" OnToggle="() => SetTraining(!Metro.Training.Enabled)" />
-        <RailToggle Title="Intervals" Icon="@Icons.Material.Rounded.Timelapse" On="Metro.Settings.Interval.Enabled" OnToggle="() => SetIntervals(!Metro.Settings.Interval.Enabled)" />
+        <RailToggle Title="Speed trainer" Icon="@Icons.Material.Rounded.TrendingUp" On="Metro.Training.Enabled" OnToggle="() => SetTraining(!Metro.Training.Enabled)" Disabled="Metro.TrainingPinned" />
+        <RailToggle Title="Intervals" Icon="@Icons.Material.Rounded.Timelapse" On="Metro.EffectiveIntervals.Enabled" OnToggle="() => SetIntervals(!Metro.Settings.Interval.Enabled)" Disabled="Metro.StepPinned" />
         <RailToggle Title="Count-in" Icon="@Icons.Material.Rounded.HourglassTop" On="Metro.Settings.CountIn" OnToggle="() => SetCountIn(!Metro.Settings.CountIn)" />
         @if (Metro.Sections.Count > 1)
         {
@@ -236,37 +236,37 @@
             </RailSection>
         }
 
-        <RailSection Title="Speed trainer" Icon="@Icons.Material.Rounded.TrendingUp" On="Metro.Training.Enabled" OnChanged="SetTraining">
+        <RailSection Title="Speed trainer" Icon="@Icons.Material.Rounded.TrendingUp" On="Metro.Training.Enabled" OnChanged="SetTraining" Disabled="Metro.TrainingPinned">
             @{ var tr = Metro.Training; var u = Metro.Unit == TempoUnit.Percent ? "%" : "bpm"; }
             @if (Metro.TrainingPinned)
             {
-                <MudAlert Severity="Severity.Info" Dense="true">Set by your plan for this step. Changes here only affect this step.</MudAlert>
+                <MudAlert Severity="Severity.Info" Dense="true">Set by your plan for this step.</MudAlert>
             }
             <div class="form-grid">
-                <MudNumericField T="double" @bind-Value="tr.Start" @bind-Value:after="Apply" Label="@($"Start ({u})")" Min="Metro.Min" Max="Metro.Max" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                <MudNumericField T="double" @bind-Value="tr.End" @bind-Value:after="Apply" Label="@($"End ({u})")" Min="Metro.Min" Max="Metro.Max" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <MudNumericField Disabled="Metro.TrainingPinned" T="double" @bind-Value="tr.Start" @bind-Value:after="Apply" Label="@($"Start ({u})")" Min="Metro.Min" Max="Metro.Max" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <MudNumericField Disabled="Metro.TrainingPinned" T="double" @bind-Value="tr.End" @bind-Value:after="Apply" Label="@($"End ({u})")" Min="Metro.Min" Max="Metro.Max" Variant="Variant.Outlined" Margin="Margin.Dense" />
             </div>
-            <MudToggleGroup T="RampMode" @bind-Value="tr.Mode" @bind-Value:after="Apply" Color="Color.Primary" Size="Size.Small" Outlined="true" CheckMark="false" Class="rail-seg">
+            <MudToggleGroup Disabled="Metro.TrainingPinned" T="RampMode" @bind-Value="tr.Mode" @bind-Value:after="Apply" Color="Color.Primary" Size="Size.Small" Outlined="true" CheckMark="false" Class="rail-seg">
                 <MudToggleItem Value="RampMode.OverTime" Text="Over time" />
                 <MudToggleItem Value="RampMode.EveryNBars" Text="Every N bars" />
             </MudToggleGroup>
             <div class="form-grid">
-                <MudNumericField T="int" Value="tr.StepCount" ValueChanged="async v => { tr.Steps = v; await Apply(); }" Label="Steps" Min="1" Max="tr.MaxSteps"
+                <MudNumericField Disabled="Metro.TrainingPinned" T="int" Value="tr.StepCount" ValueChanged="async v => { tr.Steps = v; await Apply(); }" Label="Steps" Min="1" Max="tr.MaxSteps"
                                  Variant="Variant.Outlined" Margin="Margin.Dense" />
                 @if (tr.Mode == RampMode.OverTime)
                 {
-                    <DurationInput Seconds="tr.DurationMin * 60" SecondsChanged="async v => { tr.DurationMin = (v ?? 300) / 60; await Apply(); }" Label="Over"
+                    <DurationInput Disabled="Metro.TrainingPinned" Seconds="tr.DurationMin * 60" SecondsChanged="async v => { tr.DurationMin = (v ?? 300) / 60; await Apply(); }" Label="Over"
                                    MinSeconds="15" MaxSeconds="7200" Variant="Variant.Outlined" Margin="Margin.Dense" />
                 }
                 else
                 {
-                    <MudNumericField T="int" @bind-Value="tr.EveryBars" @bind-Value:after="Apply" Label="Every (bars)" Min="1" Max="64" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudNumericField Disabled="Metro.TrainingPinned" T="int" @bind-Value="tr.EveryBars" @bind-Value:after="Apply" Label="Every (bars)" Min="1" Max="64" Variant="Variant.Outlined" Margin="Margin.Dense" />
                 }
             </div>
-            <MudSwitch T="bool" @bind-Value="tr.StopAtEnd" @bind-Value:after="Apply" Color="Color.Primary" Label="Stop at end" Class="rail-line-switch" />
+            <MudSwitch Disabled="Metro.TrainingPinned" T="bool" @bind-Value="tr.StopAtEnd" @bind-Value:after="Apply" Color="Color.Primary" Label="Stop at end" Class="rail-line-switch" />
         </RailSection>
 
-        <RailSection Title="Intervals" Icon="@Icons.Material.Rounded.Timelapse" On="Metro.Settings.Interval.Enabled" OnChanged="SetIntervals">
+        <RailSection Title="Intervals" Icon="@Icons.Material.Rounded.Timelapse" On="Metro.EffectiveIntervals.Enabled" OnChanged="SetIntervals" Disabled="Metro.StepPinned">
             <IntervalsEditor Settings="Metro.Settings.Interval" />
         </RailSection>
 

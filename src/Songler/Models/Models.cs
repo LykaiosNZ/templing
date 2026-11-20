@@ -220,7 +220,7 @@ public class PlanStep
     {
         if (Kind != PlanStepKind.Piece || Mode != StepMode.Metronome) return "";
         var u = unit == TempoUnit.Percent ? "%" : " bpm";
-        if (Trainer) return $"{TrainerStart:0} → {TrainerEnd:0}{u}";
+        if (Trainer) return $"trainer {TrainerStart:0} → {TrainerEnd:0}{u}";
         return StartTempo is { } t ? $"start {t:0}{u}" : "";
     }
 

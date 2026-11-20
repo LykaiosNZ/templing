@@ -4,12 +4,12 @@
 <div class="rounds-input">
     <MudTooltip Text="@($"Repeat until stopped: {(Endless ? "on" : "off")}")">
         <MudIconButton Icon="@Icons.Material.Rounded.Repeat" Size="Size.Small" Class="@(Endless ? "opt-toggle on" : "opt-toggle")"
-                       aria-label="@($"Repeat until stopped{(AriaName is { } n ? $" ({n})" : "")}")" aria-pressed="@(Endless ? "true" : "false")" OnClick="ToggleEndless" />
+                       aria-label="@($"Repeat until stopped{(AriaName is { } n ? $" ({n})" : "")}")" aria-pressed="@(Endless ? "true" : "false")" Disabled="Disabled" OnClick="ToggleEndless" />
     </MudTooltip>
     @if (!Endless)
     {
         <MudNumericField T="int" Value="Rounds" ValueChanged="Set" Label="Rounds" Min="1" Max="99"
-                         Variant="Variant.Outlined" Margin="Margin.Dense" Class="rounds-number" aria-label="@AriaName" />
+                         Variant="Variant.Outlined" Margin="Margin.Dense" Class="rounds-number" aria-label="@AriaName" Disabled="Disabled" />
     }
 </div>
 
@@ -19,6 +19,7 @@
     [Parameter] public EventCallback<int> RoundsChanged { get; set; }
     /// <summary>Extra accessible context, e.g. "Preset 2 rounds".</summary>
     [Parameter] public string? AriaName { get; set; }
+    [Parameter] public bool Disabled { get; set; }
 
     bool Endless => Rounds == 0;
     int _last = 2; // what Repeat-off goes back to

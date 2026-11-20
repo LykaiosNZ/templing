@@ -45,10 +45,15 @@
         Key(Hotkeys.CountIn, () => Toggle("Count-in", () => Metro.Settings.CountIn = !Metro.Settings.CountIn));
         Key(Hotkeys.SpeedTrainer, async () =>
         {
+            if (Metro.TrainingPinned) { Snackbar.Add("Set by your plan for this step", Severity.Normal); return; }
             await Metro.SetTrainingEnabledAsync(!Metro.Training.Enabled);
             Snackbar.Add($"Speed trainer {(Metro.Training.Enabled ? "on" : "off")}", Severity.Normal);
         });
-        Key(Hotkeys.IntervalTrainer, () => Toggle("Interval trainer", () => Metro.Settings.Interval.Enabled = !Metro.Settings.Interval.Enabled));
+        Key(Hotkeys.IntervalTrainer, () =>
+        {
+            if (Metro.StepPinned) { Snackbar.Add("Set by your plan for this step", Severity.Normal); return Task.CompletedTask; }
+            return Toggle("Interval trainer", () => Metro.Settings.Interval.Enabled = !Metro.Settings.Interval.Enabled);
+        });
     }
 
     public void Dispose() { foreach (var k in _keys) k.Dispose(); }
