@@ -7,15 +7,15 @@
 .theme-light, :root:has(.theme-light) {
     --ink: #0b0b0b; --ink-2: #52514e; --muted: #77756f;
     --grid: #e1e0d9; --axis: #c3c2b7; --card: #fcfcfb; --card-2: #f1f0ec; --ring: rgba(11,11,11,.09);
-    --series: #2a78d6; --accent: #d9531e; --accent-soft: rgba(217,83,30,.12); --good: #0a8a0a; --rest: #2a78d6;
-    --hm-0: #ebeae5; --hm-1: #b7d3f6; --hm-2: #6da7ec; --hm-3: #2a78d6; --hm-4: #184f95;
+    --series: #6a449f; --accent: #0361c3; --accent-soft: rgba(3,97,195,.12); --good: #0a8a0a; --rest: #6a449f;
+    --hm-0: #ebeae5; --hm-1: #cbbedd; --hm-2: #977cbc; --hm-3: #6a449f; --hm-4: #40295f;
     --tip-bg: #0b0b0b; --tip-ink: #f0efec; --tip-muted: #c3c2b7;
 }
 .theme-dark, :root:has(.theme-dark) {
     --ink: #f0efec; --ink-2: #c3c2b7; --muted: #8f8d87;
     --grid: #2c2c2a; --axis: #383835; --card: #1a1a19; --card-2: #232321; --ring: rgba(255,255,255,.07);
-    --series: #3987e5; --accent: #f0763f; --accent-soft: rgba(240,118,63,.14); --good: #0ca30c; --rest: #3987e5;
-    --hm-0: #252523; --hm-1: #184f95; --hm-2: #256abf; --hm-3: #3987e5; --hm-4: #86b6ef;
+    --series: #6a449f; --accent: #0361c3; --accent-soft: rgba(3,97,195,.14); --good: #0ca30c; --rest: #6a449f;
+    --hm-0: #252523; --hm-1: #251838; --hm-2: #4a306f; --hm-3: #6a449f; --hm-4: #a68fc5;
     --tip-bg: #f0efec; --tip-ink: #0b0b0b; --tip-muted: #52514e;
 }
 body { -webkit-font-smoothing: antialiased; }
@@ -28,13 +28,13 @@ body { -webkit-font-smoothing: antialiased; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 :where(.mud-layout) a:where(:not(.mud-button-root):not(.mud-nav-link)) { color: var(--accent); text-decoration: none; }
 :where(.mud-layout) a:where(:not(.mud-button-root):not(.mud-nav-link)):hover { text-decoration: underline; }
-:focus-visible { outline: 2px solid var(--accent, #f0763f); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--accent, #0361c3); outline-offset: 2px; }
 main:focus { outline: none; }
 kbd {
     font-family: var(--mono); font-size: .75em; padding: 1px 6px; border-radius: 5px; margin: 0 1px;
     border: 1px solid var(--mud-palette-lines-default); border-bottom-width: 2px; background: var(--mud-palette-background); color: var(--mud-palette-text-primary);
 }
-.skip-link { position: absolute; left: -999px; top: 8px; z-index: 2000; background: #d9531e; color: #fff !important; padding: 8px 14px; border-radius: 8px; }
+.skip-link { position: absolute; left: -999px; top: 8px; z-index: 2000; background: var(--accent, #0361c3); color: #fff !important; padding: 8px 14px; border-radius: 8px; }
 .skip-link:focus { left: 12px; }
 
 /* app chrome */
@@ -43,7 +43,7 @@ kbd {
 .mud-layout a.brand { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; margin-left: 6px; }
 .brand-mark {
     width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 18px; font-weight: 800;
-    background: linear-gradient(135deg, #f0763f, #d9531e 60%, #a8360c); color: #fff; box-shadow: 0 4px 14px rgba(217,83,30,.35);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 80%, #fff), var(--accent) 60%, color-mix(in srgb, var(--accent) 70%, #000)); color: #fff; box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 .brand-name { font-weight: 800; font-size: 1.15rem; letter-spacing: -.02em; }
 .app-drawer { border-right: 1px solid var(--mud-palette-lines-default) !important; }
@@ -202,7 +202,7 @@ kbd {
     display: flex; flex-direction: column; align-items: center; gap: 16px;
 }
 .stage.running { border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
-.stage.phase-rest { background: radial-gradient(120% 90% at 50% 0%, rgba(57,135,229,.18), transparent 60%), var(--card); border-color: var(--rest); }
+.stage.phase-rest { background: radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--rest) 18%, transparent), transparent 60%), var(--card); border-color: var(--rest); }
 .section-picker { display: flex; align-items: center; gap: 4px; width: 100%; max-width: 420px; }
 .section-picker .section-select { flex: 1; min-width: 0; }
 .sec-opt { display: flex; flex-direction: column; line-height: 1.25; padding: 2px 0; }
@@ -232,15 +232,15 @@ kbd {
 .status-line { min-height: 26px; display: flex; gap: 8px; align-items: center; font-size: .92rem; flex-wrap: wrap; justify-content: center; }
 .phase { font-weight: 700; padding: 2px 10px; border-radius: 999px; font-size: .82rem; }
 .phase.work { background: var(--accent-soft); color: var(--accent); }
-.phase.countin { background: rgba(57,135,229,.16); color: var(--series); }
-.phase.rest { background: rgba(57,135,229,.16); color: var(--series); font-family: var(--mono); }
+.phase.countin { background: color-mix(in srgb, var(--series) 16%, transparent); color: var(--series); }
+.phase.rest { background: color-mix(in srgb, var(--series) 16%, transparent); color: var(--series); font-family: var(--mono); }
 .training-bar { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 520px; font-family: var(--mono); font-size: .85rem; color: var(--ink-2); }
 .training-bar .mud-progress-linear { flex: 1; }
 .training-next { margin-top: -6px; font-family: var(--mono); font-size: .78rem; color: var(--muted); }
 .transport { display: flex; align-items: center; gap: 14px; }
 .play-btn {
     width: 84px; height: 84px; border-radius: 50%; border: none; cursor: pointer; display: grid; place-items: center; color: #fff;
-    background: linear-gradient(135deg, #f0763f, #d9531e); box-shadow: 0 8px 28px rgba(217,83,30,.45); transition: transform .1s ease;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 80%, #fff), var(--accent)); box-shadow: 0 8px 28px color-mix(in srgb, var(--accent) 45%, transparent); transition: transform .1s ease;
 }
 .play-btn:hover { transform: scale(1.04); }
 .play-btn:active { transform: scale(.97); }
@@ -367,6 +367,11 @@ kbd {
 .setting-control { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; flex: none; }
 .setting-control .mud-input-control { margin: 0; }
 @media (max-width: 600px) { .setting-row { flex-wrap: wrap; } .setting-control { justify-content: flex-start; } }
+/* Settings > Colours: a swatch beside each picker */
+.mode-toggle.mud-toggle-group { width: 140px; }
+.colour-swatch { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--ring); flex: none; }
+.colour-control .colour-picker { width: 140px; }
+.colour-control .colour-picker input { font-family: var(--mono); }
 .file-drop {
     position: relative; display: flex; align-items: center; gap: 10px; padding: 18px; border-radius: 12px; cursor: pointer;
     border: 2px dashed var(--mud-palette-lines-inputs); color: var(--ink-2); font-weight: 600;
@@ -378,17 +383,18 @@ code { font-family: var(--mono); font-size: .85em; background: var(--card-2); pa
 
 /* Loading screen (wwwroot/index.html while downloading, BootScreen while the library loads). Plain colours, not
    theme tokens: the theme isn't applied yet. html.boot-light comes from the saved setting (script in index.html). */
-.boot { --boot-bg: #0f0f0e; --boot-ink: #f0efec; --boot-muted: #8f8d87; --boot-track: #2c2c2a;
+.boot { --boot-accent: var(--boot-accent-dark, #0361c3); --boot-bg: #0f0f0e; --boot-ink: #f0efec; --boot-muted: #8f8d87; --boot-track: #2c2c2a;
     position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
     background: var(--boot-bg); color: var(--boot-ink); font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-html.boot-light .boot { --boot-bg: #f7f6f2; --boot-ink: #0b0b0b; --boot-muted: #77756f; --boot-track: #e1e0d9; }
+html.boot-light .boot { --boot-accent: var(--boot-accent-light, #0361c3); --boot-bg: #f7f6f2; --boot-ink: #0b0b0b; --boot-muted: #77756f; --boot-track: #e1e0d9; }
 .boot-card { display: flex; flex-direction: column; align-items: center; animation: boot-in .4s ease-out both; }
 .boot-mark { width: 64px; height: 64px; border-radius: 18px; display: grid; place-items: center; font-size: 36px; font-weight: 800; color: #fff;
-    background: linear-gradient(135deg, #f0763f, #d9531e 60%, #a8360c); box-shadow: 0 10px 30px rgba(217,83,30,.35); }
+    background: linear-gradient(135deg, color-mix(in srgb, var(--boot-accent) 80%, #fff), var(--boot-accent) 60%, color-mix(in srgb, var(--boot-accent) 70%, #000));
+    box-shadow: 0 10px 30px color-mix(in srgb, var(--boot-accent) 35%, transparent); }
 .boot-name { margin-top: 18px; font-size: 1.9rem; font-weight: 800; letter-spacing: -.03em; }
 .boot-tag { margin-top: 2px; color: var(--boot-muted); font-size: .92rem; }
 .boot-bar { margin-top: 28px; width: 200px; height: 4px; border-radius: 2px; background: var(--boot-track); overflow: hidden; }
-.boot-bar-fill { height: 100%; width: var(--blazor-load-percentage, 4%); border-radius: inherit; background: #f0763f; transition: width .15s ease-out; }
+.boot-bar-fill { height: 100%; width: var(--blazor-load-percentage, 4%); border-radius: inherit; background: var(--boot-accent); transition: width .15s ease-out; }
 .boot-bar.indeterminate .boot-bar-fill { width: 35%; animation: boot-slide 1.1s ease-in-out infinite; }
 .boot-status { margin-top: 10px; min-height: 1.2em; color: var(--boot-muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
 .boot-pct::after { content: "Loading " var(--blazor-load-percentage-text, ""); }
@@ -486,7 +492,7 @@ html.boot-light .boot { --boot-bg: #f7f6f2; --boot-ink: #0b0b0b; --boot-muted: #
     --phase: var(--muted); transition: background .4s, border-color .4s;
 }
 .timer-stage.phase-work { --phase: var(--accent); background: radial-gradient(120% 90% at 50% 0%, var(--accent-soft), transparent 65%), var(--card); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
-.timer-stage.phase-rest { --phase: var(--series); background: radial-gradient(120% 90% at 50% 0%, rgba(57,135,229,.22), transparent 65%), var(--card); border-color: var(--series); }
+.timer-stage.phase-rest { --phase: var(--series); background: radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--series) 22%, transparent), transparent 65%), var(--card); border-color: var(--series); }
 .timer-stage.phase-done { --phase: var(--good); border-color: color-mix(in srgb, var(--good) 45%, transparent); }
 .timer-flash { position: absolute; inset: 0; pointer-events: none; background: var(--phase); opacity: 0; animation: timer-flash 1.2s ease-out; }
 @keyframes timer-flash { 0% { opacity: .35; } 100% { opacity: 0; } }

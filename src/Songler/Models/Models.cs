@@ -357,4 +357,14 @@ public class AppSettings
     public List<IntervalPreset>? TimerIntervalPresets { get; set; }
     /// <summary>Plans: save each step's log automatically when it finishes instead of asking.</summary>
     public bool AutoLogPlanSteps { get; set; }
+    /// <summary>Custom theme colours; null = the built-in ones. See <c>Layout.ThemeColours</c> for the keys.</summary>
+    public CustomColours? Colours { get; set; }
+}
+
+/// <summary>Colours the user picked, per mode: slot key (ThemeColours.Slots) → "#rrggbb". Slots not listed use the built-in colour.</summary>
+public class CustomColours
+{
+    public Dictionary<string, string> Light { get; set; } = new();
+    public Dictionary<string, string> Dark { get; set; } = new();
+    public Dictionary<string, string> For(bool dark) => dark ? Dark : Light;
 }

@@ -1,4 +1,4 @@
-using MudBlazor;
+﻿using MudBlazor;
 
 namespace Songler.Layout;
 
@@ -6,12 +6,13 @@ public static class AppTheme
 {
     private static readonly string[] Font = ["Inter", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"];
 
-    public static readonly MudTheme Theme = new()
+    /// <summary>A fresh copy of the built-in theme (ThemeColours.Theme lays the user's colours over it). Keep in step with ThemeColours.Slots.</summary>
+    public static MudTheme Create() => new()
     {
         PaletteLight = new PaletteLight
         {
-            Primary = "#d9531e",
-            Secondary = "#2a78d6",
+            Primary = "#0361c3",
+            Secondary = "#6a449f",
             Tertiary = "#1baf7a",
             Background = "#f6f5f2",
             Surface = "#fcfcfb",
@@ -32,8 +33,8 @@ public static class AppTheme
         },
         PaletteDark = new PaletteDark
         {
-            Primary = "#f0763f",
-            Secondary = "#3987e5",
+            Primary = "#0361c3",
+            Secondary = "#6a449f",
             Tertiary = "#199e70",
             Background = "#0f0f0e",
             BackgroundGray = "#161615",

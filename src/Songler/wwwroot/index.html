@@ -33,7 +33,7 @@
     </div>
 
     <script>
-        // Light or dark from the saved settings, read straight from IndexedDB, so the loading screen matches the app.
+        // Light or dark (and a custom accent) from the saved settings, read straight from IndexedDB, so the loading screen matches the app.
         // Never creates the database: on a first visit the upgrade is aborted and the default (dark) stays.
         (function () {
             try {
@@ -43,7 +43,15 @@
                     var db = q.result;
                     try {
                         var g = db.transaction('settings').objectStore('settings').get('app');
-                        g.onsuccess = function () { if (g.result && g.result.DarkMode === false) document.documentElement.classList.add('boot-light'); db.close(); };
+                        g.onsuccess = function () {
+                            var s = g.result, root = document.documentElement;
+                            if (s && s.DarkMode === false) root.classList.add('boot-light');
+                            // custom accent (Settings > Colours), so the loading screen isn't the built-in orange
+                            var c = s && s.Colours;
+                            if (c && c.Light && c.Light.accent) root.style.setProperty('--boot-accent-light', c.Light.accent);
+                            if (c && c.Dark && c.Dark.accent) root.style.setProperty('--boot-accent-dark', c.Dark.accent);
+                            db.close();
+                        };
                         g.onerror = function () { db.close(); };
                     } catch (e) { db.close(); }
                 };

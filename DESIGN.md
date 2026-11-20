@@ -112,8 +112,9 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 
 ## Colour
 
-- Use the CSS tokens (`--ink`, `--ink-2`, `--muted`, `--accent`, `--accent-soft`, `--ring`, `--card-2`, MudBlazor palette vars). No literal colours in pages.
-- Accent (orange) means primary action, current or active state. Warning (amber) means something needs attention, e.g. a step whose piece was deleted. Blue is for data (chart bars, ranked bars, the practice heatmap) and for rest phases.
+- Use the CSS tokens (`--ink`, `--ink-2`, `--muted`, `--accent`, `--accent-soft`, `--ring`, `--card-2`, MudBlazor palette vars). No literal colours in pages, and none in `songler.css` outside the token blocks either: tints and gradients derive from a token with `color-mix(in srgb, var(--accent) 16%, transparent)`, so they follow custom colours.
+- **Custom colours** (Settings > Colours, `ColoursEditor`): the user can change the slots in `ThemeColours.Slots` (accent, charts and rests, goals, warnings, errors, background, cards, text) separately for light and dark mode, with MudBlazor's `MudColorPicker`. Changes apply live. Each slot sets both the MudBlazor palette and the CSS tokens (`ThemeColours.Theme` / `ThemeColours.Css`); derived tokens (accent-soft, heatmap shades, `--card-2`) follow by `color-mix`. A new built-in colour that should be customisable becomes a slot, with its default kept in step with `AppTheme` and the token blocks.
+- Accent (blue, `#0361c3`) means primary action, current or active state. Warning (amber) means something needs attention, e.g. a step whose piece was deleted. The data colour (purple, `#6a449f`) is for data (chart bars, ranked bars, the practice heatmap) and for rest phases. These are the built-in colours; the user can change them (see Custom colours).
 
 ## Shared components
 
@@ -127,7 +128,8 @@ Reuse these instead of rebuilding them. When two screens show the same thing, th
 | `VolumeControl` | Sound on/off + volume slider (rail Sound section, strip pop-up) |
 | `PracticeGuard`, `PracticeKeys` | On the Metronome and Timer pages: ask before leaving while running; the practice shortcuts |
 | `RoundsInput` | Interval rounds: a Repeat toggle ("until stopped", stored as 0) else a count from 1; turning Repeat off restores the last count. In the interval editor the row is Work · Rounds, with Rest shown only when there's more than one round |
-| `BootScreen` (+ `wwwroot/index.html`) | The loading screen: ♪ mark, name, tagline, a slim accent bar (download % from Blazor, then an indeterminate bar while the library loads) and "Everything stays on this device". The two halves share `.boot` styles in plain colours (the theme isn't applied yet); `html.boot-light` comes from the saved setting, read from IndexedDB by a script in index.html. Keep the two in step |
+| `BootScreen` (+ `wwwroot/index.html`) | The loading screen: ♪ mark, name, tagline, a slim accent bar (download % from Blazor, then an indeterminate bar while the library loads) and "Everything stays on this device". The two halves share `.boot` styles in plain colours (the theme isn't applied yet); `html.boot-light` and a custom accent (`--boot-accent-light` / `-dark`) come from the saved settings, read from IndexedDB by a script in index.html. Keep the two in step |
+| `ColoursEditor` | Settings > Colours: a Light / Dark toggle (switches the app) and a `MudColorPicker` per `ThemeColours` slot with a swatch, Undo to the built-in colour, and Reset… for all |
 | `FavouriteToggle` | The star that adds a piece or plan to the Dashboard's Favourites |
 | `SessionPanel` | Practised time on the Metronome and Timer, inside the stage. Hidden until there's time; one line while playing; once stopped, Log + Discard + page extras (Timer: +5 min, +10 min, Rest). Hidden while a plan runs. |
 | `DurationInput` | Any duration field: hours, minutes and seconds as separate numbers with fixed colons (like `MeterInput`). ↑/↓ step the number you're in, ←/→ and Backspace move between them, ":" or a digit typed into a full number moves on |
