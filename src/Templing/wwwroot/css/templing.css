@@ -131,7 +131,7 @@ kbd {
 .viz-key { display: flex; align-items: center; justify-content: flex-end; gap: 6px; font-size: .75rem; color: var(--muted); margin: -4px 0 2px; }
 .viz-key-goal { width: 18px; border-top: 2px dashed var(--good); }
 .hm-plot { height: 120px; } /* placeholder until charts.js sizes it */
-.hm-legend { display: flex; align-items: center; justify-content: flex-end; gap: 4px; font-size: .72rem; margin-top: 4px; }
+.hm-legend { display: flex; align-items: center; justify-content: flex-end; gap: 4px; font-size: .72rem; margin-top: 4px; padding-right: var(--hm-inset, 0px); }
 .hm-swatch { width: 11px; height: 11px; border-radius: 3px; }
 /* cards in a grid row share the row's height; in a stacked column the last card fills the rest */
 .equal-cards > .mud-grid-item { display: flex; flex-direction: column; }
@@ -161,7 +161,14 @@ kbd {
 .dash-streak .mud-icon-root { color: var(--muted); }
 .dash-streak .mud-icon-root.streak-on { color: var(--accent); }
 .dash-heading { font-size: 1rem; font-weight: 700; margin: 0 0 10px; letter-spacing: -.01em; }
-.dash-rows { display: flex; flex-direction: column; gap: 24px; }
+.dash-rows { display: flex; flex-direction: column; gap: 24px; container-type: inline-size; }
+/* rows other than Favourites get up to 8 cards (Home.PerRow) and show what fits on one line: n columns of
+   ≥220px with 12px gaps need n×232−12px. Below five columns they keep four (wrapping, or scrolling on phones). */
+.fav-grid.one-row > :nth-child(n+5) { display: none; }
+@container (min-width: 1148px) { .fav-grid.one-row > :nth-child(5) { display: flex; } }
+@container (min-width: 1380px) { .fav-grid.one-row > :nth-child(6) { display: flex; } }
+@container (min-width: 1612px) { .fav-grid.one-row > :nth-child(7) { display: flex; } }
+@container (min-width: 1844px) { .fav-grid.one-row > :nth-child(8) { display: flex; } }
 .dash-row-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .fav-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 /* Favourites with nothing starred: one dashed card in the same slot */

@@ -55,7 +55,7 @@ else
                     <h2 class="dash-heading" id="dash-recent">Jump back in</h2>
                     <a href="history" class="small">History →</a>
                 </div>
-                <div class="fav-grid">
+                <div class="fav-grid one-row">
                     @foreach (var card in _recent)
                     {
                         @Card(card)
@@ -85,7 +85,7 @@ else
         {
             <section aria-labelledby="dash-closest">
                 <h2 class="dash-heading" id="dash-closest">Closest to goal</h2>
-                <div class="fav-grid">
+                <div class="fav-grid one-row">
                     @foreach (var card in _closest)
                     {
                         @Card(card)
@@ -98,7 +98,7 @@ else
         {
             <section aria-labelledby="dash-newgoal">
                 <h2 class="dash-heading" id="dash-newgoal">Ready for a new goal</h2>
-                <div class="fav-grid">
+                <div class="fav-grid one-row">
                     @foreach (var card in _newGoal)
                     {
                         @Card(card)
@@ -111,7 +111,7 @@ else
         {
             <section aria-labelledby="dash-lately">
                 <h2 class="dash-heading" id="dash-lately">Not practised lately</h2>
-                <div class="fav-grid">
+                <div class="fav-grid one-row">
                     @foreach (var card in _lately)
                     {
                         @Card(card)
@@ -126,7 +126,8 @@ else
     /// <summary>A Dashboard card: a piece or a plan, with the line that says why it's in its row.</summary>
     record DashCard(Piece? Piece, PracticePlan? Plan, PieceStats? Stats, string Meta);
 
-    const int PerRow = 4;
+    // the most a row ever shows; CSS (.fav-grid.one-row) hides the ones that don't fit on one line
+    const int PerRow = 8;
 
     int _weekSec;
     double _weekPct;

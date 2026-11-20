@@ -196,10 +196,12 @@ export async function tempo(el, spec) {
 export async function calendar(el, spec) {
     const entry = await chartFor(el);
     const t = tokens(el);
-    const left = 34, top = 20, gap = 3;
-    const cellFor = () => Math.max(8, Math.min(22, Math.floor((el.clientWidth - left - 4) / spec.weeks)));
+    const label = 34, top = 20, gap = 3;
+    const cellFor = () => Math.max(8, Math.min(28, Math.floor((el.clientWidth - label - 4) / spec.weeks)));
+    // once cells hit their cap the grid is narrower than the card: centre it, and line the legend up with its right edge
+    const insetFor = cell => Math.max(0, Math.floor((el.clientWidth - label - 4 - cell * spec.weeks) / 2));
 
-    const option = cell => ({
+    const option = (cell, left) => ({
         animation: false,
         textStyle: { fontFamily: t.font },
         tooltip: {
@@ -235,18 +237,19 @@ export async function calendar(el, spec) {
     });
 
     const draw = () => {
-        const cell = cellFor();
+        const cell = cellFor(), inset = insetFor(cell);
         el.style.height = `${top + cell * 7 + 4}px`;
-        return cell;
+        el.parentElement?.style.setProperty('--hm-inset', `${inset}px`);
+        return { cell, inset };
     };
-    let cell = draw();
+    let layout = draw();
     entry.chart.resize();
-    entry.chart.setOption(option(cell), true);
+    entry.chart.setOption(option(layout.cell, label + layout.inset), true);
     entry.relayout = () => {
-        const next = cellFor();
-        if (next === cell) return;
-        cell = draw();
-        entry.chart.setOption(option(cell), true);
+        const cell = cellFor();
+        if (cell === layout.cell && insetFor(cell) === layout.inset) return;
+        layout = draw();
+        entry.chart.setOption(option(layout.cell, label + layout.inset), true);
     };
 }
 
