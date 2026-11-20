@@ -6,3 +6,4 @@ music-note-half
 music-note-quarter
 music-note-eighth
 music-note-sixteenth
+github

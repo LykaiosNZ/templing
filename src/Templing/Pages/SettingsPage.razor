@@ -82,6 +82,21 @@
             </div>
         </div>
     </section>
+
+    <section aria-labelledby="set-about">
+        <h2 class="settings-heading" id="set-about">About</h2>
+        <div class="setting-row">
+            <div class="setting-text"><div class="setting-title">Version</div></div>
+            <div class="setting-control"><span class="setting-value" title="@AppInfo.InformationalVersion">@AppInfo.Version</span></div>
+        </div>
+        <div class="setting-row">
+            <div class="setting-text"><div class="setting-title">Source code</div></div>
+            <div class="setting-control">
+                <MudButton Variant="Variant.Outlined" StartIcon="@Mdi.Github" EndIcon="@Icons.Material.Rounded.OpenInNew"
+                           Href="@AppInfo.RepositoryUrl" Target="_blank" rel="noopener">GitHub</MudButton>
+            </div>
+        </div>
+    </section>
 </div>
 
 @code {

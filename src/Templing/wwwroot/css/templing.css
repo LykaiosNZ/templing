@@ -382,6 +382,7 @@ kbd {
 @media (max-width: 600px) { .preset-row { grid-template-columns: 1fr 1fr 1fr auto; } }
 .setting-title { font-weight: 500; }
 .setting-desc { font-size: .85rem; color: var(--muted); margin-top: 2px; }
+.setting-value { color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .setting-control { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; flex: none; }
 .setting-control .mud-input-control { margin: 0; }
 @media (max-width: 600px) { .setting-row { flex-wrap: wrap; } .setting-control { justify-content: flex-start; } }
