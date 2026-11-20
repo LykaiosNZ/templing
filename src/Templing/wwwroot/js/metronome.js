@@ -328,14 +328,6 @@ function scheduler() {
         click(t, kind);
         if (st.sub === 0) queue.push({ time: t, kind: 'beat', beat: st.beat, beats: meter.n, unit: meter.d, scoreBar: meter.i, step: st.step, bar: st.bar });
 
-        // interval warning pips 3-2-1 before work ends
-        if (cfg.interval.enabled && cfg.interval.cues && st.phaseEnd !== Infinity) {
-            for (const n of [3, 2, 1]) {
-                const ct = st.phaseEnd - n;
-                if (!st.cuesDone['w' + n] && ct <= horizon && ct >= st.workStart) { click(Math.max(ct, ctx.currentTime), 'cue-lo'); st.cuesDone['w' + n] = true; }
-            }
-        }
-
         // advance
         st.nextTime += beatSeconds(s.bpm * st.factor, meter.d) / subs;
         st.sub++;
@@ -357,6 +349,20 @@ function scheduler() {
                 }
             }
         }
+    }
+
+    // The 3-2-1 pips and the end of work are timed in seconds, not beats, so check them on every tick.
+    // (Checked only when a beat was scheduled, a pip between beats came due after its time and played
+    // late by a different amount each, so the pips sounded uneven at slow tempos.)
+    if (st.running && st.phase === 'work' && cfg.interval.enabled && st.phaseEnd !== Infinity) {
+        if (cfg.interval.cues) {
+            for (const n of [3, 2, 1]) {
+                const ct = st.phaseEnd - n;
+                if (!st.cuesDone['w' + n] && ct <= horizon && ct >= st.workStart) { click(Math.max(ct, ctx.currentTime), 'cue-lo'); st.cuesDone['w' + n] = true; }
+            }
+        }
+        // every beat before the end is scheduled: end work on time rather than when the next beat comes due
+        if (st.phaseEnd <= horizon && st.nextTime >= st.phaseEnd) enterRestOrFinish(st.phaseEnd);
     }
 }
 
