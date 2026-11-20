@@ -123,6 +123,7 @@ Reuse these instead of rebuilding them. When two screens show the same thing, th
 | `VolumeControl` | Sound on/off + volume slider (rail Sound section, strip pop-up) |
 | `PracticeGuard`, `PracticeKeys` | On the Metronome and Timer pages: ask before leaving while running; the practice shortcuts |
 | `RoundsInput` | Interval rounds: a Repeat toggle ("until stopped", stored as 0) else a count from 1; turning Repeat off restores the last count. In the interval editor the row is Work · Rounds, with Rest shown only when there's more than one round |
+| `BootScreen` (+ `wwwroot/index.html`) | The loading screen: ♪ mark, name, tagline, a slim accent bar (download % from Blazor, then an indeterminate bar while the library loads) and "Everything stays on this device". The two halves share `.boot` styles in plain colours (the theme isn't applied yet); `html.boot-light` comes from the saved setting, read from IndexedDB by a script in index.html. Keep the two in step |
 | `FavouriteToggle` | The star that adds a piece or plan to the Dashboard's Favourites |
 | `SessionPanel` | Practised time on the Metronome and Timer, inside the stage. Hidden until there's time; one line while playing; once stopped, Log + Discard + page extras (Timer: +5 min, +10 min, Rest). Hidden while a plan runs. |
 | `DurationInput` | Any duration field: hours, minutes and seconds as separate numbers with fixed colons (like `MeterInput`). ↑/↓ step the number you're in, ←/→ and Backspace move between them, ":" or a digit typed into a full number moves on |

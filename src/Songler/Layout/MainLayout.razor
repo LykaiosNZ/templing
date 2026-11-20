@@ -15,61 +15,61 @@
 
 <a class="skip-link" href="#main">Skip to content</a>
 
-<MudLayout Class="@(_dark ? "theme-dark" : "theme-light")">
-    <MudAppBar Elevation="0" Dense="false" Class="app-bar">
-        <MudTooltip Text="Menu">
-            <MudIconButton Icon="@Icons.Material.Rounded.Menu" Color="Color.Inherit" Edge="Edge.Start"
-                           aria-label="Toggle navigation" OnClick="@(() => _drawer = !_drawer)" />
-        </MudTooltip>
-        <a href="" class="brand" aria-label="Songler home">
-            <span class="brand-mark" aria-hidden="true">♪</span>
-            <span class="brand-name">Songler</span>
-        </a>
-        <MudSpacer />
-        <MudTooltip Text="Log practice">
-            <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Rounded.AddTask" Color="Color.Inherit"
-                       Class="hide-phone appbar-log" OnClick="QuickLog">Log</MudButton>
-            <MudIconButton Icon="@Icons.Material.Rounded.AddTask" Color="Color.Inherit" aria-label="Log practice" Class="show-phone" OnClick="QuickLog" />
-        </MudTooltip>
-        <MudTooltip Text="Keyboard shortcuts">
-            <MudIconButton Icon="@Icons.Material.Rounded.Keyboard" Color="Color.Inherit" aria-label="Keyboard shortcuts" OnClick="ShowShortcuts" />
-        </MudTooltip>
-        <MudTooltip Text="@(_dark ? "Light mode" : "Dark mode")">
-            <MudIconButton Icon="@(_dark ? Icons.Material.Rounded.LightMode : Icons.Material.Rounded.DarkMode)" Color="Color.Inherit"
-                           aria-label="Toggle dark mode" OnClick="ToggleDark" />
-        </MudTooltip>
-    </MudAppBar>
-    <MudDrawer @bind-Open="_drawer" ClipMode="DrawerClipMode.Always" Elevation="0" Variant="DrawerVariant.Responsive" Class="app-drawer">
-        <MudNavMenu Rounded="true" Margin="Margin.Dense" Color="Color.Primary" Class="pa-2" aria-label="Main">
-            <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Rounded.SpaceDashboard">Dashboard</MudNavLink>
-            <MudNavLink Href="library" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.LibraryMusic">Library</MudNavLink>
-            <div class="nav-heading stat-label" role="presentation">Practice</div>
-            <MudNavLink Href="metronome" Match="NavLinkMatch.Prefix" Icon="@Mdi.Metronome">Metronome</MudNavLink>
-            <MudNavLink Href="timer" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.HourglassBottom">Timer</MudNavLink>
-            <MudNavLink Href="plans" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.ChecklistRtl">Plans</MudNavLink>
-            <div class="nav-heading stat-label" role="presentation">Progress</div>
-            <MudNavLink Href="history" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.History">History</MudNavLink>
-            <MudNavLink Href="stats" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.Insights">Stats</MudNavLink>
-            <MudDivider Class="my-2" />
-            <MudNavLink Href="settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.Settings">Settings &amp; data</MudNavLink>
-        </MudNavMenu>
-    </MudDrawer>
-    <MudMainContent>
-        <main id="main" tabindex="-1">
-            @if (!_ready)
-            {
-                <div class="d-flex justify-center pa-16"><MudProgressCircular Indeterminate="true" Color="Color.Primary" /></div>
-            }
-            else
-            {
+@if (!_ready)
+{
+    <BootScreen />
+}
+else
+{
+    <MudLayout Class="@(_dark ? "theme-dark" : "theme-light")">
+        <MudAppBar Elevation="0" Dense="false" Class="app-bar">
+            <MudTooltip Text="Menu">
+                <MudIconButton Icon="@Icons.Material.Rounded.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                               aria-label="Toggle navigation" OnClick="@(() => _drawer = !_drawer)" />
+            </MudTooltip>
+            <a href="" class="brand" aria-label="Songler home">
+                <span class="brand-mark" aria-hidden="true">♪</span>
+                <span class="brand-name">Songler</span>
+            </a>
+            <MudSpacer />
+            <MudTooltip Text="Log practice">
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Rounded.AddTask" Color="Color.Inherit"
+                           Class="hide-phone appbar-log" OnClick="QuickLog">Log</MudButton>
+                <MudIconButton Icon="@Icons.Material.Rounded.AddTask" Color="Color.Inherit" aria-label="Log practice" Class="show-phone" OnClick="QuickLog" />
+            </MudTooltip>
+            <MudTooltip Text="Keyboard shortcuts">
+                <MudIconButton Icon="@Icons.Material.Rounded.Keyboard" Color="Color.Inherit" aria-label="Keyboard shortcuts" OnClick="ShowShortcuts" />
+            </MudTooltip>
+            <MudTooltip Text="@(_dark ? "Light mode" : "Dark mode")">
+                <MudIconButton Icon="@(_dark ? Icons.Material.Rounded.LightMode : Icons.Material.Rounded.DarkMode)" Color="Color.Inherit"
+                               aria-label="Toggle dark mode" OnClick="ToggleDark" />
+            </MudTooltip>
+        </MudAppBar>
+        <MudDrawer @bind-Open="_drawer" ClipMode="DrawerClipMode.Always" Elevation="0" Variant="DrawerVariant.Responsive" Class="app-drawer">
+            <MudNavMenu Rounded="true" Margin="Margin.Dense" Color="Color.Primary" Class="pa-2" aria-label="Main">
+                <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Rounded.SpaceDashboard">Dashboard</MudNavLink>
+                <MudNavLink Href="library" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.LibraryMusic">Library</MudNavLink>
+                <div class="nav-heading stat-label" role="presentation">Practice</div>
+                <MudNavLink Href="metronome" Match="NavLinkMatch.Prefix" Icon="@Mdi.Metronome">Metronome</MudNavLink>
+                <MudNavLink Href="timer" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.HourglassBottom">Timer</MudNavLink>
+                <MudNavLink Href="plans" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.ChecklistRtl">Plans</MudNavLink>
+                <div class="nav-heading stat-label" role="presentation">Progress</div>
+                <MudNavLink Href="history" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.History">History</MudNavLink>
+                <MudNavLink Href="stats" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.Insights">Stats</MudNavLink>
+                <MudDivider Class="my-2" />
+                <MudNavLink Href="settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.Settings">Settings &amp; data</MudNavLink>
+            </MudNavMenu>
+        </MudDrawer>
+        <MudMainContent>
+            <main id="main" tabindex="-1">
                 <PlanBar />
                 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-6 px-4 px-md-8">
                     @Body
                 </MudContainer>
-            }
-        </main>
-    </MudMainContent>
-</MudLayout>
+            </main>
+        </MudMainContent>
+    </MudLayout>
+}
 
 @code {
     private bool _drawer = true;

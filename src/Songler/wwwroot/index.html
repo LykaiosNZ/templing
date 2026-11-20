@@ -19,14 +19,37 @@
 
 <body>
     <div id="app">
-        <div class="boot">
-            <svg class="loading-progress">
-                <circle r="40%" cx="50%" cy="50%" />
-                <circle r="40%" cx="50%" cy="50%" />
-            </svg>
-            <div class="loading-progress-text"></div>
+        <!-- loading screen while the app downloads; Components/BootScreen.razor takes over while the library loads -->
+        <div class="boot" role="status" aria-live="polite">
+            <div class="boot-card">
+                <div class="boot-mark" aria-hidden="true">♪</div>
+                <div class="boot-name">Songler</div>
+                <div class="boot-tag">Practice tracker for guitar</div>
+                <div class="boot-bar" aria-hidden="true"><div class="boot-bar-fill"></div></div>
+                <div class="boot-status boot-pct"></div>
+            </div>
+            <div class="boot-foot">Everything stays on this device</div>
         </div>
     </div>
+
+    <script>
+        // Light or dark from the saved settings, read straight from IndexedDB, so the loading screen matches the app.
+        // Never creates the database: on a first visit the upgrade is aborted and the default (dark) stays.
+        (function () {
+            try {
+                var q = indexedDB.open('songler');
+                q.onupgradeneeded = function (e) { e.target.transaction.abort(); };
+                q.onsuccess = function () {
+                    var db = q.result;
+                    try {
+                        var g = db.transaction('settings').objectStore('settings').get('app');
+                        g.onsuccess = function () { if (g.result && g.result.DarkMode === false) document.documentElement.classList.add('boot-light'); db.close(); };
+                        g.onerror = function () { db.close(); };
+                    } catch (e) { db.close(); }
+                };
+            } catch (e) { }
+        })();
+    </script>
 
     <div id="blazor-error-ui">
         An unhandled error has occurred.
