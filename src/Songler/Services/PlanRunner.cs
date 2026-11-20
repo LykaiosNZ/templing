@@ -132,14 +132,31 @@ public class PlanRunner
 
     public void DismissSummary() { Summary = null; Changed?.Invoke(); }
 
-    /// <summary>Start (or restart) the current step's clock.</summary>
+    /// <summary>The page a step is practised on: the Timer for rests and timer steps, else the Metronome (with its section).</summary>
+    public static string StepUrl(PlanStep s) =>
+        s.Kind == PlanStepKind.Rest ? "timer"
+        : s.Mode == StepMode.Timer ? $"timer/piece/{s.PieceId}"
+        : s.SectionId != null ? $"metronome/piece/{s.PieceId}/{s.SectionId}" : $"metronome/piece/{s.PieceId}";
+
+    /// <summary>
+    /// Start (or restart) the current step's clock. Practice stays on its page, so this goes to the step's page first
+    /// (Start step / Resume can be pressed from anywhere), and a metronome step always clicks: the engine may still be
+    /// in the timer's silent mode from a rest or timer step.
+    /// </summary>
     public async Task StartStepAsync()
     {
         var s = Current;
         if (s == null) return;
+        var url = StepUrl(s);
+        if (!string.Equals(_nav.ToBaseRelativePath(_nav.Uri).Split('?', '#')[0], url, StringComparison.OrdinalIgnoreCase))
+            _nav.NavigateTo(url);
         if (s.Kind == PlanStepKind.Rest) await _metro.StartRestAsync(s.Minutes);
         else if (s.Mode == StepMode.Timer) await _metro.StartTimerAsync();
-        else await _metro.StartAsync();
+        else
+        {
+            await _metro.SetSilentAsync(false);
+            await _metro.StartAsync();
+        }
         State = StepState.Running;
         Changed?.Invoke();
     }
@@ -159,7 +176,7 @@ public class PlanRunner
         if (s.Kind == PlanStepKind.Rest)
         {
             await _metro.ClearStepIntervalsAsync();
-            if (navigate) _nav.NavigateTo("timer");
+            if (navigate) _nav.NavigateTo(StepUrl(s));
             Changed?.Invoke();
             if (autoStartRest) await StartStepAsync(); // rests start straight away
             return;
@@ -171,12 +188,7 @@ public class PlanRunner
         await _metro.SetStepIntervalsAsync(s.Minutes, s.RestMin, s.Rounds);
         if (s.Mode == StepMode.Metronome)
             await _metro.SetStepTempoAsync(s.StartTempo, s.TrainerSettings());
-        if (navigate)
-        {
-            var url = s.Mode == StepMode.Timer ? $"timer/piece/{piece.Id}"
-                : s.SectionId != null ? $"metronome/piece/{piece.Id}/{s.SectionId}" : $"metronome/piece/{piece.Id}";
-            _nav.NavigateTo(url);
-        }
+        if (navigate) _nav.NavigateTo(StepUrl(s));
         Changed?.Invoke();
     }
 
