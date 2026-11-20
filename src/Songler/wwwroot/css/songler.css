@@ -228,10 +228,12 @@ kbd {
 /* Metronome / Timer: one centred practice column, options in the rail (OptionsRail) */
 /* DurationInput: h:mm:ss as three numbers with fixed colons, like MeterInput */
 .duration-input.mud-input-control { margin-top: 0; }
-.seg-parts { display: flex; align-items: center; padding: 9px 12px 7px; font-size: 1rem; font-variant-numeric: tabular-nums; }
+.seg-parts { display: flex; align-items: center; padding: 10.5px 12px; line-height: 19px; font-size: 1rem; font-variant-numeric: tabular-nums; }
 .seg-parts.seg-text { padding: 6px 0 7px; }
 /* MudField pads its slot 14px a side; these fields pad their own parts */
 .mud-input-control.duration-input .mud-input .mud-input-slot, .mud-input-control.meter-input .mud-input .mud-input-slot { padding-left: 0; padding-right: 0; }
+/* outlined: MudField also pads the slot vertically (7px / 2px dense); drop it so these are 40px like a dense select or number field */
+.mud-input-control.duration-input .mud-input-outlined .mud-input-slot, .mud-input-control.meter-input .mud-input-outlined .mud-input-slot { padding-top: 0 !important; padding-bottom: 0 !important; }
 /* Work · Rounds, then Rest (only with more than one round): two columns, so the rows fit the rail */
 .form-grid.interval-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 /* RoundsInput: Repeat toggle, then the count while not repeating */
@@ -250,7 +252,7 @@ kbd {
 .division-label { margin-left: 4px; }
 /* MeterInput: a time signature as one outlined field, "7 / 8" */
 .meter-input.mud-input-control { margin: 0; }
-.meter-parts { display: flex; align-items: center; gap: 2px; padding: 9px 12px 7px; font-size: 1rem; }
+.meter-parts { display: flex; align-items: center; gap: 2px; padding: 10.5px 12px; line-height: 19px; font-size: 1rem; }
 .meter-part { width: 2.4ch; padding: 0; border: 0; outline: 0; background: none; color: var(--mud-palette-text-primary); font: inherit; text-align: center; border-radius: 4px; }
 .meter-part:focus { background: var(--accent-soft); }
 .meter-slash { color: var(--muted); padding: 0 2px; }
