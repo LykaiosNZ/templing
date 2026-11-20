@@ -2,9 +2,9 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "songler",
+      "name": "templing",
       "runtimeExecutable": "dotnet",
-      "runtimeArgs": ["run", "--project", "src/Songler/Songler.csproj", "--launch-profile", "http"],
+      "runtimeArgs": ["run", "--project", "src/Templing/Templing.csproj", "--launch-profile", "http"],
       "port": 5075
     }
   ]

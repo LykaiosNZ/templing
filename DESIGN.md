@@ -1,4 +1,4 @@
-# Songler design guide
+# Templing design guide
 
 The house rules for how screens look and read. Follow them when building or changing UI, and add a rule here when a new decision is made, so screens don't drift apart. If a rule here and the code disagree, the code is wrong (or the rule needs updating: say so).
 
@@ -95,7 +95,7 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
   - Option order: most relevant first (e.g. pieces by most recently logged), not alphabetical, unless the list is a fixed set.
 - **Hide controls that don't apply; don't disable them.** A greyed-out field ("Rest" with 1 round) makes you work out why. Show it once it applies. Disable only when the control's presence matters (e.g. Move up on the first row), and then make the reason obvious.
 - **A disabled primary button says why** next to it, phrased as what to do ("Select a piece for step 2", "Add a name"), so nothing is blocked silently.
-- **Empty fields look alike:** a label resting inside an empty field is styled like a placeholder (text colour at 42%), so an unselected select and a placeholder read the same. Handled globally in `songler.css`.
+- **Empty fields look alike:** a label resting inside an empty field is styled like a placeholder (text colour at 42%), so an unselected select and a placeholder read the same. Handled globally in `templing.css`.
 - **Placeholders, not defaults:** example names ("My routine") are placeholders. Don't pre-fill a value the user has to delete. A useful suggestion (e.g. "128 bpm · 4/4" for a new custom metronome) goes in the placeholder too.
 - **Asking for a name** (save as, rename): `PromptDialog.ShowAsync`. The field is focused with its text selected, Enter saves, and Save says why it's disabled ("Add a name", "You already have “…”" via `taken`).
 - **Page actions beyond the main one go in a ⋮ menu** (e.g. a custom metronome: Save changes, Edit sections…, Rename…, Delete…). A page with a single action may show it as an icon button with a tooltip (Save as custom metronome).
@@ -109,10 +109,11 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 
 - MudBlazor Material **Rounded** set by default; Pictogrammers MDI (`Mdi.*`, see CLAUDE.md) for anything it lacks.
 - Fixed meanings: metronome `Mdi.Metronome` · timer `HourglassBottom` · rest `SelfImprovement` · speed trainer `TrendingUp` · intervals `Timelapse` · count-in `HourglassTop` · log `AddTask` · warning `WarningAmber`.
+- **The logo** is `<LogoMark>` (a metronome whose arm grows into a sprout), white on the accent gradient in a rounded square (`.brand-mark`, `.boot-mark`). The loading screen in `wwwroot/index.html` and the favicon `wwwroot/icon.svg` carry copies of its paths: change all three together. The app is for any instrument, so the name, logo and copy don't assume guitar.
 
 ## Colour
 
-- Use the CSS tokens (`--ink`, `--ink-2`, `--muted`, `--accent`, `--accent-soft`, `--ring`, `--card-2`, MudBlazor palette vars). No literal colours in pages, and none in `songler.css` outside the token blocks either: tints and gradients derive from a token with `color-mix(in srgb, var(--accent) 16%, transparent)`, so they follow custom colours.
+- Use the CSS tokens (`--ink`, `--ink-2`, `--muted`, `--accent`, `--accent-soft`, `--ring`, `--card-2`, MudBlazor palette vars). No literal colours in pages, and none in `templing.css` outside the token blocks either: tints and gradients derive from a token with `color-mix(in srgb, var(--accent) 16%, transparent)`, so they follow custom colours.
 - **Custom colours** (Settings > Colours, `ColoursEditor`): the user can change the slots in `ThemeColours.Slots` (accent, charts and rests, goals, warnings, errors, background, cards, text) separately for light and dark mode, with MudBlazor's `MudColorPicker`. Changes apply live. Each slot sets both the MudBlazor palette and the CSS tokens (`ThemeColours.Theme` / `ThemeColours.Css`); derived tokens (accent-soft, heatmap shades, `--card-2`) follow by `color-mix`. A new built-in colour that should be customisable becomes a slot, with its default kept in step with `AppTheme` and the token blocks.
 - Accent (blue, `#0361c3`) means primary action, current or active state. Warning (amber) means something needs attention, e.g. a step whose piece was deleted. The data colour (purple, `#6a449f`) is for data (chart bars, ranked bars, the practice heatmap) and for rest phases. These are the built-in colours; the user can change them (see Custom colours).
 

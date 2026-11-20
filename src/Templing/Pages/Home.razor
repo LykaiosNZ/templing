@@ -1,0 +1,263 @@
+﻿@page "/"
+@* The Dashboard is a launch pad: rows of the same small cards, each one click from practising.
+   Jump back in (most recent) · Favourites (starred; a placeholder card until something is) · Closest to goal ·
+   Ready for a new goal (at or past it) · Not practised lately. A piece shows in one row at most (Favourites first, then Jump back in, then the rest),
+   and empty rows hide. The header keeps this week's goal and the streak; other statistics live on Stats. *@
+@implements IDisposable
+@inject DataStore Store
+@inject PlanRunner Runner
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Dashboard · Templing</PageTitle>
+
+<div class="page-head">
+    <div>
+        <MudText Typo="Typo.overline" Class="muted">@DateTime.Today.ToString("dddd d MMMM")</MudText>
+        <h1 class="page-title" tabindex="-1">@Greeting</h1>
+    </div>
+    @if (Store.Logs.Count > 0)
+    {
+        <div class="dash-strip" role="group" aria-label="This week">
+            <div class="dash-week">
+                <div class="stat-label">This week</div>
+                <div class="dash-week-value"><strong>@Stats.Duration(_weekSec)</strong> <span class="muted">of @Stats.DurationMin(Store.Settings.WeeklyGoalMin)</span></div>
+                <GoalBar Progress="_weekPct" AriaLabel="Weekly goal" />
+            </div>
+            <div class="dash-streak" title="@($"Longest streak: {_streak.longest} days")">
+                <MudIcon Icon="@Icons.Material.Rounded.LocalFireDepartment" Class="@(_streak.current > 0 ? "streak-on" : "")" />
+                <div>
+                    <div class="stat-label">Streak</div>
+                    <strong>@_streak.current @(_streak.current == 1 ? "day" : "days")</strong>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@if (Store.Pieces.Count == 0 && Store.Logs.Count == 0)
+{
+    <div class="empty-state">
+        <MudIcon Icon="@Icons.Material.Rounded.LibraryMusic" Style="font-size:3rem" />
+        <MudText Typo="Typo.h6">Nothing here yet</MudText>
+        <MudText Class="muted">Add a piece to practise, or restore a backup in <a href="settings">Settings &amp; data</a>.</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.Add" OnClick="AddPiece" Class="mt-2">Add piece</MudButton>
+    </div>
+}
+else
+{
+    <div class="dash-rows">
+        @if (_recent.Count > 0)
+        {
+            <section aria-labelledby="dash-recent">
+                <div class="dash-row-head">
+                    <h2 class="dash-heading" id="dash-recent">Jump back in</h2>
+                    <a href="history" class="small">History →</a>
+                </div>
+                <div class="fav-grid">
+                    @foreach (var card in _recent)
+                    {
+                        @Card(card)
+                    }
+                </div>
+            </section>
+        }
+
+        <section aria-labelledby="dash-fav">
+            <h2 class="dash-heading" id="dash-fav">Favourites</h2>
+            <div class="fav-grid">
+                @foreach (var card in _favourites)
+                {
+                    @Card(card)
+                }
+                @if (_favourites.Count == 0)
+                {
+                    <div class="fav-card fav-placeholder">
+                        <MudIcon Icon="@Icons.Material.Rounded.StarBorder" />
+                        <span>Star a piece or plan to pin it here</span>
+                    </div>
+                }
+            </div>
+        </section>
+
+        @if (_closest.Count > 0)
+        {
+            <section aria-labelledby="dash-closest">
+                <h2 class="dash-heading" id="dash-closest">Closest to goal</h2>
+                <div class="fav-grid">
+                    @foreach (var card in _closest)
+                    {
+                        @Card(card)
+                    }
+                </div>
+            </section>
+        }
+
+        @if (_newGoal.Count > 0)
+        {
+            <section aria-labelledby="dash-newgoal">
+                <h2 class="dash-heading" id="dash-newgoal">Ready for a new goal</h2>
+                <div class="fav-grid">
+                    @foreach (var card in _newGoal)
+                    {
+                        @Card(card)
+                    }
+                </div>
+            </section>
+        }
+
+        @if (_lately.Count > 0)
+        {
+            <section aria-labelledby="dash-lately">
+                <h2 class="dash-heading" id="dash-lately">Not practised lately</h2>
+                <div class="fav-grid">
+                    @foreach (var card in _lately)
+                    {
+                        @Card(card)
+                    }
+                </div>
+            </section>
+        }
+    </div>
+}
+
+@code {
+    /// <summary>A Dashboard card: a piece or a plan, with the line that says why it's in its row.</summary>
+    record DashCard(Piece? Piece, PracticePlan? Plan, PieceStats? Stats, string Meta);
+
+    const int PerRow = 4;
+
+    int _weekSec;
+    double _weekPct;
+    (int current, int longest) _streak;
+    List<DashCard> _recent = new(), _favourites = new(), _closest = new(), _newGoal = new(), _lately = new();
+
+    string Greeting => DateTime.Now.Hour switch { < 12 => "Good morning", < 18 => "Good afternoon", _ => "Good evening" };
+
+    protected override void OnInitialized() { Store.Changed += OnChanged; Runner.Changed += OnRunnerChanged; Refresh(); }
+    void OnChanged() { Refresh(); InvokeAsync(StateHasChanged); }
+    void OnRunnerChanged() => InvokeAsync(StateHasChanged);
+
+    void Refresh()
+    {
+        var today = DateTime.Today;
+        var logs = Store.Logs;
+        var ws = Stats.WeekStart(today);
+        _weekSec = logs.Where(l => l.Date >= ws).Sum(l => l.DurationSec ?? 0);
+        _weekPct = Store.Settings.WeeklyGoalMin > 0 ? _weekSec / 60.0 / Store.Settings.WeeklyGoalMin : 0;
+        _streak = Stats.Streaks(logs, today);
+
+        var pieces = Store.Pieces.Where(p => !p.Archived).ToList();
+        var stats = pieces.ToDictionary(p => p.Id, p => Stats.ForPiece(p, logs));
+        var latest = logs.Where(l => l.PieceId != null).GroupBy(l => l.PieceId!).ToDictionary(g => g.Key, g => g.MaxBy(l => l.Date)!);
+        var shown = new HashSet<string>(); // a piece or plan appears in one row only
+
+        DashCard PieceCard(Piece p, string meta) { shown.Add(p.Id); return new(p, null, stats[p.Id], meta); }
+        DashCard PlanCard(PracticePlan p, string meta) { shown.Add(p.Id); return new(null, p, null, meta); }
+        string Ago(DateTime d) => Stats.Ago(d, today) is var s && s.Length > 0 ? char.ToUpperInvariant(s[0]) + s[1..] : s;
+        string LastLine(Piece p) => latest.TryGetValue(p.Id, out var l) ? $"{Ago(l.Date)} · {l.ValueText}" : "Not practised yet";
+
+        // Favourites first: they claim their pieces and plans before the other rows
+        _favourites = Store.Plans.Where(p => p.Favourite).OrderByDescending(p => p.LastRun ?? p.Created)
+                .Select(p => PlanCard(p, PlanMeta(p)))
+            .Concat(Store.PiecesByRecent().Where(p => p.Favourite).Select(p => PieceCard(p, LastLine(p))))
+            .ToList();
+
+        // Jump back in: the latest practice per piece, and plans by their last run
+        var recentPieces = latest.Values.Where(l => !shown.Contains(l.PieceId!) && stats.ContainsKey(l.PieceId!))
+            .Select(l => (when: l.Date, card: (Func<DashCard>)(() => PieceCard(Store.GetPiece(l.PieceId)!, LastLine(Store.GetPiece(l.PieceId)!)))));
+        var recentPlans = Store.Plans.Where(p => p.LastRun != null && !shown.Contains(p.Id))
+            .Select(p => (when: p.LastRun!.Value, card: (Func<DashCard>)(() => PlanCard(p, PlanMeta(p)))));
+        _recent = recentPieces.Concat(recentPlans).OrderByDescending(x => x.when).Take(PerRow).Select(x => x.card()).ToList();
+
+        // Closest to goal: practised in the last 30 days, not there yet, nearest first
+        _closest = pieces.Where(p => !shown.Contains(p.Id) && p.Goal.HasValue
+                    && stats[p.Id] is { Progress: < 1, LastDate: { } d } && d >= today.AddDays(-30))
+            .OrderByDescending(p => stats[p.Id].Progress)
+            .Take(PerRow).ToList()
+            .Select(p => PieceCard(p, $"{stats[p.Id].Last:0} of {p.Goal:0}{p.Unit.Suffix()} · {Ago(stats[p.Id].LastDate!.Value)}"))
+            .ToList();
+
+        // Ready for a new goal: at or past the goal, most recently practised first
+        _newGoal = pieces.Where(p => !shown.Contains(p.Id) && GoalChip.Reached(p, stats[p.Id].Last))
+            .OrderByDescending(p => stats[p.Id].LastDate)
+            .Take(PerRow).ToList()
+            .Select(p => PieceCard(p, LastLine(p)))
+            .ToList();
+
+        // Not practised lately: pieces with a goal to reach, untouched for two weeks, the longest-dropped first
+        _lately = pieces.Where(p => !shown.Contains(p.Id) && p.Goal.HasValue
+                    && stats[p.Id] is { Progress: < 1, LastDate: { } d } && d < today.AddDays(-14))
+            .OrderBy(p => stats[p.Id].LastDate)
+            .Take(PerRow).ToList()
+            .Select(p => PieceCard(p, $"Last practised {Stats.Ago(stats[p.Id].LastDate, today)}"))
+            .ToList();
+    }
+
+    string PlanMeta(PracticePlan p) =>
+        $"{p.Steps.Count} step{(p.Steps.Count == 1 ? "" : "s")} · {Stats.Duration((int)(p.TotalMinutes * 60))}" +
+        (p.LastRun is { } lr ? $" · last run {Stats.Ago(lr, DateTime.Today)}" : "");
+
+    RenderFragment Card(DashCard c) => c.Plan is { } plan ? PlanCardView(plan, c.Meta) : PieceCardView(c.Piece!, c.Stats!, c.Meta);
+
+    RenderFragment PieceCardView(Piece piece, PieceStats st, string meta) =>
+        @<article class="card fav-card">
+            <div class="fav-head">
+                <MudIcon Icon="@piece.Type.Icon()" Size="Size.Small" Class="fav-kind" />
+                <a href="library/@piece.Id" class="fav-name">@piece.Name</a>
+                <FavouriteToggle On="piece.Favourite" Name="@piece.Name" OnToggle="() => ToggleFavourite(piece)" />
+            </div>
+            <div class="fav-meta muted small">@meta <GoalChip Piece="piece" Last="st.Last" /></div>
+            @if (piece.Goal.HasValue)
+            {
+                <GoalBar Progress="st.Progress ?? 0" AriaLabel="@($"{piece.Name} progress")" />
+            }
+            <div class="fav-actions">
+                <MudTooltip Text="Practise with metronome">
+                    <MudIconButton Size="Size.Small" Icon="@Mdi.Metronome" Color="Color.Primary" Href="@($"metronome/piece/{piece.Id}")" aria-label="@($"Practise {piece.Name} with the metronome")" />
+                </MudTooltip>
+                <MudTooltip Text="Practise with timer (no click)">
+                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.HourglassBottom" Color="Color.Primary" Href="@($"timer/piece/{piece.Id}")" aria-label="@($"Practise {piece.Name} with the timer")" />
+                </MudTooltip>
+            </div>
+        </article>;
+
+    RenderFragment PlanCardView(PracticePlan plan, string meta) =>
+        @<article class="card fav-card">
+            <div class="fav-head">
+                <MudIcon Icon="@Icons.Material.Rounded.ChecklistRtl" Size="Size.Small" Class="fav-kind" />
+                <a href="plans" class="fav-name">@plan.Name</a>
+                <FavouriteToggle On="plan.Favourite" Name="@plan.Name" OnToggle="() => ToggleFavourite(plan)" />
+            </div>
+            <div class="fav-meta muted small">@meta</div>
+            <div class="fav-actions">
+                @if (Runner.Active && Runner.Plan?.Id == plan.Id)
+                {
+                    <span class="fav-running small">Running · step @(Runner.Index + 1) of @plan.Steps.Count</span>
+                }
+                else
+                {
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.PlayArrow" OnClick="() => Run(plan)">Run plan</MudButton>
+                }
+            </div>
+        </article>;
+
+    async Task Run(PracticePlan p)
+    {
+        if (p.Steps.Any(s => s.Kind == PlanStepKind.Piece && Store.GetPiece(s.PieceId) == null))
+            Snackbar.Add("Some steps refer to deleted pieces; skip them when they come up.", Severity.Warning);
+        await Runner.StartAsync(p);
+    }
+
+    async Task AddPiece()
+    {
+        var piece = await PieceDialog.ShowAsync(Dialogs);
+        if (piece != null) Nav.NavigateTo($"library/{piece.Id}");
+    }
+
+    async Task ToggleFavourite(Piece p) { p.Favourite = !p.Favourite; await Store.SavePieceAsync(p); }
+    async Task ToggleFavourite(PracticePlan p) { p.Favourite = !p.Favourite; await Store.SavePlanAsync(p); }
+
+    public void Dispose() { Store.Changed -= OnChanged; Runner.Changed -= OnRunnerChanged; }
+}

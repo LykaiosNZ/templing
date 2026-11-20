@@ -1,18 +1,18 @@
-# Songler: notes for agents
+# Templing: notes for agents
 
-Practice tracker for guitar: Blazor WebAssembly (.NET 11) + MudBlazor 9, Web Audio metronome in JS, all data in the browser (IndexedDB). No server, no accounts.
+Practice tracker for any instrument: Blazor WebAssembly (.NET 11) + MudBlazor 9, Web Audio metronome in JS, all data in the browser (IndexedDB). No server, no accounts.
 
 **UI conventions live in [DESIGN.md](DESIGN.md)** (copy, formats, controls, icons, shared components). Read it before UI work, and add to it when a new UI decision is made.
 
 ## Run / build
 
 ```bash
-dotnet build src/Songler/Songler.csproj
-dotnet run --project src/Songler/Songler.csproj --launch-profile http   # http://localhost:5075
+dotnet build src/Templing/Templing.csproj
+dotnet run --project src/Templing/Templing.csproj --launch-profile http   # http://localhost:5075
 ```
 
 - The `http` profile listens on all interfaces (`http://…:5075`), but other devices need HTTPS: the .NET WebAssembly runtime needs `crypto.subtle`, which browsers only expose to secure pages (HTTPS or localhost). To test on another device, run the **`lan`** profile (`--launch-profile lan`) and open `https://<this machine's IP>:7212`, accepting the certificate warning (the dev certificate is for localhost). Keep HTTPS out of the `http` profile: with an HTTPS address configured, the dev server redirects every page load to it, localhost included. Each address has its own IndexedDB data, so it starts empty (use backup/restore to copy data across).
-- The dev server does **not** hot-reload: restart it after C# / Razor / JS / CSS changes (static files are served from a build manifest, so even CSS edits need a build + restart) (`.claude/launch.json` has the `songler` preview config).
+- The dev server does **not** hot-reload: restart it after C# / Razor / JS / CSS changes (static files are served from a build manifest, so even CSS edits need a build + restart) (`.claude/launch.json` has the `templing` preview config).
 - There is no test project. Verify changes in the browser, and use clearly named throwaway fixtures (e.g. ids prefixed `zztest-`). Remove them afterwards and never touch the user's real data in the browser.
 
 ## Layout
@@ -59,6 +59,7 @@ Serialisation uses `DataStore.Json` (PascalCase property names, string enums via
 - **Prefer MudBlazor components** (progress bars, tooltips, dialogs…) over hand-built ones; see DESIGN.md. Charts are the exception: they're ECharts, and new chart kinds go in `charts.js` + a `ChartBase` component. The bundle only contains the series, components and features `charts.js` uses (`tools/echarts/entry.js`): if a chart needs another (a scatter series, a legend, dataZoom…), add it there and run `npm install && npm run build` in `tools/echarts`, then rebuild the app. A missing part doesn't throw; it logs "[ECharts] … is used but not imported" and quietly doesn't draw. The docs at mudblazor.com are a client-side app, so read them in a browser tab (plain fetches return an empty shell).
 
 - **Naming:** a thing in the library is a **piece** everywhere: UI text, code (`Piece`, `PieceId`, `PieceDialog`, `PieceDetail`), routes (`/metronome/piece/{id}`), CSS (`.piece-card`) and the IndexedDB store (`pieces`). Never "item" (MudBlazor's `MudSelectItem` etc. aside).
+- **The app used to be called Songler.** The IndexedDB database is still named `songler` (`db.js`, and the boot script in `index.html`): keep it, because renaming it would orphan everyone's data.
 
 - **Render fragments capture lazily:** inside `@for` loops, child content (e.g. `<MudChip>@x</MudChip>`) is evaluated later. Copy values to locals in the loop body (`var label = Labels[i];`) instead of indexing parameters or loop variables inside the fragment.
 - **JS interop with arrays:** `InvokeVoidAsync("fn", array)` spreads a `string[]` as `params`. Pass `(object)array`.

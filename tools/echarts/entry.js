@@ -1,4 +1,4 @@
-// The parts of ECharts that src/Songler/wwwroot/js/charts.js uses. Adding a chart kind or option that needs another
+// The parts of ECharts that src/Templing/wwwroot/js/charts.js uses. Adding a chart kind or option that needs another
 // series, component or feature? Add it here and run `npm run build` (see CLAUDE.md). A missing part doesn't throw:
 // the series or option just doesn't draw, so check the chart after.
 import * as echarts from 'echarts/core';

@@ -1,0 +1,331 @@
+@page "/library/{Id}"
+@implements IDisposable
+@inject DataStore Store
+@inject IDialogService Dialogs
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+@if (_piece is null)
+{
+    <MudAlert Severity="Severity.Warning">Piece not found. <a href="library">Back to library</a></MudAlert>
+}
+else
+{
+    <PageTitle>@_piece.Name · Templing</PageTitle>
+    <nav aria-label="Breadcrumb" class="crumbs"><a href="library">Library</a> <span aria-hidden="true">›</span> <span>@_piece.Name</span></nav>
+    <div class="page-head">
+        <div>
+            <span class="type-pill type-@_piece.Type"><MudIcon Icon="@_piece.Type.Icon()" Size="Size.Small" />@_piece.Type.Label()</span>
+            <div class="d-flex align-center gap-1">
+                <h1 class="page-title" tabindex="-1">@_piece.Name</h1>
+                <FavouriteToggle On="_piece.Favourite" Name="@_piece.Name" Size="Size.Medium" OnToggle="ToggleFavourite" />
+            </div>
+            @if (!string.IsNullOrWhiteSpace(_piece.Link))
+            {
+                <a href="@_piece.Link" target="_blank" rel="noopener" class="small">@_piece.Link</a>
+            }
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Mdi.Metronome" Href="@($"metronome/piece/{_piece.Id}")">Metronome</MudButton>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.HourglassBottom" Href="@($"timer/piece/{_piece.Id}")">Timer</MudButton>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.AddTask" OnClick="AddLog">Log</MudButton>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Edit" OnClick="Edit">Edit</MudButton>
+            <MudTooltip Text="More">
+                <MudMenu Icon="@Icons.Material.Rounded.MoreHoriz" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" AriaLabel="More actions">
+                    <MudMenuItem Icon="@(_piece.Archived ? Icons.Material.Rounded.Unarchive : Icons.Material.Rounded.Archive)" OnClick="ToggleArchive">@(_piece.Archived ? "Unarchive" : "Archive")</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Rounded.Delete" IconColor="Color.Error" OnClick="() => AfterMenu(Delete)">Delete…</MudMenuItem>
+                </MudMenu>
+            </MudTooltip>
+        </div>
+    </div>
+
+    <div class="mb-4"><FeelHint Piece="_piece" /></div>
+    @if (!string.IsNullOrWhiteSpace(_piece.Notes))
+    {
+        <MudText Class="muted mb-4" Style="white-space:pre-wrap">@_piece.Notes</MudText>
+    }
+
+    <div class="tiles tiles-lead">
+        <StatTile Label="Progress" Value="@(_st.Progress is { } p ? p.ToString("P0") : "—")" Icon="@Icons.Material.Rounded.Flag"
+                  Sub="@ProgressSub">
+            <GoalBar Progress="_st.Progress" Class="mt-2" AriaLabel="Progress to goal" />
+            @if (_section == null && GoalChip.Reached(_piece, _st.Last))
+            {
+                <div class="goal-raise">
+                    <GoalChip Piece="_piece" Last="_st.Last" />
+                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="RaiseGoal">Raise goal…</MudButton>
+                </div>
+            }
+        </StatTile>
+        <StatTile Label="Latest" Value="@(_st.Last?.ToString("0") ?? "—")" Unit="@(_st.Last.HasValue ? _piece.Unit.Suffix() : null)" Icon="@Icons.Material.Rounded.Speed"
+                  Sub="@(_st.Best is { } b ? $"Best {b:0}{_piece.Unit.Suffix()}" : null)" />
+        <StatTile Label="Improvement" Value="@Improvement" Icon="@Icons.Material.Rounded.TrendingUp" Sub="@(_st.FirstDate is { } fd ? $"since {fd:d MMM}" : null)" />
+        <StatTile Label="Sessions" Value="@_st.Sessions.ToString()" Icon="@Icons.Material.Rounded.CalendarMonth" Sub="@(_st.LastDate is null ? "Not started yet" : $"Last {Stats.Ago(_st.LastDate, DateTime.Today)}")" />
+        <StatTile Label="Total time" Seconds="_st.TotalSec" Icon="@Icons.Material.Rounded.Timer" Sub="@AvgSub" />
+    </div>
+
+    <MudGrid Spacing="4" Class="mt-1 equal-cards">
+        <MudItem xs="12" lg="8">
+            <section class="card">
+                <div class="card-head">
+                    <h2 class="card-title">Tempo over time</h2>
+                    <MudSpacer />
+                    <MudSelect T="int" Value="_rangeMonths" ValueChanged="RangeChanged" Label="Period" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="toolbar-select">
+                        <MudSelectItem T="int" Value="3">Last 3 months</MudSelectItem>
+                        <MudSelectItem T="int" Value="0">All time</MudSelectItem>
+                    </MudSelect>
+                    @if (_piece.Sections.Count > 1)
+                    {
+                        <MudSelect T="string" @bind-Value="SectionPick" @bind-Value:after="Refresh" Label="Section" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Class="toolbar-select">
+                            <MudSelectItem T="string" Value="@("")">All sections</MudSelectItem>
+                            @foreach (var s in _piece.Sections) { <MudSelectItem T="string" Value="@s.Id">@s.Name</MudSelectItem> }
+                        </MudSelect>
+                    }
+                </div>
+                <TempoChart Points="_points" Goal="_piece.Goal" Unit="_piece.Unit" AriaLabel="@($"Tempo progress for {_piece.Name}")" />
+            </section>
+        </MudItem>
+        <MudItem xs="12" lg="4">
+            <section class="card chart-card">
+                <h2 class="card-title">Weekly practice time</h2>
+                <BarChart Labels="_weekLabels" TipLabels="_weekTips" Values="_weekValues" Minutes="true" HighlightLast="true" Height="260" Fill="true" AriaLabel="Practice time per week" />
+            </section>
+        </MudItem>
+        <MudItem xs="12">
+            <section class="card collapsible @(SectionsOpen ? "open" : "")">
+                <div class="card-head">
+                    <button type="button" class="collapse-toggle" aria-expanded="@(SectionsOpen ? "true" : "false")" aria-controls="sections-body" @onclick="() => _sectionsOpen = !SectionsOpen">
+                        <MudIcon Icon="@Icons.Material.Rounded.ExpandMore" Class="collapse-chevron" Size="Size.Small" />
+                        <h2 class="card-title">Sections</h2>
+                        @if (!SectionsOpen)
+                        {
+                            <span class="collapse-summary muted">@SectionsSummary@if (!_piece!.HasParts() && _piece.Sections.FirstOrDefault() is { } only)
+                            {<span> · <DivisionIcon Subdivision="only.Subdivision" BeatUnit="only.BeatUnit" /></span>}</span>
+                        }
+                    </button>
+                    <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Rounded.Edit" OnClick="Edit">Edit</MudButton>
+                </div>
+                <div id="sections-body" hidden="@(!SectionsOpen)">
+                @if (_piece.HasParts())
+                {
+                    <div class="log-table-wrap">
+                        <table class="log-table parts-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Section</th>
+                                    <th scope="col">Tempo · meter</th>
+                                    <th scope="col" class="num">Latest</th>
+                                    <th scope="col" class="num">Best</th>
+                                    <th scope="col" style="min-width:140px">Progress</th>
+                                    <th scope="col">Feel</th>
+                                    <th scope="col">Last worked on</th>
+                                    <th scope="col"><span class="sr-only">Actions</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var ps in _parts)
+                                {
+                                    var s = ps.Section;
+                                    var weakest = ps == _weakest;
+                                    var pctSuffix = _piece.Unit == TempoUnit.Percent ? "%" : "";
+                                    <tr class="@(weakest ? "weakest" : "")">
+                                        <th scope="row" class="part-name">
+                                            @s.Name
+                                            @if (weakest) { <span class="weak-tag">needs work</span> }
+                                        </th>
+                                        <td class="mono small">@s.Bpm.ToString("0") bpm · @s.Meter · <DivisionIcon Subdivision="s.Subdivision" BeatUnit="s.BeatUnit" />@(s.Length > 0 ? $" · {s.Length} bars" : "")</td>
+                                        <td class="num mono">@(ps.Last is { } pl ? pl.ToString("0") + pctSuffix : "—")</td>
+                                        <td class="num mono muted">@(ps.Best is { } pb ? pb.ToString("0") + pctSuffix : "—")</td>
+                                        <td>
+                                            <div class="d-flex align-center gap-2">
+                                                <GoalBar Progress="ps.Progress" Class="flex-grow-1" AriaLabel="@($"{s.Name} progress")" />
+                                                <span class="mono small" style="min-width:38px;text-align:right">@(ps.Progress is { } pp ? pp.ToString("P0") : "—")</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            @if (Effort.Get(ps.Effort) is { } f)
+                                            {
+                                                <span class="feel-pill" style="--feel:@f.Color" title="@f.Advice">@f.Label</span>
+                                            }
+                                        </td>
+                                        <td class="small muted">@(ps.LastDate is null ? "not yet" : Stats.Ago(ps.LastDate, DateTime.Today))@(ps.TotalSec > 0 ? $" · {Stats.Duration(ps.TotalSec)}" : "")</td>
+                                        <td class="act" style="white-space:nowrap">
+                                            <MudTooltip Text="Log practice">
+                                                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.AddTask" aria-label="@($"Log {s.Name}")" OnClick="() => AddLogFor(s.Id)" />
+                                            </MudTooltip>
+                                            <MudTooltip Text="Practise with the metronome">
+                                                <MudIconButton Size="Size.Small" Icon="@Mdi.Metronome" Color="Color.Primary" Href="@($"metronome/piece/{_piece.Id}/{s.Id}")" aria-label="@($"Practise {s.Name} with the metronome")" />
+                                            </MudTooltip>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <MudText Typo="Typo.caption" Class="muted d-block mt-2">
+                        A full run-through (logged without a part) updates every part. Overall progress is the average across parts.
+                    </MudText>
+                }
+                else
+                {
+                    var s0 = _piece.Sections[0];
+                    <MudSimpleTable Dense="true" Elevation="0">
+                        <tbody>
+                            <tr><th scope="row">Tempo</th><td>@s0.Bpm.ToString("0") bpm</td></tr>
+                            <tr><th scope="row">Meter</th><td>@s0.Meter</td></tr>
+                            <tr><th scope="row">Division</th><td><DivisionIcon Subdivision="s0.Subdivision" BeatUnit="s0.BeatUnit" ShowLabel="true" /></td></tr>
+                        </tbody>
+                    </MudSimpleTable>
+                    @if (_piece.Type == PieceType.Song)
+                    {
+                        <MudText Typo="Typo.caption" Class="muted d-block mt-2">Tip: split this song into parts (intro, verse, solo…) to track each one separately.</MudText>
+                    }
+                }
+                </div>
+            </section>
+        </MudItem>
+        <MudItem xs="12">
+            <section class="card">
+                <h2 class="card-title">Log</h2>
+                <LogTable Logs="_logs" ShowPiece="false" />
+            </section>
+        </MudItem>
+    </MudGrid>
+
+    @if (_piece.ScoreFileId != null)
+    {
+        <div class="mt-4">
+            <TabView Piece="_piece" Dark="Store.Settings.DarkMode" />
+        </div>
+    }
+}
+
+@code {
+    async Task ToggleFavourite() { _piece!.Favourite = !_piece.Favourite; await Store.SavePieceAsync(_piece); }
+
+    // MudMenu only closes once a menu item's handler finishes; start dialogs after it closes instead of awaiting them inside the click
+    void AfterMenu(Func<Task> action) => _ = InvokeAsync(action);
+    [Parameter] public string Id { get; set; } = "";
+    Piece? _piece;
+    PieceStats _st = default!;
+    string? _section;
+    string SectionPick { get => _section ?? ""; set => _section = string.IsNullOrEmpty(value) ? null : value; }
+    List<TempoPoint> _points = new();
+    List<PracticeLog> _logs = new();
+    List<string> _weekLabels = new(), _weekTips = new();
+    List<double> _weekValues = new();
+    List<SectionStats> _parts = new();
+    SectionStats? _weakest;
+    int _rangeMonths;          // 0 = all time
+    bool? _sectionsOpen;       // null = default (open for multi-part pieces)
+
+    bool SectionsOpen => _sectionsOpen ?? _piece!.HasParts();
+
+    string SectionsSummary
+    {
+        get
+        {
+            if (_piece!.HasParts())
+                return $"{_parts.Count} sections" + (_weakest is { } w ? $" · weakest {w.Section.Name}" : "");
+            var s0 = _piece.Sections[0];
+            return $"{s0.Bpm:0} bpm · {s0.Meter}";
+        }
+    }
+
+    string AvgSub => _st.Sessions > 0 && _st.TotalSec > 0
+        ? $"avg {Stats.Duration(_st.TotalSec / Math.Max(1, _logs.Count(l => l.DurationSec > 0)))} per session"
+        : "no time logged";
+
+    void RangeChanged(int months) { _rangeMonths = months; Refresh(); }
+
+    async Task ToggleArchive()
+    {
+        if (_piece == null) return;
+        _piece.Archived = !_piece.Archived;
+        await Store.SavePieceAsync(_piece);
+        Snackbar.Add(_piece.Archived ? "Archived: hidden from the library unless \"Show archived\" is on" : "Unarchived", Severity.Info);
+    }
+
+
+    /// <summary>A new goal, starting from the best tempo so far.</summary>
+    async Task RaiseGoal()
+    {
+        var unit = _piece!.Unit == TempoUnit.Percent ? "%" : "bpm";
+        var suggested = Math.Max(_st.Best ?? 0, _piece.Goal ?? 0);
+        var text = await PromptDialog.ShowAsync(Dialogs, "Raise goal", $"New goal ({unit})", suggested.ToString("0"), "Set goal");
+        if (text == null || !double.TryParse(text.Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var goal) || goal <= 0) return;
+        _piece.Goal = Math.Round(goal);
+        await Store.SavePieceAsync(_piece);
+        Snackbar.Add($"Goal set to {_piece.Goal:0}{_piece.Unit.Suffix()}", Severity.Success);
+    }
+
+    string ProgressSub
+    {
+        get
+        {
+            var goal = _piece!.Goal is { } g ? $"Goal {g:0}{_piece.Unit.Suffix()}" : "No goal set";
+            if (_section != null || !_piece.HasParts()) return goal;
+            return _weakest is { } w ? $"Avg of {_parts.Count} sections · weakest {w.Section.Name}" : $"Avg of {_parts.Count} sections";
+        }
+    }
+
+
+    string Improvement
+    {
+        get
+        {
+            if (_st.First is not { } f || _st.Best is not { } b) return "—";
+            var d = b - f;
+            return $"{(d >= 0 ? "+" : "")}{d:0}{_piece!.Unit.Suffix()}";
+        }
+    }
+
+    protected override void OnInitialized() => Store.Changed += OnChanged;
+    protected override void OnParametersSet() { _section = null; _sectionsOpen = null; Refresh(); }
+    void OnChanged() { Refresh(); InvokeAsync(StateHasChanged); }
+
+    void Refresh()
+    {
+        _piece = Store.GetPiece(Id);
+        if (_piece == null) return;
+        _st = Stats.ForPiece(_piece, Store.Logs, _section);
+        _points = Stats.TempoHistory(_piece, Store.Logs, _section);
+        if (_rangeMonths > 0) _points = _points.Where(pt => pt.Date >= DateTime.Today.AddMonths(-_rangeMonths)).ToList();
+        _logs = Store.LogsFor(_piece.Id).OrderByDescending(l => l.Date).ToList();
+        var weeks = Stats.WeeklySeconds(Store.LogsFor(_piece.Id), DateTime.Today, 12);
+        _weekLabels = Stats.WeekLabels(weeks);
+        _weekTips = Stats.WeekTips(weeks);
+        _weekValues = weeks.Select(w => w.sec / 60.0).ToList();
+        _parts = Stats.ForSections(_piece, Store.Logs);
+        _weakest = _parts.Count > 1 && _parts.Any(p => p.Progress < 1)
+            ? _parts.OrderBy(p => p.Progress ?? 0).First() : null;
+    }
+
+    async Task AddLogFor(string sectionId)
+    {
+        if (_piece == null) return;
+        await LogDialog.ShowAsync(Dialogs, new PracticeLog { PieceId = _piece.Id, PieceName = _piece.Name, Unit = _piece.Unit, SectionId = sectionId }, true);
+    }
+
+    async Task Edit() { if (_piece != null) await PieceDialog.ShowAsync(Dialogs, _piece); }
+
+    async Task AddLog()
+    {
+        if (_piece == null) return;
+        await LogDialog.ShowAsync(Dialogs, new PracticeLog { PieceId = _piece.Id, PieceName = _piece.Name, Unit = _piece.Unit, SectionId = _section }, true);
+    }
+
+    async Task Delete()
+    {
+        if (_piece == null) return;
+        var count = Store.LogsFor(_piece.Id).Count();
+        var logs = count switch { 0 => null, 1 => "Its log entry is deleted too.", _ => $"Its {count} log entries are deleted too." };
+        if (!await ConfirmDialog.DeleteAsync(Dialogs, "piece", _piece.Name, logs)) return;
+        var name = _piece.Name;
+        await Store.DeletePieceAsync(_piece, deleteLogs: true);
+        Snackbar.Add($"Deleted “{name}”", Severity.Info);
+        Nav.NavigateTo("library");
+    }
+
+    public void Dispose() => Store.Changed -= OnChanged;
+}

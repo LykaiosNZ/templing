@@ -1,7 +1,7 @@
 {
-  "name": "songler-echarts",
+  "name": "templing-echarts",
   "private": true,
-  "description": "Builds a trimmed Apache ECharts bundle (only what js/charts.js uses) into src/Songler/wwwroot/lib/echarts/echarts.min.js.",
+  "description": "Builds a trimmed Apache ECharts bundle (only what js/charts.js uses) into src/Templing/wwwroot/lib/echarts/echarts.min.js.",
   "type": "module",
   "scripts": { "build": "node build.mjs" },
   "devDependencies": { "echarts": "6.1.0", "esbuild": "0.24.0" }

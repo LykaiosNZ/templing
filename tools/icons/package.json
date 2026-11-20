@@ -1,7 +1,7 @@
 {
-  "name": "songler-icons",
+  "name": "templing-icons",
   "private": true,
-  "description": "Generates src/Songler/Components/Mdi.g.cs from Pictogrammers Material Design Icons (@mdi/js).",
+  "description": "Generates src/Templing/Components/Mdi.g.cs from Pictogrammers Material Design Icons (@mdi/js).",
   "type": "module",
   "scripts": { "generate": "node generate.mjs" },
   "devDependencies": { "@mdi/js": "7.4.47" }

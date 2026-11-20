@@ -1,9 +1,9 @@
-// Bundles entry.js into one minified script at src/Songler/wwwroot/lib/echarts/echarts.min.js.
+// Bundles entry.js into one minified script at src/Templing/wwwroot/lib/echarts/echarts.min.js.
 import { build } from 'esbuild';
 import { readFileSync, statSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 
-const out = new URL('../../src/Songler/wwwroot/lib/echarts/echarts.min.js', import.meta.url);
+const out = new URL('../../src/Templing/wwwroot/lib/echarts/echarts.min.js', import.meta.url);
 const { version } = JSON.parse(readFileSync(new URL('./node_modules/echarts/package.json', import.meta.url)));
 
 await build({

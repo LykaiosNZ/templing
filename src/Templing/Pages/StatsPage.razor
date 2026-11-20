@@ -1,0 +1,150 @@
+@page "/stats"
+@implements IDisposable
+@inject DataStore Store
+
+<PageTitle>Stats · Templing</PageTitle>
+
+<div class="page-head">
+    <h1 class="page-title" tabindex="-1">Stats</h1>
+    <div>
+    <MudSelect T="int" @bind-Value="_period" @bind-Value:after="Refresh" Label="Period" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="toolbar-select">
+        <MudSelectItem T="int" Value="30">Last 30 days</MudSelectItem>
+        <MudSelectItem T="int" Value="90">Last 90 days</MudSelectItem>
+        <MudSelectItem T="int" Value="365">Last 12 months</MudSelectItem>
+        <MudSelectItem T="int" Value="0">All time</MudSelectItem>
+    </MudSelect>
+    </div>
+</div>
+
+<div class="tiles">
+    <StatTile Label="Practice time" Seconds="_totalSec" Icon="@Icons.Material.Rounded.Timer" Sub="@($"avg {Stats.Duration((int)(_totalSec / Math.Max(1, _spanDays / 7.0)))} a week")" />
+    <StatTile Label="Days practised" Value="@_days.ToString()" Icon="@Icons.Material.Rounded.CalendarMonth" Sub="@(_spanDays > 0 ? $"{(double)_days / _spanDays:P0} of days" : null)" />
+    <StatTile Label="Avg per day" Seconds="_timedDays > 0 ? _totalSec / _timedDays : 0" Icon="@Icons.Material.Rounded.AvTimer" Sub="@(_days > 0 ? $"{_piecesPerDay:0.#} piece{(Math.Round(_piecesPerDay, 1) == 1 ? "" : "s")} a day" : null)" />
+    <StatTile Label="Pieces practised" Value="@_pieceCount.ToString()" Icon="@Icons.Material.Rounded.LibraryMusic" Sub="@($"{_logs.Count} entries")" />
+    <StatTile Label="Longest streak" Value="@_streak.longest.ToString()" Unit=" days" Icon="@Icons.Material.Rounded.LocalFireDepartment" Sub="@($"Current {_streak.current} day{(_streak.current == 1 ? "" : "s")}")" />
+</div>
+
+<MudGrid Spacing="4" Class="mt-1 equal-cards">
+    <MudItem xs="12">
+        <section class="card">
+            <h2 class="card-title">Practice calendar</h2>
+            <Heatmap SecondsByDay="_byDayAll" Practiced="_practicedAll" Weeks="53" From="_from" />
+        </section>
+    </MudItem>
+    <MudItem xs="12" lg="8">
+        <section class="card">
+            <h2 class="card-title">Weekly practice time</h2>
+            <BarChart Labels="_weekLabels" TipLabels="_weekTips" Values="_weekValues" Minutes="true" HighlightLast="true"
+                      Goal="Store.Settings.WeeklyGoalMin" GoalLabel="@($"Weekly goal {Stats.DurationMin(Store.Settings.WeeklyGoalMin)}")" AriaLabel="Practice time per week" />
+        </section>
+    </MudItem>
+    <MudItem xs="12" lg="4">
+        <section class="card">
+            <h2 class="card-title">Days practised by weekday</h2>
+            <BarChart Labels="_dowLabels" Values="_dowValues" Format="@(v => v == 1 ? "1 day" : $"{v:0} days")" AriaLabel="Days practised by weekday" />
+        </section>
+    </MudItem>
+    <MudItem xs="12" md="6" lg="4">
+        <section class="card">
+            <h2 class="card-title">Time by piece</h2>
+            <HBars Rows="_byPiece" Limit="8" AriaLabel="Practice time by piece" />
+        </section>
+    </MudItem>
+    <MudItem xs="12" md="6" lg="4">
+        <section class="card">
+            <h2 class="card-title">Biggest gains</h2>
+            <HBars Rows="_gains" Limit="8" AriaLabel="Tempo improvement by piece" />
+        </section>
+    </MudItem>
+    <MudItem xs="12" md="6" lg="4">
+        <section class="card">
+            <h2 class="card-title">Goal progress</h2>
+            @if (_goalsReached > 0)
+            {
+                <MudText Typo="Typo.body2" Class="muted mb-2">@(_goalsReached == 1 ? "1 goal reached" : $"{_goalsReached} goals reached")</MudText>
+            }
+            <HBars Rows="_progress" Max="1" Goal="true" Limit="8" AriaLabel="Progress toward goal by piece" />
+        </section>
+        <section class="card mt-4">
+            <h2 class="card-title">By type</h2>
+            <HBars Rows="_byType" AriaLabel="Practice time by type" />
+        </section>
+    </MudItem>
+</MudGrid>
+
+@code {
+    int _period = 90;
+    List<PracticeLog> _logs = new();
+    int _totalSec, _days, _timedDays, _pieceCount, _spanDays, _goalsReached;
+    (int current, int longest) _streak;
+    Dictionary<DateTime, int> _byDayAll = new();
+    HashSet<DateTime> _practicedAll = new();
+    DateTime _from = DateTime.Today;
+    double _piecesPerDay;
+    List<string> _weekLabels = new(), _weekTips = new(), _dowLabels = new();
+    List<double> _weekValues = new(), _dowValues = new();
+    List<HBars.Row> _byPiece = new(), _gains = new(), _progress = new(), _byType = new();
+
+    protected override void OnInitialized() { Store.Changed += OnChanged; Refresh(); }
+    void OnChanged() { Refresh(); InvokeAsync(StateHasChanged); }
+
+    void Refresh()
+    {
+        var today = DateTime.Today;
+        var from = _period > 0 ? today.AddDays(-_period + 1) : (Store.Logs.Count > 0 ? Store.Logs.Min(l => l.Date) : today);
+        _spanDays = (int)(today - from.Date).TotalDays + 1;
+        _logs = Store.Logs.Where(l => l.Date >= from).ToList();
+        _totalSec = _logs.Sum(l => l.DurationSec ?? 0);
+        var days = Stats.DaysPracticed(_logs);
+        _days = days.Count;
+        _timedDays = _logs.Where(l => l.DurationSec > 0).Select(l => l.Date.Date).Distinct().Count();
+        _pieceCount = _logs.Select(l => l.PieceName).Distinct().Count();
+        _streak = Stats.Streaks(Store.Logs, today);
+        _byDayAll = Stats.SecondsByDay(Store.Logs);
+        _practicedAll = Stats.DaysPracticed(Store.Logs);
+        _from = from.Date;
+        _piecesPerDay = _logs.GroupBy(l => l.Date.Date).Select(g => g.Select(l => l.PieceName).Distinct().Count()).DefaultIfEmpty(0).Average();
+
+        var weeks = Stats.WeeklySeconds(_logs, today, Math.Clamp((int)Math.Ceiling(_spanDays / 7.0), 4, 104));
+        _weekLabels = Stats.WeekLabels(weeks);
+        _weekTips = Stats.WeekTips(weeks);
+        _weekValues = weeks.Select(w => w.sec / 60.0).ToList();
+
+        var order = new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday };
+        _dowLabels = order.Select(d => d.ToString()[..3]).ToList();
+        _dowValues = order.Select(d => (double)days.Count(x => x.DayOfWeek == d)).ToList();
+
+        _byPiece = _logs.GroupBy(l => (l.PieceId, l.PieceName))
+            .Select(g => (g.Key, sec: g.Sum(l => l.DurationSec ?? 0)))
+            .Where(x => x.sec > 0).OrderByDescending(x => x.sec).Take(12)
+            .Select(x => new HBars.Row(x.Key.PieceName, x.sec, Stats.Duration(x.sec), x.Key.PieceId != null ? $"library/{x.Key.PieceId}" : null)).ToList();
+
+        _byType = _logs.GroupBy(l => Store.GetPiece(l.PieceId)?.Type.Label() ?? "Free practice")
+            .Select(g => (g.Key, sec: g.Sum(l => l.DurationSec ?? 0))).Where(x => x.sec > 0).OrderByDescending(x => x.sec)
+            .Select(x => new HBars.Row(x.Key, x.sec, Stats.Duration(x.sec))).ToList();
+
+        _gains = new();
+        _progress = new();
+        _goalsReached = 0;
+        foreach (var piece in Store.Pieces)
+        {
+            var pts = _logs.Where(l => l.PieceId == piece.Id && l.Unit == piece.Unit && l.Value.HasValue).OrderBy(l => l.Date).ToList();
+            if (pts.Count >= 2)
+            {
+                var first = pts[0].Value!.Value; var best = pts.Max(p => p.Value!.Value);
+                var gain = best - first;
+                if (gain > 0) _gains.Add(new HBars.Row(piece.Name, first > 0 ? gain / first : 0, $"{first:0} → {best:0}{piece.Unit.Suffix()} (+{(first > 0 ? gain / first : 0):P0})", $"library/{piece.Id}"));
+            }
+            var st = Stats.ForPiece(piece, Store.Logs);
+            if (!piece.Archived && st.Progress is { } p && st.LastDate >= from)
+            {
+                if (p >= 1) _goalsReached++;
+                else _progress.Add(new HBars.Row(piece.Name, p, $"{p:P0}", $"library/{piece.Id}"));
+            }
+        }
+        _gains = _gains.OrderByDescending(g => g.Value).Take(10).ToList();
+        _progress = _progress.OrderByDescending(g => g.Value).ToList();
+    }
+
+    public void Dispose() => Store.Changed -= OnChanged;
+}

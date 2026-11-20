@@ -1,0 +1,156 @@
+@page "/settings"
+@inject DataStore Store
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+@inject MetronomeService Metro
+@inject NavigationManager Nav
+
+<PageTitle>Settings · Templing</PageTitle>
+
+<div class="page-head">
+    <h1 class="page-title" tabindex="-1">Settings &amp; data</h1>
+</div>
+
+<div class="settings-list">
+    <section aria-labelledby="set-practice">
+        <h2 class="settings-heading" id="set-practice">Practice</h2>
+        <div class="setting-row">
+            <div class="setting-text"><div class="setting-title">Weekly goal</div></div>
+            <div class="setting-control">
+                <DurationInput Seconds="Store.Settings.WeeklyGoalMin * 60.0" SecondsChanged="async v => { Store.Settings.WeeklyGoalMin = (int)Math.Round((v ?? 0) / 60); await Save(); }"
+                               AriaLabel="Weekly goal" StepSeconds="900" MaxSeconds="100 * 3600" Variant="Variant.Outlined" Margin="Margin.Dense" Style="width:140px" />
+            </div>
+        </div>
+        <div class="setting-row">
+            <div class="setting-text"><div class="setting-title">Log finished plan steps automatically</div></div>
+            <div class="setting-control">
+                <MudSwitch T="bool" @bind-Value="Store.Settings.AutoLogPlanSteps" @bind-Value:after="Save" Color="Color.Primary" aria-label="Log finished plan steps automatically" Class="ma-0" />
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="set-presets">
+        <h2 class="settings-heading" id="set-presets">Interval presets</h2>
+        <div class="setting-row setting-row-top">
+            <div class="setting-text"><div class="setting-title">Metronome intervals</div></div>
+            <div class="setting-control">
+                <IntervalPresetsEditor List="Store.Settings.MetronomeIntervalPresets" Defaults="IntervalsEditor.MetronomeDefaults" Name="Metronome interval presets"
+                                       ListChanged="async l => { Store.Settings.MetronomeIntervalPresets = l; await Save(); }" />
+            </div>
+        </div>
+        <div class="setting-row setting-row-top">
+            <div class="setting-text"><div class="setting-title">Timer countdown</div></div>
+            <div class="setting-control">
+                <IntervalPresetsEditor List="Store.Settings.TimerIntervalPresets" Defaults="IntervalsEditor.TimerDefaults" Name="Timer countdown presets"
+                                       ListChanged="async l => { Store.Settings.TimerIntervalPresets = l; await Save(); }" />
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="set-colours">
+        <h2 class="settings-heading" id="set-colours">Colours</h2>
+        <ColoursEditor />
+    </section>
+
+    <section aria-labelledby="set-data">
+        <h2 class="settings-heading" id="set-data">Data</h2>
+        <div class="setting-row">
+            <div class="setting-text">
+                <div class="setting-title">Backup</div>
+                <div class="setting-desc">Score files aren't included.</div>
+            </div>
+            <div class="setting-control">
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Download" OnClick="ExportJson">Export</MudButton>
+                <MudFileUpload T="IBrowserFile" @ref="_upload" FilesChanged="ImportJson" Accept=".json,application/json" Class="ma-0">
+                    <CustomContent>
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Restore" OnClick="@context.OpenFilePickerAsync">Restore…</MudButton>
+                    </CustomContent>
+                    <SelectedTemplate />
+                </MudFileUpload>
+            </div>
+        </div>
+        <div class="setting-row">
+            <div class="setting-text"><div class="setting-title">Practice log</div></div>
+            <div class="setting-control">
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.TableView" OnClick="ExportCsv">Export CSV</MudButton>
+            </div>
+        </div>
+        <div class="setting-row">
+            <div class="setting-text"><div class="setting-title">Delete all data</div></div>
+            <div class="setting-control">
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Rounded.DeleteForever" OnClick="ClearAll">Delete…</MudButton>
+            </div>
+        </div>
+    </section>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "restored")] public int? Restored { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (Restored == 1)
+        {
+            Snackbar.Add($"Backup restored, including settings. You now have {Store.Pieces.Count} pieces and {Store.Logs.Count} log entries.", Severity.Success);
+            Nav.NavigateTo("settings", replace: true);
+        }
+    }
+
+    Task Save() => Store.SaveSettingsAsync();
+
+    async Task ExportJson() =>
+        await Store.DownloadAsync($"templing-backup-{DateTime.Today:yyyy-MM-dd}.json", Backup.Export(Store), "application/json");
+
+    async Task ExportCsv() =>
+        await Store.DownloadAsync($"templing-log-{DateTime.Today:yyyy-MM-dd}.csv", LogCsv.ExportLogCsv(Store), "text/csv");
+
+    MudFileUpload<IBrowserFile>? _upload;
+
+    async Task ImportJson(IBrowserFile? picked)
+    {
+        if (picked == null) return;
+        try
+        {
+            using var reader = new StreamReader(picked.OpenReadStream(20_000_000));
+            var file = Backup.Parse(await reader.ReadToEndAsync());
+            var includeSettings = await RestoreDialog.ShowAsync(Dialogs, file, picked.Name);
+            if (includeSettings == null) return;
+            if (includeSettings == true) await Metro.StopAsync();
+            var summary = await Backup.RestoreAsync(Store, file, includeSettings.Value);
+            if (includeSettings == true)
+            {
+                // services hold references into the old settings; reload so everything picks up the restored ones
+                Nav.NavigateTo("settings?restored=1", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(summary, Severity.Success);
+        }
+        catch (FormatException ex) when (ex.Message.StartsWith("This backup"))
+        {
+            Snackbar.Add(ex.Message, Severity.Error);   // older / newer version: already readable
+        }
+        catch (Exception ex) when (ex is System.Text.Json.JsonException or FormatException or NotSupportedException)
+        {
+            Snackbar.Add("That file isn't a Templing backup.", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Couldn't restore that backup.", Severity.Error);
+        }
+        finally
+        {
+            // forget the picked file, so the same file can be chosen again and no file chip lingers
+            if (_upload != null) await _upload.ClearAsync();
+        }
+    }
+
+    async Task ClearAll()
+    {
+        var ok = await ConfirmDialog.ShowAsync(Dialogs, "Delete all data?",
+            "Every piece, log entry, plan and custom metronome in this browser will be deleted. Export a backup first if you might want it back. This can't be undone.",
+            "Delete everything", destructive: true);
+        if (ok != true) return;
+        await Store.ClearAllAsync();
+        Snackbar.Add("All data deleted", Severity.Info);
+    }
+}

@@ -1,11 +1,11 @@
-# Songler
+# Templing
 
 A practice tracker for instruments: a training metronome, a library of songs/exercises/riffs with tempo goals, and fitness-tracker-style stats. It runs entirely in the browser (Blazor WebAssembly + MudBlazor), with data kept in IndexedDB.
 
 ## Run
 
 ```bash
-dotnet run --project src/Songler/Songler.csproj --launch-profile http
+dotnet run --project src/Templing/Templing.csproj --launch-profile http
 ```
 
 Then open http://localhost:5075. You need the .NET 11 SDK.
@@ -47,7 +47,7 @@ Shortcuts are ignored while you type in a field.
 
 ## Layout
 
-- `src/Songler/Models`: data model (pieces, sections, logs, presets, settings)
-- `src/Songler/Services`: `DataStore` (IndexedDB cache), `MetronomeService`, `Shortcuts`, `Stats`, `LogCsv`, `ScoreImport`, `PlanRunner`
-- `src/Songler/wwwroot/js`: `metronome.js` (audio engine), `db.js` (IndexedDB), `keys.js` (global shortcuts)
-- `src/Songler/Components/Charts` + `wwwroot/js/charts.js`: charts on [Apache ECharts](https://echarts.apache.org) (Apache-2.0; a trimmed bundle in `wwwroot/lib/echarts`, built by `tools/echarts`): tempo line, bars, practice calendar; ranked bars on MudBlazor progress bars
+- `src/Templing/Models`: data model (pieces, sections, logs, presets, settings)
+- `src/Templing/Services`: `DataStore` (IndexedDB cache), `MetronomeService`, `Shortcuts`, `Stats`, `LogCsv`, `ScoreImport`, `PlanRunner`
+- `src/Templing/wwwroot/js`: `metronome.js` (audio engine), `db.js` (IndexedDB), `keys.js` (global shortcuts)
+- `src/Templing/Components/Charts` + `wwwroot/js/charts.js`: charts on [Apache ECharts](https://echarts.apache.org) (Apache-2.0; a trimmed bundle in `wwwroot/lib/echarts`, built by `tools/echarts`): tempo line, bars, practice calendar; ranked bars on MudBlazor progress bars

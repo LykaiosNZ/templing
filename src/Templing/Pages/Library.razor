@@ -1,0 +1,262 @@
+@page "/library"
+@implements IDisposable
+@inject DataStore Store
+@inject IDialogService Dialogs
+@inject NavigationManager Nav
+
+<PageTitle>Library · Templing</PageTitle>
+
+<div class="page-head">
+    <h1 class="page-title" tabindex="-1">Library</h1>
+    <MudButtonGroup Color="Color.Primary" Variant="Variant.Filled" OverrideStyles="true" Class="split-button" aria-label="Add to library">
+        <MudButton StartIcon="@Icons.Material.Rounded.Add" OnClick="Add">Add piece</MudButton>
+        <MudTooltip Text="More ways to add">
+            <MudMenu Icon="@Icons.Material.Rounded.ArrowDropDown" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" AriaLabel="More ways to add">
+                <MudMenuItem Icon="@Icons.Material.Rounded.QueueMusic" OnClick="() => AfterMenu(ImportScore)">@(ScoreImportDialog.Title)…</MudMenuItem>
+            </MudMenu>
+        </MudTooltip>
+    </MudButtonGroup>
+</div>
+
+<div class="toolbar">
+    <MudTextField @bind-Value="_search" @bind-Value:after="Refresh" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.Search"
+                  Immediate="true" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="search-box" InputId="library-search" aria-label="Search library" />
+    <MudChipSet T="string" @bind-SelectedValue="_type" @bind-SelectedValue:after="Refresh" SelectionMode="SelectionMode.SingleSelection" CheckMark="false" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" aria-label="Filter by type">
+        <MudChip T="string" Value="@("all")" Default="true">All</MudChip>
+        @foreach (var t in PieceTypeExt.Ordered)
+        {
+            <MudChip T="string" Value="@t.ToString()" Icon="@t.Icon()">@t.Label()</MudChip>
+        }
+    </MudChipSet>
+    <MudSpacer />
+    <div class="toolbar-end">
+    <MudToggleGroup T="bool" Value="Store.Settings.LibraryList" ValueChanged="SetListView" Color="Color.Primary" Size="Size.Small" Outlined="true" CheckMark="false"
+                    Class="view-toggle" aria-label="View">
+        <MudToggleItem Value="false"><MudTooltip Text="Cards"><MudIcon Icon="@Icons.Material.Rounded.GridView" Size="Size.Small" aria-label="Cards" /></MudTooltip></MudToggleItem>
+        <MudToggleItem Value="true"><MudTooltip Text="List"><MudIcon Icon="@Icons.Material.Rounded.ViewList" Size="Size.Small" aria-label="List" /></MudTooltip></MudToggleItem>
+    </MudToggleGroup>
+    <MudSelect T="string" @bind-Value="_sort" @bind-Value:after="Refresh" Label="Sort" Variant="Variant.Outlined" Margin="Margin.Dense" Class="toolbar-select" Dense="true">
+        <MudSelectItem T="string" Value="@("recent")">Recently practised</MudSelectItem>
+        <MudSelectItem T="string" Value="@("name")">Name</MudSelectItem>
+        <MudSelectItem T="string" Value="@("progress")">Progress</MudSelectItem>
+        <MudSelectItem T="string" Value="@("time")">Total time</MudSelectItem>
+    </MudSelect>
+    <MudSwitch T="bool" @bind-Value="_showArchived" @bind-Value:after="Refresh" Label="Show archived" Color="Color.Primary" />
+    </div>
+</div>
+
+@if (Store.Pieces.Count == 0)
+{
+    <div class="empty-state">
+        <MudIcon Icon="@Icons.Material.Rounded.LibraryMusic" Style="font-size:3rem" />
+        <MudText Typo="Typo.h6">Your library is empty</MudText>
+        <MudText Class="muted">Add songs, exercises and riffs, import a Guitar Pro file, or restore a backup in <a href="settings">Settings &amp; data</a>.</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Add" Class="mt-2">Add your first piece</MudButton>
+    </div>
+}
+else
+{
+    @if (Store.Settings.LibraryList)
+    {
+        <div class="piece-list" role="list">
+            <div class="piece-list-head" aria-hidden="true">
+                <span class="pr-cols"><span></span><span>Piece</span><span>Tempo</span><span class="pr-wide">Progress</span><span class="pr-wide">Last practised</span><span class="pr-wide">Practice time</span></span>
+                <span></span>
+            </div>
+            @foreach (var row in _rows)
+            {
+                var piece = row.Piece; var st = row.Stats;
+                <div class="piece-row @(piece.Archived ? "archived" : "")" role="listitem">
+                    <a class="piece-row-link pr-cols" href="library/@piece.Id" aria-label="@($"{piece.Name} details")">
+                        <MudIcon Icon="@piece.Type.Icon()" Size="Size.Small" Class="fav-kind" title="@piece.Type.Label()" />
+                        <span class="pr-name">@piece.Name</span>
+                        <span class="pr-tempo">
+                            @* "150 / 180 bpm": the unit once, so it fits *@
+                            <span class="mono">@(st.Sessions == 0 ? "—" : st.Last?.ToString("0") ?? "—")</span>@if (piece.Goal is { } g)
+                            {<span class="muted"> / @g.ToString("0")</span>}<span class="muted">@piece.Unit.Suffix()</span>
+                        </span>
+                        <span class="pr-progress pr-wide">
+                            @if (st.Sessions > 0 && st.Progress is { } pr)
+                            {
+                                <GoalBar Progress="pr" AriaLabel="@($"{piece.Name} progress: {pr:P0}")" />
+                                @if (GoalChip.Reached(piece, st.Last))
+                                {
+                                    <GoalChip Piece="piece" Last="st.Last" />
+                                }
+                                else
+                                {
+                                    <span class="mono small">@pr.ToString("P0")</span>
+                                }
+                            }
+                        </span>
+                        <span class="muted small pr-wide">@(st.Sessions > 0 ? Stats.Ago(st.LastDate, DateTime.Today) : "Not started yet")</span>
+                        <span class="muted small pr-wide" title="@(st.Sessions == 1 ? "1 session" : $"{st.Sessions} sessions")">@(st.Sessions > 0 ? Stats.Duration(st.TotalSec) : "")</span>
+                    </a>
+                    <span class="pr-actions">
+                        @PracticeActions(piece)
+                        @ManageActions(piece)
+                    </span>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+    <div class="piece-grid" role="list">
+        @foreach (var row in _rows)
+        {
+            var piece = row.Piece; var st = row.Stats;
+            <article class="piece-card @(piece.Archived ? "archived" : "")" role="listitem">
+                <a class="piece-card-link" href="library/@piece.Id" aria-label="@($"{piece.Name} details")">
+                    <div class="piece-card-top">
+                        <span class="type-pill type-@piece.Type"><MudIcon Icon="@piece.Type.Icon()" Size="Size.Small" />@piece.Type.Label()</span>
+                        <span class="card-top-right">
+                            @if (Effort.Get(row.Feel?.Effort) is { } feel)
+                            {
+                                var stale = row.Feel!.Date.Date < st.LastDate?.Date;
+                                <span class="feel-pill @(stale ? "stale" : "")" style="--feel:@feel.Color"
+                                      title="@($"{(stale ? "Last rated" : "Last session")} ({row.Feel.Date:d MMM}): {feel.Label}. {feel.Advice}")">@feel.Label</span>
+                            }
+                            @if (st.Sessions > 0)
+                            {
+                                <span class="muted small">@Stats.Ago(st.LastDate, DateTime.Today)</span>
+                            }
+                        </span>
+                    </div>
+                    <h2 class="piece-name">@piece.Name</h2>
+                    <div class="piece-tempo">
+                        @if (st.Sessions == 0)
+                        {
+                            <span class="not-started">Not started yet</span>
+                            @if (piece.Goal is { } g0)
+                            {
+                                <span class="muted"> · goal @g0.ToString("0")@piece.Unit.Suffix()</span>
+                            }
+                        }
+                        else
+                        {
+                            <span class="big">@(st.Last?.ToString("0") ?? "—")</span><span class="muted">@(st.Last.HasValue ? piece.Unit.Suffix() : "")</span>
+                            @if (piece.Goal is { } g)
+                            {
+                                <span class="muted"> / @g.ToString("0")@piece.Unit.Suffix()</span>
+                            }
+                            <GoalChip Piece="piece" Last="st.Last" />
+                        }
+                    </div>
+                    <GoalBar Progress="st.Progress" Class="@(st.Sessions == 0 ? "d-none" : null)" AriaLabel="Progress to goal" />
+                    @if (row.Parts is { Count: > 1 } parts)
+                    {
+                        <div class="part-bars" aria-label="Progress by section">
+                            @foreach (var ps in parts)
+                            {
+                                var tip = $"{ps.Section.Name}: {(ps.Progress is { } pp ? pp.ToString("P0") : "not practised")}";
+                                <GoalBar Progress="ps.Progress" Size="Size.Small" Class="section-bar" AriaLabel="@tip" Title="@tip" />
+                            }
+                        </div>
+                    }
+                    @if (st.Sessions > 0)
+                    {
+                        <div class="piece-meta">
+                            <span>@(st.Progress is { } p ? $"{p:P0}" : "No goal")@(row.Parts is { Count: > 1 } pc ? $" · {pc.Count} sections" : "")</span>
+                            <span>@(st.Sessions == 1 ? "1 session" : $"{st.Sessions} sessions") · @Stats.Duration(st.TotalSec)</span>
+                        </div>
+                    }
+                </a>
+                <div class="piece-card-actions">
+                    @PracticeActions(piece)
+                    <MudSpacer />
+                    @ManageActions(piece)
+                </div>
+            </article>
+        }
+    </div>
+    }
+}
+
+@code {
+    async Task SetListView(bool list) { Store.Settings.LibraryList = list; await Store.SaveSettingsAsync(); }
+
+    // the same buttons on cards and list rows
+    RenderFragment PracticeActions(Piece piece) =>
+        @<text>
+            <MudTooltip Text="Practise with metronome">
+                <MudIconButton Size="Size.Small" Icon="@Mdi.Metronome" Color="Color.Primary" Href="@($"metronome/piece/{piece.Id}")" aria-label="@($"Practise {piece.Name} with the metronome")" />
+            </MudTooltip>
+            <MudTooltip Text="Practise with timer (no click)">
+                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.HourglassBottom" Color="Color.Primary" Href="@($"timer/piece/{piece.Id}")" aria-label="@($"Practise {piece.Name} with the timer")" />
+            </MudTooltip>
+        </text>;
+
+    RenderFragment ManageActions(Piece piece) =>
+        @<text>
+            <FavouriteToggle On="piece.Favourite" Name="@piece.Name" OnToggle="() => ToggleFavourite(piece)" />
+            <MudTooltip Text="Log practice">
+                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.AddTask" aria-label="@($"Log practice for {piece.Name}")" OnClick="() => Log(piece)" />
+            </MudTooltip>
+            <MudTooltip Text="Edit">
+                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit {piece.Name}")" OnClick="() => Edit(piece)" />
+            </MudTooltip>
+        </text>;
+
+    async Task ToggleFavourite(Piece p) { p.Favourite = !p.Favourite; await Store.SavePieceAsync(p); }
+
+    // MudMenu only closes once a menu item's handler finishes; start dialogs after it closes instead of awaiting them inside the click
+    void AfterMenu(Func<Task> action) => _ = InvokeAsync(action);
+    string? _search;
+    string? _type = "all";
+    string _sort = "recent";
+    bool _showArchived;
+    record Row(Piece Piece, PieceStats Stats, PracticeLog? Feel, List<SectionStats>? Parts);
+    List<Row> _rows = new();
+
+    protected override void OnInitialized()
+    {
+        Store.Changed += OnStoreChanged;
+        Refresh();
+    }
+
+    void OnStoreChanged() { Refresh(); InvokeAsync(StateHasChanged); }
+
+    void Refresh()
+    {
+        var q = Store.Pieces.Where(i => _showArchived || !i.Archived);
+        if (!string.IsNullOrWhiteSpace(_search)) q = q.Where(i => i.Name.Contains(_search, StringComparison.OrdinalIgnoreCase));
+        if (_type is { } t && t != "all") q = q.Where(i => i.Type.ToString() == t);
+        var rows = q.Select(i => new Row(i, Stats.ForPiece(i, Store.Logs), Stats.LastRated(i, Store.Logs),
+            i.HasParts() ? Stats.ForSections(i, Store.Logs) : null));
+        _rows = (_sort switch
+        {
+            "name" => rows.OrderBy(r => r.Piece.Name),
+            "progress" => rows.OrderByDescending(r => r.Stats.Progress ?? -1),
+            "time" => rows.OrderByDescending(r => r.Stats.TotalSec),
+            _ => rows.OrderByDescending(r => r.Stats.LastDate ?? DateTime.MinValue).ThenBy(r => r.Piece.Name)
+        }).ToList();
+    }
+
+    async Task Add()
+    {
+        var piece = await PieceDialog.ShowAsync(Dialogs);
+        if (piece != null) Nav.NavigateTo($"library/{piece.Id}");
+    }
+
+    async Task Edit(Piece piece) => await PieceDialog.ShowAsync(Dialogs, piece);
+
+    async Task ImportScore()
+    {
+        var r = await ScoreImportDialog.ShowAsync(Dialogs, forExisting: false);
+        if (r == null) return;
+        var piece = new Piece
+        {
+            Name = r.Name, Type = PieceType.Song, Unit = TempoUnit.Percent, Goal = 100,
+            Sections = r.Sections, ScoreFileId = r.FileId, ScoreFileName = r.FileName, ScoreTrack = r.Track,
+            Notes = string.IsNullOrWhiteSpace(r.Artist) ? null : r.Artist.Trim()
+        };
+        await Store.SavePieceAsync(piece);
+        Nav.NavigateTo($"library/{piece.Id}");
+    }
+
+    async Task Log(Piece piece) =>
+        await LogDialog.ShowAsync(Dialogs, new PracticeLog { PieceId = piece.Id, PieceName = piece.Name, Unit = piece.Unit }, true);
+
+    public void Dispose() => Store.Changed -= OnStoreChanged;
+}

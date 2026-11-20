@@ -1,0 +1,218 @@
+@page "/timer"
+@page "/timer/free"
+@page "/timer/piece/{PieceId}"
+@implements IDisposable
+@inject MetronomeService Metro
+@inject DataStore Store
+@inject NavigationManager Nav
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+@inject PlanRunner Runner
+
+<PageTitle>@(Metro.IsRunning ? $"{Clock} · " : "")Timer · Templing</PageTitle>
+
+<PracticeGuard Route="timer" />
+<PracticeKeys Timer="true" StartStop="Toggle" />
+
+<div class="page-head">
+    <div>
+        @if (Metro.Piece is { } it && Metro.Source == MetronomeSource.Piece)
+        {
+            <MudText Typo="Typo.overline" Class="muted">@it.Type.Label()</MudText>
+            <h1 class="page-title" tabindex="-1">@it.Name</h1>
+        }
+        else
+        {
+            <h1 class="page-title" tabindex="-1">Timer</h1>
+        }
+    </div>
+    <MudHidden Breakpoint="Breakpoint.LgAndUp">
+        <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Rounded.Tune" OnClick="() => _rail?.OpenSheet()">Options</MudButton>
+    </MudHidden>
+</div>
+
+<div class="practice-col">
+    <section class="timer-stage @PhaseClass" aria-label="Timer">
+        <div class="timer-flash" @key="_flashKey" aria-hidden="true"></div>
+        <div class="timer-ring">
+            <svg viewBox="0 0 200 200" aria-hidden="true">
+                <circle cx="100" cy="100" r="88" class="ring-track" />
+                @if (Dash is { } dash)
+                {
+                    <circle cx="100" cy="100" r="88" class="ring-fill" style="stroke-dasharray:@dash" transform="rotate(-90 100 100)" />
+                }
+            </svg>
+            <div class="timer-center" role="timer" aria-live="off">
+                <div class="timer-phase" aria-live="polite">@PhaseLabel</div>
+                <div class="timer-clock">@Clock</div>
+                <div class="timer-sub">@SubLabel</div>
+            </div>
+        </div>
+
+        <div class="transport">
+            <button class="play-btn @(Metro.IsRunning ? "on" : "")" @onclick="Toggle" aria-label="@(Metro.IsRunning ? "Stop" : "Start")">
+                <MudIcon Icon="@(Metro.IsRunning ? Icons.Material.Rounded.Stop : Icons.Material.Rounded.PlayArrow)" Style="font-size:2.6rem" />
+            </button>
+        </div>
+
+        <SessionPanel Ended="ShowEndPanel" Title="AfterRest ? RestTitle : null" Lead="AfterRest ? RestLead : null" OnClosed="() => _dismissed = true">
+            <Extras>
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.MoreTime" OnClick="() => Metro.ExtendAsync(5, 0)">+5 min</MudButton>
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.MoreTime" OnClick="() => Metro.ExtendAsync(10, 0)">+10 min</MudButton>
+                <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Rounded.SelfImprovement" OnClick="() => Metro.StartRestAsync(2)">Rest 2 min</MudButton>
+            </Extras>
+        </SessionPanel>
+    </section>
+</div>
+
+<OptionsRail @ref="_rail">
+    <Strip>
+        <RailToggle Title="Audio cues" Icon="@Icons.Material.Rounded.Campaign" On="Metro.Settings.Timer.VoiceCues" OnToggle="ToggleCues" />
+        <MudDivider Class="rail-strip-divider" />
+        <RailVolume />
+    </Strip>
+    <ChildContent>
+        <div class="rail-src">
+            <MudSelect T="string" Value="@SourceKey" ValueChanged="LoadSource" Label="Timer" Disabled="Metro.IsRunning"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                <MudSelectItem T="string" Value="@("free")">Free timer</MudSelectItem>
+                <MudSelectItem T="string" Value="@("group:library")" Disabled="true" Class="select-group">Library</MudSelectItem>
+                @foreach (var i in Store.PiecesByRecent())
+                {
+                    <MudSelectItem T="string" Value="@($"piece:{i.Id}")">@i.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </div>
+        <RailSection Title="Countdown" Icon="@Icons.Material.Rounded.Timelapse">
+            <IntervalsEditor Settings="Metro.Settings.Timer" Timer="true" />
+        </RailSection>
+        <RailSection Title="Sound" Icon="@Icons.Material.Rounded.VolumeUp">
+            <VolumeControl />
+        </RailSection>
+    </ChildContent>
+</OptionsRail>
+
+@code {
+    /// <summary>The select's value for what's loaded.</summary>
+    string SourceKey => Metro.Source == MetronomeSource.Piece && Metro.Piece is { } p ? $"piece:{p.Id}" : "free";
+
+    void LoadSource(string key)
+    {
+        if (key == SourceKey || key.StartsWith("group:")) return;
+        Nav.NavigateTo(key.StartsWith("piece:") ? $"timer/piece/{key[6..]}" : "timer/free");
+    }
+
+    [Parameter] public string? PieceId { get; set; }
+    string? _lastPhase;
+    int _flashKey;
+    bool _dismissed;
+
+    bool Rest => Metro.IsRunning && Metro.State.phase == "rest";
+    bool AfterRest => Metro.LastFinishReason == "rest";
+    RenderFragment RestTitle => @<span>Rest's over.</span>;
+    RenderFragment RestLead => @<MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.PlayArrow" OnClick="() => Metro.StartTimerAsync()">Start next block</MudButton>;
+    bool Work => Metro.IsRunning && Metro.State.phase == "work";
+    bool ShowEndPanel => !Runner.Active && !Metro.IsRunning && !_dismissed && (Metro.SessionActiveSec >= 1 || Metro.LastFinishReason == "rest");
+
+    string PhaseClass => !Metro.IsRunning ? (ShowEndPanel ? "phase-done" : "phase-idle") : Rest ? "phase-rest" : "phase-work";
+
+    string PhaseLabel => !Metro.IsRunning ? (ShowEndPanel ? "Finished" : "Ready")
+        : Metro.RestOnlyRunning ? "Rest"
+        : Rest ? "Rest"
+        : "Practise";
+
+    string Clock
+    {
+        get
+        {
+            if (!Metro.IsRunning)
+            {
+                if (ShowEndPanel && Metro.SessionActiveSec >= 1) return Stats.Clock(Metro.SessionActiveSec);
+                return Stats.Clock(Metro.EffectiveIntervals.WorkSec);
+            }
+            if (Metro.State.remaining is { } rem) return Stats.Clock(Math.Ceiling(rem));
+            return Stats.Clock(Metro.State.workElapsed ?? 0);
+        }
+    }
+
+    string SubLabel
+    {
+        get
+        {
+            var iv = Metro.EffectiveIntervals;
+            if (!Metro.IsRunning)
+            {
+                if (ShowEndPanel && Metro.SessionActiveSec >= 1) return "practised this session";
+                return iv.Rounds == 1 ? "" : $"{(iv.Rounds == 0 ? "endless" : $"{iv.Rounds} rounds")}{(iv.RestSec > 0 ? $" · {Stats.Clock(iv.RestSec)} rests" : "")}";
+            }
+            if (Metro.RestOnlyRunning) return "remaining";
+            if (Metro.State.remaining is null) return "elapsed";
+            return iv.Rounds > 1 ? $"round {Metro.State.round} of {iv.Rounds}" : Rest ? "until work" : "remaining";
+        }
+    }
+
+    // ring: fraction of the current block that's elapsed
+    string? Dash
+    {
+        get
+        {
+            const double c = 2 * Math.PI * 88;
+            double frac = 0;
+            if (Metro.IsRunning && Metro.State.remaining is { } rem)
+            {
+                var total = Rest ? _restTotal : Math.Max(1, (Metro.State.workElapsed ?? 0) + rem);
+                frac = 1 - rem / Math.Max(1, total);
+            }
+            var on = Math.Clamp(frac, 0, 1) * c;
+            if (on < 0.5) return null;
+            return $"{on.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)} {c.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)}";
+        }
+    }
+    double _restTotal = 60;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (PieceId != null)
+        {
+            var piece = Store.GetPiece(PieceId);
+            if (piece == null) { Nav.NavigateTo("timer"); return; }
+            if (!Metro.IsRunning) await Metro.LoadPieceAsync(piece);
+        }
+        else if (Nav.Uri.EndsWith("/timer/free") && !Metro.IsRunning) await Metro.LoadFreeAsync();
+        if (!Metro.IsRunning) await Metro.SetSilentAsync(true);
+    }
+
+    protected override void OnInitialized() => Metro.Changed += OnChanged;
+
+    void OnChanged()
+    {
+        var phase = Metro.IsRunning ? Metro.State.phase : "stopped";
+        if (phase != _lastPhase)
+        {
+            if (phase == "rest") _restTotal = Math.Max(1, Metro.State.remaining ?? 60);
+            if (_lastPhase != null) { _flashKey++; Vibrate(); }
+            if (Metro.IsRunning) _dismissed = false;
+            _lastPhase = phase;
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    [Inject] IJSRuntime JS { get; set; } = default!;
+    async void Vibrate()
+    {
+        try { await JS.InvokeVoidAsync("navigator.vibrate", (object)new[] { 120, 60, 120 }); } catch { /* not supported */ }
+    }
+
+    async Task Toggle()
+    {
+        if (Metro.IsRunning) await Metro.StopAsync();
+        else { _dismissed = false; await Metro.StartTimerAsync(); }
+    }
+
+    Task Apply() => Metro.ApplyAsync();
+    OptionsRail? _rail;
+    Task ToggleCues() { Metro.Settings.Timer.VoiceCues = !Metro.Settings.Timer.VoiceCues; return Metro.ApplyAsync(); }
+
+
+    public void Dispose() => Metro.Changed -= OnChanged;
+}
