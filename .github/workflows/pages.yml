@@ -1,10 +1,13 @@
-# Builds the app and publishes it to GitHub Pages (https://lykaiosnz.github.io/templing/).
-# Pages source must be set to "GitHub Actions" (Settings > Pages > Build and deployment).
+# Builds the app and publishes it to GitHub Pages (https://lykaiosnz.github.io/templing/) when a release is published.
+# Pages source must be set to "GitHub Actions" (Settings > Pages > Build and deployment), and the github-pages
+# environment must allow deployments from tags matching v* as well as main (Settings > Environments > github-pages).
+# Pushes to main only build (build.yml). Run it by hand ("Run workflow") on a tag to redeploy a release, or on main
+# to deploy what's there under the csproj's <Version>.
 name: Deploy to GitHub Pages
 
 on:
-  push:
-    branches: [main]
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -12,7 +15,7 @@ permissions:
   pages: write
   id-token: write
 
-# one deployment at a time; a newer push supersedes a queued one, but never cancels one mid-deploy
+# one deployment at a time; a newer one supersedes a queued one, but never cancels one mid-deploy
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -31,9 +34,21 @@ jobs:
       - name: Install wasm-tools
         run: dotnet workload install wasm-tools
 
-      # the version shown in Settings > About: <Version> from the csproj + the commit, so deployed builds can be told apart
+      # the version shown in Settings > About: the release tag (v0.2.0 -> 0.2.0), else <Version> from the csproj,
+      # plus the commit, so deployed builds can be told apart
+      - name: Version
+        id: version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            v="${GITHUB_REF_NAME#v}"
+            if ! [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+              echo "::error::Release tags look like v1.2.3 (got $GITHUB_REF_NAME)"; exit 1
+            fi
+            echo "args=-p:Version=$v" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish
-        run: dotnet publish src/Templing/Templing.csproj -c Release -o publish -p:SourceRevisionId=${{ github.sha }}
+        run: dotnet publish src/Templing/Templing.csproj -c Release -o publish -p:SourceRevisionId=${{ github.sha }} ${{ steps.version.outputs.args }}
 
       - name: Prepare site
         working-directory: publish/wwwroot
