@@ -1,0 +1,14 @@
+@* Star a piece or plan so it shows under Favourites on the Dashboard. Filled and accent-coloured while starred. *@
+
+<MudTooltip Text="@(On ? "Remove from favourites" : "Add to favourites")">
+    <MudIconButton Icon="@(On ? Icons.Material.Rounded.Star : Icons.Material.Rounded.StarBorder)" Size="@Size" Class="@(On ? "fav-toggle on" : "fav-toggle")"
+                   aria-label="@($"Favourite {Name}")" aria-pressed="@(On ? "true" : "false")" OnClick="() => OnToggle.InvokeAsync()" />
+</MudTooltip>
+
+@code {
+    [Parameter] public bool On { get; set; }
+    [Parameter] public EventCallback OnToggle { get; set; }
+    /// <summary>What's being starred, for the accessible name ("Favourite Spider Walk").</summary>
+    [Parameter] public string Name { get; set; } = "";
+    [Parameter] public Size Size { get; set; } = Size.Small;
+}

@@ -118,6 +118,7 @@ else
                         <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.HourglassBottom" Color="Color.Primary" Href="@($"timer/piece/{piece.Id}")" aria-label="@($"Practise {piece.Name} with the timer")" />
                     </MudTooltip>
                     <MudSpacer />
+                    <FavouriteToggle On="piece.Favourite" Name="@piece.Name" OnToggle="() => ToggleFavourite(piece)" />
                     <MudTooltip Text="Log practice">
                         <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.AddTask" aria-label="@($"Log practice for {piece.Name}")" OnClick="() => Log(piece)" />
                     </MudTooltip>
@@ -131,6 +132,8 @@ else
 }
 
 @code {
+    async Task ToggleFavourite(Piece p) { p.Favourite = !p.Favourite; await Store.SavePieceAsync(p); }
+
     // MudMenu only closes once a menu item's handler finishes; start dialogs after it closes instead of awaiting them inside the click
     void AfterMenu(Func<Task> action) => _ = InvokeAsync(action);
     string? _search;

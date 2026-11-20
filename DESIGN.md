@@ -44,6 +44,8 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 - **Sidebar:** Dashboard and Library at the top, then **Practice** (Metronome, Timer, Plans) and **Progress** (History, Stats) under small uppercase headings (`nav-heading stat-label`), then a divider and Settings & data. New screens go in the group that matches what they're for.
 - **Page head:** `h1` on the left (optional overline above, optional info line below); the page's primary action on the right.
 - **Toolbars** (search + filters above a list): search box first, then filters, selects at the end. Everything in a toolbar is `Variant.Outlined`, `Margin.Dense`.
+- **Dashboard** is for starting practice, not for statistics: this week's goal and the streak in the header, **Favourites** (starred plans, then pieces, each with its start button: Run plan / Metronome + Timer) and **Recent** (latest log per piece and plans by last run, newest first, each with a start button). Charts and totals live on Stats; log entries on History.
+- **Favourites:** a star (`FavouriteToggle`, `Piece.Favourite` / `PracticePlan.Favourite`), filled accent while starred, tooltip "Add to / Remove from favourites". On Library cards, beside a piece's title, on plan cards, and on the Dashboard's favourite cards to un-star.
 - **Cards** (`section.card`) with a `card-title`.
 - **Practice stays on its page.** The Metronome and Timer share one engine, so only one runs at a time, and it runs only while you're on its page. There's no mini player. Leaving the page while it runs asks first ("Stop the metronome?", `PracticeGuard`); moving within the page (another piece) and plan steps don't. The practice shortcuts live on those pages too (`PracticeKeys`).
 - **Plan steps:** leaving a step that's running or has practice time asks first: Log it (always through the log dialog), Discard or Keep going. Backing out of the log dialog stays on the step. Auto-log only applies to steps that reach their end; Finish step always asks.
@@ -118,6 +120,7 @@ Reuse these instead of rebuilding them. When two screens show the same thing, th
 | `OptionsRail`, `RailSection`, `RailToggle`, `RailVolume` | The Metronome / Timer options rail, its sections, and the hidden rail's strip controls |
 | `VolumeControl` | Sound on/off + volume slider (rail Sound section, strip pop-up) |
 | `PracticeGuard`, `PracticeKeys` | On the Metronome and Timer pages: ask before leaving while running; the practice shortcuts |
+| `FavouriteToggle` | The star that adds a piece or plan to the Dashboard's Favourites |
 | `SessionPanel` | Practised time on the Metronome and Timer, inside the stage. Hidden until there's time; one line while playing; once stopped, Log + Discard + page extras (Timer: +5 min, +10 min, Rest). Hidden while a plan runs. |
 | `DurationInput` | Any duration field |
 | `DivisionIcon` (`NoteIcons`) | A division shown as notation wherever it's read (tempo line, section summaries, piece page): the note value's icon, a small 3 for triplets, and a tooltip / accessible name that spells it out ("Eighth-note triplets (1/8t)"). In the Division select it sits beside the text (`ShowLabel`, no tooltip). Notes come from MDI; the thirty-second is hand-made in `NoteIcons` |

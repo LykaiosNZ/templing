@@ -16,7 +16,10 @@ else
     <div class="page-head">
         <div>
             <span class="type-pill type-@_piece.Type"><MudIcon Icon="@_piece.Type.Icon()" Size="Size.Small" />@_piece.Type.Label()</span>
-            <h1 class="page-title" tabindex="-1">@_piece.Name</h1>
+            <div class="d-flex align-center gap-1">
+                <h1 class="page-title" tabindex="-1">@_piece.Name</h1>
+                <FavouriteToggle On="_piece.Favourite" Name="@_piece.Name" Size="Size.Medium" OnToggle="ToggleFavourite" />
+            </div>
             @if (!string.IsNullOrWhiteSpace(_piece.Link))
             {
                 <a href="@_piece.Link" target="_blank" rel="noopener" class="small">@_piece.Link</a>
@@ -191,6 +194,8 @@ else
 }
 
 @code {
+    async Task ToggleFavourite() { _piece!.Favourite = !_piece.Favourite; await Store.SavePieceAsync(_piece); }
+
     // MudMenu only closes once a menu item's handler finishes; start dialogs after it closes instead of awaiting them inside the click
     void AfterMenu(Func<Task> action) => _ = InvokeAsync(action);
     [Parameter] public string Id { get; set; } = "";

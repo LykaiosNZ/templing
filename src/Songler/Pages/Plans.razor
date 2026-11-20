@@ -33,6 +33,7 @@ else
                         <MudText Typo="Typo.caption" Class="muted">@Meta(plan, running)</MudText>
                     </div>
                     <div class="d-flex">
+                        <FavouriteToggle On="plan.Favourite" Name="@plan.Name" OnToggle="() => ToggleFavourite(plan)" />
                         <MudTooltip Text="Edit">
                             <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit {plan.Name}")" OnClick="() => Edit(plan)" />
                         </MudTooltip>
@@ -69,6 +70,8 @@ else
 }
 
 @code {
+    async Task ToggleFavourite(PracticePlan p) { p.Favourite = !p.Favourite; await Store.SavePlanAsync(p); }
+
     // MudMenu only closes once a menu item's handler finishes; start dialogs after it closes instead of awaiting them inside the click
     void AfterMenu(Func<Task> action) => _ = InvokeAsync(action);
     protected override void OnInitialized() { Store.Changed += OnChanged; Runner.Changed += OnChanged; }

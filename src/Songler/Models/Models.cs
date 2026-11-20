@@ -124,6 +124,8 @@ public class Piece
     /// <summary>"tab" or "score" (standard notation + tab).</summary>
     public string ScoreStave { get; set; } = "tab";
     public bool Archived { get; set; }
+    /// <summary>Starred: shown under Favourites on the Dashboard.</summary>
+    public bool Favourite { get; set; }
     public DateTime Created { get; set; } = DateTime.Now;
 }
 
@@ -232,6 +234,8 @@ public class PracticePlan
     public List<PlanStep> Steps { get; set; } = new();
     public DateTime Created { get; set; } = DateTime.Now;
     public DateTime? LastRun { get; set; }
+    /// <summary>Starred: shown under Favourites on the Dashboard.</summary>
+    public bool Favourite { get; set; }
     public double TotalMinutes => Steps.Sum(s => s.TotalMinutes);
 }
 

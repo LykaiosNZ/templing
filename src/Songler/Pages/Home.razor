@@ -1,6 +1,12 @@
 ﻿@page "/"
+@* The Dashboard is a launch pad: favourites and recent practice, each one click from starting, plus this week's goal
+   and the streak. Everything else statistical lives on Stats, Library and History. *@
 @implements IDisposable
 @inject DataStore Store
+@inject PlanRunner Runner
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
 
 <PageTitle>Dashboard · Songler</PageTitle>
 
@@ -9,135 +15,192 @@
         <MudText Typo="Typo.overline" Class="muted">@DateTime.Today.ToString("dddd d MMMM")</MudText>
         <h1 class="page-title" tabindex="-1">@Greeting</h1>
     </div>
+    @if (Store.Logs.Count > 0)
+    {
+        <div class="dash-strip" role="group" aria-label="This week">
+            <div class="dash-week">
+                <div class="stat-label">This week</div>
+                <div class="dash-week-value"><strong>@Stats.Duration(_weekSec)</strong> <span class="muted">of @Stats.DurationMin(Store.Settings.WeeklyGoalMin)</span></div>
+                <GoalBar Progress="_weekPct" AriaLabel="Weekly goal" />
+            </div>
+            <div class="dash-streak" title="@($"Longest streak: {_streak.longest} days")">
+                <MudIcon Icon="@Icons.Material.Rounded.LocalFireDepartment" Class="@(_streak.current > 0 ? "streak-on" : "")" />
+                <div>
+                    <div class="stat-label">Streak</div>
+                    <strong>@_streak.current @(_streak.current == 1 ? "day" : "days")</strong>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
-@if (Store.Logs.Count == 0)
+@if (Store.Pieces.Count == 0 && Store.Logs.Count == 0)
 {
     <div class="empty-state">
-        <MudIcon Icon="@Icons.Material.Rounded.Insights" Style="font-size:3rem" />
-        <MudText Typo="Typo.h6">No practice logged yet</MudText>
-        <MudText Class="muted">Start the metronome and log your session, or restore a backup in <a href="settings">Settings &amp; data</a>.</MudText>
+        <MudIcon Icon="@Icons.Material.Rounded.LibraryMusic" Style="font-size:3rem" />
+        <MudText Typo="Typo.h6">Nothing here yet</MudText>
+        <MudText Class="muted">Add a piece to practise, or restore a backup in <a href="settings">Settings &amp; data</a>.</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.Add" OnClick="AddPiece" Class="mt-2">Add piece</MudButton>
     </div>
 }
 else
 {
-    <div class="tiles">
-        <StatTile Label="This week" Seconds="_weekSec" Icon="@Icons.Material.Rounded.DateRange" Sub="@($"Goal {Stats.Duration(Store.Settings.WeeklyGoalMin * 60)}")">
-            <GoalBar Progress="_weekPct" Class="mt-2" AriaLabel="Weekly goal" />
-        </StatTile>
-        <StatTile Label="Current streak" Value="@_streak.current.ToString()" Unit="@(_streak.current == 1 ? " day" : " days")" Icon="@Icons.Material.Rounded.LocalFireDepartment"
-                  Sub="@(_streak.current == 0 && _lastDay is { } ld ? $"Last practised {Stats.Ago(ld, DateTime.Today)} · best {_streak.longest}" : $"Longest {_streak.longest} days")" />
-        <StatTile Label="Days practised" Value="@_days.ToString()" Icon="@Icons.Material.Rounded.CalendarMonth" Sub="@($"{_last30} of the last 30")" />
-        <StatTile Label="Total logged" Seconds="_totalSec" Icon="@Icons.Material.Rounded.Timer" Sub="@($"{Store.Logs.Count} entries")" />
-    </div>
-
-    <MudGrid Spacing="4" Class="mt-1">
-        <MudItem xs="12" lg="8">
-            <section class="card">
-                <div class="card-head">
-                    <h2 class="card-title">Practice calendar</h2>
-                    <a href="stats" class="small">All stats →</a>
-                </div>
-                <Heatmap SecondsByDay="_byDay" Practiced="_practiced" Weeks="26" />
-            </section>
-            <section class="card mt-4">
-                <h2 class="card-title">Weekly practice time</h2>
-                <BarChart Labels="_weekLabels" TipLabels="_weekTips" Values="_weekValues" Minutes="true" HighlightLast="true"
-                          Goal="Store.Settings.WeeklyGoalMin" GoalLabel="@($"Weekly goal {Stats.DurationMin(Store.Settings.WeeklyGoalMin)}")" AriaLabel="Practice time per week, last 16 weeks" />
-            </section>
-        </MudItem>
-        <MudItem xs="12" lg="4">
-            <section class="card">
-                <div class="card-head">
-                    <h2 class="card-title">Goals in progress</h2>
-                    <a href="library" class="small">Library →</a>
-                </div>
-                @if (_goals.Count == 0)
-                {
-                    <MudText Typo="Typo.body2" Class="muted">Nothing in progress. Everything you've practised lately is at its goal.</MudText>
-                }
-                <ul class="goal-list">
-                    @foreach (var (piece, st) in _goals)
+    <div class="dash-grid">
+        @if (_favPlans.Count + _favPieces.Count > 0)
+        {
+            <section class="dash-favourites" aria-labelledby="dash-fav">
+                <h2 class="dash-heading" id="dash-fav">Favourites</h2>
+                <div class="fav-grid">
+                    @foreach (var plan in _favPlans)
                     {
-                        <li>
-                            <a href="library/@piece.Id" class="goal-row">
-                                <div class="goal-top">
-                                    <span class="goal-name">@piece.Name</span>
-                                    <span class="mono small">@(st.Last?.ToString("0"))/@piece.Goal?.ToString("0")@piece.Unit.Suffix()</span>
-                                </div>
-                                <GoalBar Progress="st.Progress" AriaLabel="@($"{piece.Name} progress")" />
-                            </a>
-                        </li>
-                    }
-                </ul>
-            </section>
-            <section class="card mt-4">
-                <div class="card-head">
-                    <h2 class="card-title">Recent sessions</h2>
-                    <a href="history" class="small">History →</a>
-                </div>
-                <ul class="recent-list">
-                    @foreach (var day in _recent)
-                    {
-                        <li>
-                            <div class="recent-day">@Stats.Ago(day.Key, DateTime.Today) <span class="muted">· @Stats.Duration(day.Sum(l => l.DurationSec ?? 0))</span></div>
-                            <div class="recent-pieces">
-                                @foreach (var l in day)
+                        var running = Runner.Active && Runner.Plan?.Id == plan.Id;
+                        <article class="card fav-card">
+                            <div class="fav-head">
+                                <MudIcon Icon="@Icons.Material.Rounded.ChecklistRtl" Size="Size.Small" Class="fav-kind" />
+                                <a href="plans" class="fav-name">@plan.Name</a>
+                                <FavouriteToggle On="true" Name="@plan.Name" OnToggle="() => Unstar(plan)" />
+                            </div>
+                            <div class="fav-meta muted small">@PlanMeta(plan)</div>
+                            <div class="fav-actions">
+                                @if (running)
                                 {
-                                    <span class="recent-chip">@l.PieceName <span class="mono">@l.ValueText</span></span>
+                                    <span class="fav-running small">Running · step @(Runner.Index + 1) of @plan.Steps.Count</span>
+                                }
+                                else
+                                {
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.PlayArrow" OnClick="() => Run(plan)">Run plan</MudButton>
                                 }
                             </div>
-                        </li>
+                        </article>
                     }
-                </ul>
+                    @foreach (var (piece, st) in _favPieces)
+                    {
+                        <article class="card fav-card">
+                            <div class="fav-head">
+                                <MudIcon Icon="@piece.Type.Icon()" Size="Size.Small" Class="fav-kind" />
+                                <a href="library/@piece.Id" class="fav-name">@piece.Name</a>
+                                <FavouriteToggle On="true" Name="@piece.Name" OnToggle="() => Unstar(piece)" />
+                            </div>
+                            @if (piece.Goal is { } goal)
+                            {
+                                <div class="fav-meta muted small"><span class="mono">@(st.Last?.ToString("0") ?? "—")/@goal.ToString("0")@piece.Unit.Suffix()</span></div>
+                                <GoalBar Progress="st.Progress ?? 0" AriaLabel="@($"{piece.Name} progress")" />
+                            }
+                            else
+                            {
+                                <div class="fav-meta muted small">@(st.LastDate is { } d ? $"Last practised {Stats.Ago(d, DateTime.Today)}" : "Not practised yet")</div>
+                            }
+                            <div class="fav-actions">
+                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Mdi.Metronome" Href="@($"metronome/piece/{piece.Id}")">Metronome</MudButton>
+                                <MudTooltip Text="Practise with timer (no click)">
+                                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.HourglassBottom" Color="Color.Primary" Href="@($"timer/piece/{piece.Id}")" aria-label="@($"Practise {piece.Name} with the timer")" />
+                                </MudTooltip>
+                            </div>
+                        </article>
+                    }
+                </div>
             </section>
-        </MudItem>
-    </MudGrid>
+        }
+
+        <section class="card dash-recent" aria-labelledby="dash-recent">
+            <div class="card-head">
+                <h2 class="card-title" id="dash-recent">Recent</h2>
+                <a href="history" class="small">History →</a>
+            </div>
+            @if (_recent.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Class="muted">Nothing practised yet.</MudText>
+            }
+            <ul class="recent-rows">
+                @foreach (var r in _recent)
+                {
+                    var row = r;
+                    <li class="recent-row">
+                        <MudIcon Icon="@row.Icon" Size="Size.Small" Class="fav-kind" />
+                        <div class="recent-text">
+                            <a href="@row.Href" class="recent-name">@row.Name</a>
+                            <div class="muted small">@Stats.Ago(row.When, DateTime.Today)@(row.Detail is { } det ? $" · {det}" : "")</div>
+                        </div>
+                        @if (row.Plan is { } plan)
+                        {
+                            <MudTooltip Text="Run plan">
+                                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.PlayArrow" Color="Color.Primary" aria-label="@($"Run {plan.Name}")" OnClick="() => Run(plan)"
+                                               Disabled="Runner.Active && Runner.Plan?.Id == plan.Id" />
+                            </MudTooltip>
+                        }
+                        else if (row.Piece is { } piece)
+                        {
+                            <MudTooltip Text="Practise with metronome">
+                                <MudIconButton Size="Size.Small" Icon="@Mdi.Metronome" Color="Color.Primary" Href="@($"metronome/piece/{piece.Id}")" aria-label="@($"Practise {piece.Name} with the metronome")" />
+                            </MudTooltip>
+                        }
+                    </li>
+                }
+            </ul>
+        </section>
+    </div>
 }
 
 @code {
-    int _weekSec, _totalSec, _days, _last30;
+    /// <summary>A row in Recent: a piece (from its latest log) or a plan (from its last run).</summary>
+    record RecentRow(DateTime When, string Name, string Href, string Icon, string? Detail, Piece? Piece, PracticePlan? Plan);
+
+    int _weekSec;
     double _weekPct;
     (int current, int longest) _streak;
-    Dictionary<DateTime, int> _byDay = new();
-    HashSet<DateTime> _practiced = new();
-    List<string> _weekLabels = new(), _weekTips = new();
-    List<double> _weekValues = new();
-    List<(Piece, PieceStats)> _goals = new();
-    List<IGrouping<DateTime, PracticeLog>> _recent = new();
-    DateTime? _lastDay;
-
+    List<PracticePlan> _favPlans = new();
+    List<(Piece, PieceStats)> _favPieces = new();
+    List<RecentRow> _recent = new();
 
     string Greeting => DateTime.Now.Hour switch { < 12 => "Good morning", < 18 => "Good afternoon", _ => "Good evening" };
 
-    protected override void OnInitialized() { Store.Changed += OnChanged; Refresh(); }
+    protected override void OnInitialized() { Store.Changed += OnChanged; Runner.Changed += OnRunnerChanged; Refresh(); }
     void OnChanged() { Refresh(); InvokeAsync(StateHasChanged); }
+    void OnRunnerChanged() => InvokeAsync(StateHasChanged);
 
     void Refresh()
     {
         var today = DateTime.Today;
         var logs = Store.Logs;
-        _byDay = Stats.SecondsByDay(logs);
-        _practiced = Stats.DaysPracticed(logs);
         var ws = Stats.WeekStart(today);
         _weekSec = logs.Where(l => l.Date >= ws).Sum(l => l.DurationSec ?? 0);
         _weekPct = Store.Settings.WeeklyGoalMin > 0 ? _weekSec / 60.0 / Store.Settings.WeeklyGoalMin : 0;
-        _totalSec = logs.Sum(l => l.DurationSec ?? 0);
-        _days = _practiced.Count;
-        _last30 = _practiced.Count(d => d > today.AddDays(-30));
         _streak = Stats.Streaks(logs, today);
-        var weeks = Stats.WeeklySeconds(logs, today, 16);
-        _weekLabels = Stats.WeekLabels(weeks);
-        _weekTips = Stats.WeekTips(weeks);
-        _weekValues = weeks.Select(w => w.sec / 60.0).ToList();
-        _goals = Store.Pieces.Where(i => !i.Archived && i.Goal.HasValue)
-            .Select(i => (i, Stats.ForPiece(i, logs)))
-            .Where(x => x.Item2.LastDate >= today.AddDays(-30) && x.Item2.Progress is < 1)
-            .OrderByDescending(x => x.Item2.Progress)
-            .Take(8).ToList();
-        _lastDay = _practiced.Count > 0 ? _practiced.Max() : null;
-        _recent = logs.Where(l => l.Date >= today.AddDays(-14)).OrderByDescending(l => l.Date).GroupBy(l => l.Date.Date).Take(3).ToList();
+
+        _favPlans = Store.Plans.Where(p => p.Favourite).OrderByDescending(p => p.LastRun ?? p.Created).ToList();
+        _favPieces = Store.PiecesByRecent().Where(p => p.Favourite).Select(p => (p, Stats.ForPiece(p, logs))).ToList();
+
+        // the latest log per piece, and plans by their last run, newest first
+        var pieces = logs.Where(l => l.PieceId != null)
+            .GroupBy(l => l.PieceId!)
+            .Select(g => g.MaxBy(l => l.Date)!)
+            .Select(l => (log: l, piece: Store.GetPiece(l.PieceId)))
+            .Where(x => x.piece is { Archived: false })
+            .Select(x => new RecentRow(x.log.Date, x.piece!.Name, $"library/{x.piece.Id}", x.piece.Type.Icon(), x.log.ValueText, x.piece, null));
+        var plans = Store.Plans.Where(p => p.LastRun != null)
+            .Select(p => new RecentRow(p.LastRun!.Value, p.Name, "plans", Icons.Material.Rounded.ChecklistRtl, $"{p.Steps.Count} step{(p.Steps.Count == 1 ? "" : "s")}", null, p));
+        _recent = pieces.Concat(plans).OrderByDescending(r => r.When).Take(8).ToList();
     }
 
-    public void Dispose() => Store.Changed -= OnChanged;
+    string PlanMeta(PracticePlan p) =>
+        $"{p.Steps.Count} step{(p.Steps.Count == 1 ? "" : "s")} · {Stats.Duration((int)(p.TotalMinutes * 60))}" +
+        (p.LastRun is { } lr ? $" · last run {Stats.Ago(lr, DateTime.Today)}" : "");
+
+    async Task Run(PracticePlan p)
+    {
+        if (p.Steps.Any(s => s.Kind == PlanStepKind.Piece && Store.GetPiece(s.PieceId) == null))
+            Snackbar.Add("Some steps refer to deleted pieces; skip them when they come up.", Severity.Warning);
+        await Runner.StartAsync(p);
+    }
+
+    async Task AddPiece()
+    {
+        var piece = await PieceDialog.ShowAsync(Dialogs);
+        if (piece != null) Nav.NavigateTo($"library/{piece.Id}");
+    }
+
+    async Task Unstar(Piece p) { p.Favourite = false; await Store.SavePieceAsync(p); }
+    async Task Unstar(PracticePlan p) { p.Favourite = false; await Store.SavePlanAsync(p); }
+
+    public void Dispose() { Store.Changed -= OnChanged; Runner.Changed -= OnRunnerChanged; }
 }
