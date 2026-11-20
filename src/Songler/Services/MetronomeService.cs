@@ -79,9 +79,18 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     private IntervalOverride? _step;
     public bool StepPinned => _step != null;
 
-    /// <summary>Speed trainer used for the next run: a plan step's own settings, or the user's.</summary>
-    public TrainingSettings Training => _stepTraining ?? Settings.Training;
+    /// <summary>
+    /// Speed trainer used for the next run: a plan step's own settings, else the user's with a piece's Start/End
+    /// laid over them while that piece is loaded (<see cref="_pieceTraining"/>), else the user's.
+    /// </summary>
+    public TrainingSettings Training => _stepTraining ?? _pieceTraining ?? Settings.Training;
     private TrainingSettings? _stepTraining;
+    /// <summary>
+    /// While a piece is loaded: the user's trainer settings with Start = the piece's opening tempo and End = its goal
+    /// (or last tempo). Edits to it last until another source is loaded and are never saved, so a piece never
+    /// rewrites the trainer you set up yourself. Switching it on or off still follows (and saves) yours.
+    /// </summary>
+    private TrainingSettings? _pieceTraining;
     public bool TrainingPinned => _stepTraining != null;
 
     /// <summary>Applies a plan step's tempo: optional start tempo and a step-only speed trainer (on or off).</summary>
@@ -200,7 +209,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     // ------------------------------------------------------------ loading
     private void LoadFreeInternal()
     {
-        Source = MetronomeSource.Free; Piece = null; Preset = null;
+        Source = MetronomeSource.Free; Piece = null; Preset = null; _pieceTraining = null;
         // the free metronome is a single click: tempo maps belong to custom metronomes and pieces
         Sections = [store.Settings.FreeSections.FirstOrDefault() ?? new Section { Name = "Click", Bpm = 100 }];
         PlayThrough = false;
@@ -217,6 +226,35 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         Changed?.Invoke();
     }
 
+    /// <summary>
+    /// Where a piece opens: its Start at, else the slowest tempo of the last session (the low end of "95–155"),
+    /// else the last tempo, else the section's tempo (80% for % pieces). Never the last tempo by default, since
+    /// practice usually builds back up to it.
+    /// </summary>
+    public double OpeningTempo(Piece piece)
+    {
+        var st = Stats.ForPiece(piece, store.Logs);
+        return piece.StartTempo ?? st.LastMin ?? st.Last ?? (piece.Unit == TempoUnit.Percent ? 80 : RefSection.Bpm);
+    }
+
+    /// <summary>
+    /// Where a piece's trainer ramps to: the goal, else the latest tempo, else the best, whichever is first above the
+    /// start (a trainer only ramps up). Past the goal already? It ramps to the latest tempo; nothing above? It holds.
+    /// </summary>
+    double TrainerEnd(Piece piece, double start)
+    {
+        var st = Stats.ForPiece(piece, store.Logs);
+        return new[] { piece.Goal, st.Last, st.Best }.FirstOrDefault(v => v > start) ?? start;
+    }
+
+    /// <summary>Switches the speed trainer on or off. With a piece loaded this also sets (and saves) the user's own switch.</summary>
+    public async Task SetTrainingEnabledAsync(bool on)
+    {
+        Training.Enabled = on;
+        if (_pieceTraining != null && _stepTraining == null) Settings.Training.Enabled = on;
+        await ApplyAsync();
+    }
+
     public async Task LoadPieceAsync(Piece piece, string? sectionId = null)
     {
         if (Source == MetronomeSource.Piece && Piece?.Id == piece.Id)
@@ -229,12 +267,14 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         Sections = piece.Sections.Count > 0 ? piece.Sections.Select(s => s.Clone()).ToList() : [new Section()];
         PlayThrough = false;
         CurrentStep = sectionId == null ? 0 : Math.Max(0, Sections.FindIndex(s => s.Id == sectionId));
-        var stats = Stats.ForPiece(piece, store.Logs);
-        var start = stats.Last ?? (piece.Unit == TempoUnit.Percent ? 80 : RefSection.Bpm);
+        var start = OpeningTempo(piece);
         Factor = ToFactor(start);
-        var tr = Training;
-        tr.End = Math.Round(stats.Last ?? piece.Goal ?? start);
-        tr.Start = Math.Round(tr.End * 0.85);
+        var own = Settings.Training;
+        _pieceTraining = new TrainingSettings
+        {
+            Enabled = own.Enabled, Mode = own.Mode, DurationMin = own.DurationMin, EveryBars = own.EveryBars, StopAtEnd = own.StopAtEnd,
+            Start = Math.Round(start), End = Math.Round(TrainerEnd(piece, start)),
+        };
         ResetSession();
         await PushConfig();
         Changed?.Invoke();
@@ -243,7 +283,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     public async Task LoadPresetAsync(MetronomePreset p)
     {
         await StopAsync();
-        Source = MetronomeSource.Preset; Preset = p; Piece = null;
+        Source = MetronomeSource.Preset; Preset = p; Piece = null; _pieceTraining = null;
         Sections = p.Sections.Select(s => s.Clone()).ToList();
         if (Sections.Count == 0) Sections.Add(new Section());
         PlayThrough = p.PlayThrough;

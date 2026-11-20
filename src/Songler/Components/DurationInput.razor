@@ -1,10 +1,24 @@
-@* Duration entry as h:mm:ss. Accepts "1:02:03", "5:30" (m:ss) or a bare number (minutes).
-   Commits on Enter / leaving the field; ↑ / ↓ step the value. Value is in seconds. *@
+@* A duration as one h:mm:ss field: three numbers with fixed colons (like MeterInput), so a colon can't be deleted.
+   Type into each; ":" moves on, and a digit typed into a full number starts the next one (so "4530" is 45:30);
+   ←/→ move between them at the edges, Backspace at the start goes back. ↑/↓ step the number you're in (Shift ×5;
+   with StepSeconds, minutes step by that instead). Each
+   number commits as you leave it, overflow carries (75 minutes → 1:15:00) and the total is clamped to Min/Max.
+   Value in seconds. *@
 
-<MudTextField T="string" @bind-Value="_text" @bind-Value:after="Commit" Label="@Label" Placeholder="h:mm:ss"
-              HelperText="@HelperText" Error="@(_error != null)" ErrorText="@_error" Disabled="Disabled" Variant="Variant" Margin="Margin"
-              Class="@($"duration-input {Class}")" Style="@Style" InputMode="InputMode.text" Clearable="Nullable"
-              OnKeyDown="KeyDown" OnClearButtonClick="Cleared" aria-label="@($"{AriaLabel ?? Label} (hours:minutes:seconds)")" />
+<MudField Label="@Label" Variant="Variant" Margin="Margin" InnerPadding="false" HelperText="@HelperText" Disabled="Disabled"
+          Class="@($"duration-input {Class}")" Style="@Style">
+    <span class="seg-parts @(Variant == Variant.Text ? "seg-text" : null)" role="group" aria-label="@($"{AriaLabel ?? Label} (hours:minutes:seconds)")"
+          onkeydown="@SegmentKeys">
+        <input class="seg-part" style="@($"width:{HourDigits + 0.6}ch")" inputmode="numeric" autocomplete="off" maxlength="@HourDigits" aria-label="Hours" disabled="@Disabled"
+               @bind="_h" @bind:event="oninput" @onchange="Commit" @onkeydown="e => Step(e, 3600)" onfocus="this.select()" />
+        <span class="seg-colon" aria-hidden="true">:</span>
+        <input class="seg-part" style="width:2.6ch" inputmode="numeric" autocomplete="off" maxlength="2" aria-label="Minutes" disabled="@Disabled"
+               @bind="_m" @bind:event="oninput" @onchange="Commit" @onkeydown="e => Step(e, 60)" onfocus="this.select()" />
+        <span class="seg-colon" aria-hidden="true">:</span>
+        <input class="seg-part" style="width:2.6ch" inputmode="numeric" autocomplete="off" maxlength="2" aria-label="Seconds" disabled="@Disabled"
+               @bind="_s" @bind:event="oninput" @onchange="Commit" @onkeydown="e => Step(e, 1)" onfocus="this.select()" />
+    </span>
+</MudField>
 
 @code {
     [Parameter] public string? Label { get; set; }
@@ -13,10 +27,11 @@
     /// <summary>Duration in seconds; null = empty (only when <see cref="Nullable"/>).</summary>
     [Parameter] public double? Seconds { get; set; }
     [Parameter] public EventCallback<double?> SecondsChanged { get; set; }
+    /// <summary>Emptying all three numbers means "no value" (otherwise blanks read as 0).</summary>
     [Parameter] public bool Nullable { get; set; }
     [Parameter] public double MinSeconds { get; set; }
     [Parameter] public double MaxSeconds { get; set; } = 24 * 3600;
-    /// <summary>Arrow-key step in seconds (default: 1 minute, or 15 s under 2 minutes).</summary>
+    /// <summary>What ↑/↓ step on the minutes (e.g. 900 = 15 min); hours and seconds always step by 1.</summary>
     [Parameter] public double? StepSeconds { get; set; }
     [Parameter] public string? HelperText { get; set; }
     [Parameter] public bool Disabled { get; set; }
@@ -25,74 +40,63 @@
     [Parameter] public string? Class { get; set; }
     [Parameter] public string? Style { get; set; }
 
-    string? _text, _error;
+    // Plain DOM, so it's instant. Digits only; ":" moves right; ←/→ at an edge and Backspace at the
+    // start move between numbers (the colons stay put). Leaving a number fires its change, which commits it.
+    const string SegmentKeys = "const ins = [...this.querySelectorAll('input')], t = event.target, i = ins.indexOf(t), k = event.key;"
+        + "if (i < 0 || event.ctrlKey || event.metaKey || event.altKey) return;"
+        + "const go = n => { const x = ins[n]; if (!x) return; event.preventDefault(); x.focus(); x.select(); };"
+        + "if (k === ':' ) go(i + 1);"
+        + "else if (k === 'ArrowRight' && t.selectionEnd === t.value.length) go(i + 1);"
+        + "else if (k === 'ArrowLeft' && t.selectionStart === 0) go(i - 1);"
+        + "else if (k === 'Backspace' && t.selectionStart === 0 && t.selectionEnd === 0 && i > 0) { event.preventDefault(); const p = ins[i - 1]; p.focus(); p.setSelectionRange(p.value.length, p.value.length); }"
+        + "else if (k.length === 1 && !/[0-9]/.test(k)) event.preventDefault();"
+        // a digit typed into a full number (cursor at the end, nothing selected) starts the next one, so "4530" types 45:30
+        + "else if (k.length === 1 && t.value.length >= t.maxLength && t.selectionStart === t.selectionEnd && t.selectionEnd === t.value.length && i < ins.length - 1)"
+        + " { event.preventDefault(); const n = ins[i + 1]; n.focus(); n.value = k; n.setSelectionRange(1, 1); n.dispatchEvent(new Event('input', { bubbles: true })); }";
+
+
+    string _h = "", _m = "", _s = "";
     double? _shown = double.NaN;
 
-    public static string Format(double seconds)
-    {
-        var ts = TimeSpan.FromSeconds(Math.Max(0, Math.Round(seconds)));
-        return $"{(int)ts.TotalHours}:{ts.Minutes:00}:{ts.Seconds:00}";
-    }
-
-    /// <summary>Parses h:mm:ss, m:ss or minutes. Returns null for empty, throws on garbage.</summary>
-    public static double? Parse(string? text)
-    {
-        if (string.IsNullOrWhiteSpace(text)) return null;
-        var inv = System.Globalization.CultureInfo.InvariantCulture;
-        var style = System.Globalization.NumberStyles.Float;
-        var t = text.Trim();
-        if (!t.Contains(':'))
-            return double.TryParse(t, style, inv, out var mins) && mins >= 0 ? mins * 60 : throw new FormatException();
-        var parts = t.Split(':');
-        if (parts.Length > 3) throw new FormatException();
-        var n = new double[parts.Length];
-        for (int i = 0; i < parts.Length; i++)
-        {
-            var p = parts[i].Trim();
-            if (p.Length == 0) p = "0";
-            if (!double.TryParse(p, style, inv, out n[i]) || n[i] < 0) throw new FormatException();
-        }
-        return n.Length == 3 ? n[0] * 3600 + n[1] * 60 + n[2] : n[0] * 60 + n[1];
-    }
+    int HourDigits => Math.Max(1, ((int)(MaxSeconds / 3600)).ToString().Length);
 
     protected override void OnParametersSet()
     {
-        // reflect external changes (presets, plan steps) unless the user is mid-error
-        if (Seconds != _shown && _error == null)
-        {
-            _text = Seconds is { } s ? Format(s) : null;
-            _shown = Seconds;
-        }
+        // reflect outside changes (presets, plan steps); typing doesn't change Seconds until it's committed
+        if (Seconds != _shown) Show(Seconds);
     }
 
-    async Task Commit()
+    void Show(double? seconds)
     {
-        double? v;
-        try { v = Parse(_text); }
-        catch (FormatException) { _error = "Use h:mm:ss, e.g. 0:05:00"; return; }
-        _error = null;
-        if (v == null && !Nullable) { _text = Seconds is { } s ? Format(s) : Format(MinSeconds); return; }
-        if (v is { } x) v = Math.Clamp(Math.Round(x), MinSeconds, MaxSeconds);
-        await Set(v);
+        _shown = seconds;
+        if (seconds is not { } sec) { _h = _m = _s = ""; return; }
+        var ts = TimeSpan.FromSeconds(Math.Max(0, Math.Round(sec)));
+        _h = ((int)ts.TotalHours).ToString(); _m = ts.Minutes.ToString("00"); _s = ts.Seconds.ToString("00");
     }
+
+    /// <summary>The three numbers as seconds (blanks are 0), or null when all are blank and the field allows it.</summary>
+    double? Typed()
+    {
+        if (Nullable && string.IsNullOrWhiteSpace(_h + _m + _s)) return null;
+        static int N(string t) => int.TryParse(t, out var n) ? Math.Max(0, n) : 0;
+        return N(_h) * 3600 + N(_m) * 60 + N(_s);
+    }
+
+    async Task Commit() => await Set(Typed());
 
     async Task Set(double? v)
     {
-        _shown = v;
-        _text = v is { } s ? Format(s) : null;
-        await SecondsChanged.InvokeAsync(v);
+        if (v is { } x) v = Math.Clamp(Math.Round(x), MinSeconds, MaxSeconds);
+        var changed = v != Seconds;
+        Show(v); // tidy: zero-pad, carry overflow, apply the clamp
+        if (changed) await SecondsChanged.InvokeAsync(v);
     }
 
-    async Task KeyDown(KeyboardEventArgs e)
+    async Task Step(KeyboardEventArgs e, int unit)
     {
         if (e.Key is not ("ArrowUp" or "ArrowDown") || Disabled) return;
-        double cur;
-        try { cur = Parse(_text) ?? Seconds ?? 0; } catch (FormatException) { cur = Seconds ?? 0; }
-        var step = StepSeconds ?? (cur < 120 ? 15 : 60);
+        var step = unit == 60 && StepSeconds is >= 60 ? StepSeconds.Value : unit;
         if (e.ShiftKey) step *= 5;
-        _error = null;
-        await Set(Math.Clamp(cur + (e.Key == "ArrowUp" ? step : -step), MinSeconds, MaxSeconds));
+        await Set((Typed() ?? Seconds ?? 0) + (e.Key == "ArrowUp" ? step : -step));
     }
-
-    async Task Cleared() { _error = null; if (Nullable) await Set(null); }
 }

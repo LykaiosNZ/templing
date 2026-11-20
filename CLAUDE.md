@@ -65,12 +65,14 @@ Serialisation uses `DataStore.Json` (PascalCase property names, string enums via
 - **MudBlazor 9** renamed things (e.g. `AutoGrow` → `Sizing`, tabs `PanelClass` → `TabPanelsClass`). The analyzer warnings (MUD0002) tell you the replacement, so treat them as errors.
 - **Icons:** MudBlazor's Material set (`Icons.Material.Rounded.*`) by default. For icons it lacks (e.g. metronome), use Pictogrammers MDI: add the name to `tools/icons/icons.txt`, run `npm install && npm run generate` in `tools/icons`, then use `Mdi.Name`. Only listed icons ship. The output, `Components/Mdi.g.cs`, is generated, so don't hand-edit it.
 - **Keyboard shortcuts are defined only in `Hotkeys.cs`** (group, description, every combo). `Shortcuts.Register` takes a `Hotkey`, never a key string, and the shortcuts dialog is generated from `Hotkeys.All`, so a new key is listed automatically. A combo claimed twice throws at startup.
-- **Durations in the UI use `<DurationInput>`** (h:mm:ss text field, value in seconds; also accepts m:ss or bare minutes, ↑/↓ steps). Don't use number fields for minutes, and not `MudTimePicker` either: it's time-of-day, has no seconds and caps at 23:59. Models keep minutes or seconds as they are, so convert at the call site.
+- **Durations in the UI use `<DurationInput>`** (one field of three numbers with fixed colons, h:mm:ss, value in seconds; ↑/↓ step the number you're in, ←/→ move between them). Don't use number fields for minutes, and not `MudTimePicker` either: it's time-of-day, has no seconds and caps at 23:59. Models keep minutes or seconds as they are, so convert at the call site.
 - **Tempo is quarter-note based** (as in Guitar Pro): an x/8 bar clicks eighths. `Section.Subdivision` is clicks per beat; the UI shows it as a note value relative to the beat unit (`Section.Division`: 2 in 4/4 is "1/8", in 6/8 "1/16"). Score-linked sections carry `ScoreBars` ([masterBar, num, den] per bar); don't edit their meter/bars by hand.
 - **Practice time = active time only:** only work-phase time while running counts. Count-ins, rests, pauses and rest-only countdowns don't.
 - **Metronome overrides** (`MetronomeService`):
   - `_override` is one-off (timer extend / rest countdown) and is cleared when a run ends.
   - `_step` / `_stepTraining` are pinned by a plan step and cleared by `PlanRunner.EndAsync`.
+  - `_pieceTraining` lays a loaded piece's Start at / goal over the user's trainer (Start/End only) until another source loads. It's never saved, so opening a piece doesn't rewrite the user's trainer; switching the trainer on/off goes through `SetTrainingEnabledAsync`, which also sets the user's own switch.
+  - A piece opens at `OpeningTempo`: its Start at, else the low end of the last logged range, else the last tempo, else the section tempo. Never the last tempo by default.
   - UI should read `Metro.Training` / `Metro.EffectiveIntervals`, not `Settings.*`, while a plan runs.
 - **Engine events:** the engine reports `running=false` just before `finished`. Only `event == "stopped"` means a manual stop.
 - **Files are CRLF on Windows checkouts.** Multi-line string replacements in scripts should normalise line endings.

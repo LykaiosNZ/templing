@@ -1,0 +1,23 @@
+@* Says a piece has reached its goal ("Goal reached"), or by how much it's past it ("+15 over"), so it's obvious it's
+   time for a new goal. Renders nothing until then. Based on the latest tempo, like the progress bar. *@
+
+@if (Over is { } over)
+{
+    <span class="goal-chip" title="@($"Latest {Last:0}{Unit} · goal {Piece.Goal:0}{Unit}")">
+        <MudIcon Icon="@Icons.Material.Rounded.CheckCircle" Size="Size.Small" />@(over >= 0.5 ? $"+{over:0} over" : "Goal reached")
+    </span>
+}
+
+@code {
+    [Parameter, EditorRequired] public Piece Piece { get; set; } = default!;
+    /// <summary>The latest tempo (PieceStats.Last).</summary>
+    [Parameter] public double? Last { get; set; }
+
+    string Unit => Piece.Unit.Suffix();
+
+    /// <summary>How far past the goal (0 = right on it), or null if there's no goal or it isn't reached.</summary>
+    double? Over => Piece.Goal is { } g && Last is { } l && l >= g - 0.5 ? Math.Max(0, Math.Round(l - g)) : null;
+
+    /// <summary>Has the latest tempo reached the goal?</summary>
+    public static bool Reached(Piece piece, double? last) => piece.Goal is { } g && last is { } l && l >= g - 0.5;
+}

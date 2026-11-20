@@ -19,7 +19,7 @@ The house rules for how screens look and read. Follow them when building or chan
 | --- | --- | --- |
 | Durations in text | `45 sec`, `10 min`, `1 hr`, `1 hr 5 min`: always `hr`, `min`, `sec` | `Stats.Duration(sec)` |
 | Running clocks / countdowns | `m:ss`, `h:mm:ss` | `Stats.Clock(sec)` |
-| Duration inputs | h:mm:ss text field | `<DurationInput>` (never number fields or `MudTimePicker`) |
+| Duration inputs | h:mm:ss as one field of three numbers with fixed colons | `<DurationInput>` (never number fields or `MudTimePicker`) |
 | Chart axis ticks and tooltips | durations in round steps ("30 min", "1 hr 30 min"), same format as text | `BarChart Minutes` (C# formats every tick and tooltip and sends the text to charts.js) |
 | Dates | `Sat 14 Nov`; add the year (`14 Nov 2025`) only outside the current year | |
 | Relative dates | `today`, `yesterday`, `3 days ago`, `2w ago`, then a date | `Stats.Ago` |
@@ -122,13 +122,14 @@ Reuse these instead of rebuilding them. When two screens show the same thing, th
 | `PracticeGuard`, `PracticeKeys` | On the Metronome and Timer pages: ask before leaving while running; the practice shortcuts |
 | `FavouriteToggle` | The star that adds a piece or plan to the Dashboard's Favourites |
 | `SessionPanel` | Practised time on the Metronome and Timer, inside the stage. Hidden until there's time; one line while playing; once stopped, Log + Discard + page extras (Timer: +5 min, +10 min, Rest). Hidden while a plan runs. |
-| `DurationInput` | Any duration field |
+| `DurationInput` | Any duration field: hours, minutes and seconds as separate numbers with fixed colons (like `MeterInput`). ↑/↓ step the number you're in, ←/→ and Backspace move between them, ":" or a digit typed into a full number moves on |
 | `DivisionIcon` (`NoteIcons`) | A division shown as notation wherever it's read (tempo line, section summaries, piece page): the note value's icon, a small 3 for triplets, and a tooltip / accessible name that spells it out ("Eighth-note triplets (1/8t)"). In the Division select it sits beside the text (`ShowLabel`, no tooltip). Notes come from MDI; the thirty-second is hand-made in `NoteIcons` |
 | `MeterInput` | Any time signature: one outlined field "7 / 8", each number typed or stepped with ↑/↓, ←/→ to move between them (the bottom doubles/halves and snaps to a note value: 1, 2, 4, 8, 16, 32). Pair it with a "Division" select from `Section.Divisions(unit)` (note values, 1/4 … 1/32, triplets to 1/16t) |
 | `PlanStepSummary` | One-line plan step (Plans list, plan editor rows) |
 | `SectionsEditor`, `SectionSummary` | Tempo-map editor (piece editor, custom metronome sections): header with count, quick-add chips, collapsible rows |
 | `LogTable` | Practice log lists (History, Piece detail) |
 | `GoalBar` | Goal progress bar (`MudProgressLinear`: accent, green when reached) |
+| `GoalChip` | "Goal reached" / "+15 over" (green), wherever a piece's goal shows: Library and Dashboard cards, the piece page's Progress tile (with **Raise goal…**). Progress percentages aren't capped, so past the goal reads 111% |
 | `StatTile` | Headline numbers (pass `Seconds` for durations so the unit words render small) |
 | `FeelHint`, `EffortSlider` | Feel / effort display and input |
 | `Charts/*` | ECharts components on `ChartBase`: `BarChart` (`Minutes`, `Goal` + `GoalLabel`, `HighlightLast`, `TipLabels`), `TempoChart` (whiskers, feel dots, goal), `Heatmap` (practice calendar: `Practiced`, `From`); `HBars` ranked lists on `MudProgressLinear` (`Limit` + "Show all", `Goal` for goal colouring) |

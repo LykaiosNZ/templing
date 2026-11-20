@@ -1,7 +1,7 @@
 ﻿@page "/"
 @* The Dashboard is a launch pad: rows of the same small cards, each one click from practising.
    Jump back in (most recent) · Favourites (starred; a placeholder card until something is) · Closest to goal ·
-   Not practised lately. A piece shows in one row at most (Favourites first, then Jump back in, then the rest),
+   Ready for a new goal (at or past it) · Not practised lately. A piece shows in one row at most (Favourites first, then Jump back in, then the rest),
    and empty rows hide. The header keeps this week's goal and the streak; other statistics live on Stats. *@
 @implements IDisposable
 @inject DataStore Store
@@ -94,6 +94,19 @@ else
             </section>
         }
 
+        @if (_newGoal.Count > 0)
+        {
+            <section aria-labelledby="dash-newgoal">
+                <h2 class="dash-heading" id="dash-newgoal">Ready for a new goal</h2>
+                <div class="fav-grid">
+                    @foreach (var card in _newGoal)
+                    {
+                        @Card(card)
+                    }
+                </div>
+            </section>
+        }
+
         @if (_lately.Count > 0)
         {
             <section aria-labelledby="dash-lately">
@@ -118,7 +131,7 @@ else
     int _weekSec;
     double _weekPct;
     (int current, int longest) _streak;
-    List<DashCard> _recent = new(), _favourites = new(), _closest = new(), _lately = new();
+    List<DashCard> _recent = new(), _favourites = new(), _closest = new(), _newGoal = new(), _lately = new();
 
     string Greeting => DateTime.Now.Hour switch { < 12 => "Good morning", < 18 => "Good afternoon", _ => "Good evening" };
 
@@ -166,6 +179,13 @@ else
             .Select(p => PieceCard(p, $"{stats[p.Id].Last:0} of {p.Goal:0}{p.Unit.Suffix()} · {Ago(stats[p.Id].LastDate!.Value)}"))
             .ToList();
 
+        // Ready for a new goal: at or past the goal, most recently practised first
+        _newGoal = pieces.Where(p => !shown.Contains(p.Id) && GoalChip.Reached(p, stats[p.Id].Last))
+            .OrderByDescending(p => stats[p.Id].LastDate)
+            .Take(PerRow).ToList()
+            .Select(p => PieceCard(p, LastLine(p)))
+            .ToList();
+
         // Not practised lately: pieces with a goal to reach, untouched for two weeks, the longest-dropped first
         _lately = pieces.Where(p => !shown.Contains(p.Id) && p.Goal.HasValue
                     && stats[p.Id] is { Progress: < 1, LastDate: { } d } && d < today.AddDays(-14))
@@ -188,7 +208,7 @@ else
                 <a href="library/@piece.Id" class="fav-name">@piece.Name</a>
                 <FavouriteToggle On="piece.Favourite" Name="@piece.Name" OnToggle="() => ToggleFavourite(piece)" />
             </div>
-            <div class="fav-meta muted small">@meta</div>
+            <div class="fav-meta muted small">@meta <GoalChip Piece="piece" Last="st.Last" /></div>
             @if (piece.Goal.HasValue)
             {
                 <GoalBar Progress="st.Progress ?? 0" AriaLabel="@($"{piece.Name} progress")" />

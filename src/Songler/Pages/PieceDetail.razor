@@ -49,6 +49,13 @@ else
         <StatTile Label="Progress" Value="@(_st.Progress is { } p ? p.ToString("P0") : "—")" Icon="@Icons.Material.Rounded.Flag"
                   Sub="@ProgressSub">
             <GoalBar Progress="_st.Progress" Class="mt-2" AriaLabel="Progress to goal" />
+            @if (_section == null && GoalChip.Reached(_piece, _st.Last))
+            {
+                <div class="goal-raise">
+                    <GoalChip Piece="_piece" Last="_st.Last" />
+                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="RaiseGoal">Raise goal…</MudButton>
+                </div>
+            }
         </StatTile>
         <StatTile Label="Latest" Value="@(_st.Last?.ToString("0") ?? "—")" Unit="@(_st.Last.HasValue ? _piece.Unit.Suffix() : null)" Icon="@Icons.Material.Rounded.Speed"
                   Sub="@(_st.Best is { } b ? $"Best {b:0}{_piece.Unit.Suffix()}" : null)" />
@@ -239,6 +246,18 @@ else
         Snackbar.Add(_piece.Archived ? "Archived: hidden from the library unless \"Show archived\" is on" : "Unarchived", Severity.Info);
     }
 
+
+    /// <summary>A new goal, starting from the best tempo so far.</summary>
+    async Task RaiseGoal()
+    {
+        var unit = _piece!.Unit == TempoUnit.Percent ? "%" : "bpm";
+        var suggested = Math.Max(_st.Best ?? 0, _piece.Goal ?? 0);
+        var text = await PromptDialog.ShowAsync(Dialogs, "Raise goal", $"New goal ({unit})", suggested.ToString("0"), "Set goal");
+        if (text == null || !double.TryParse(text.Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var goal) || goal <= 0) return;
+        _piece.Goal = Math.Round(goal);
+        await Store.SavePieceAsync(_piece);
+        Snackbar.Add($"Goal set to {_piece.Goal:0}{_piece.Unit.Suffix()}", Severity.Success);
+    }
 
     string ProgressSub
     {

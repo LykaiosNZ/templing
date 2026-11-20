@@ -114,6 +114,11 @@ public class Piece
     public TempoUnit Unit { get; set; } = TempoUnit.Bpm;
     /// <summary>Goal tempo in <see cref="Unit"/> (BPM, or percent of original tempo).</summary>
     public double? Goal { get; set; }
+    /// <summary>
+    /// Where the metronome opens for this piece, in <see cref="Unit"/>. Null: the slowest tempo of the last session
+    /// (the low end of a "95–155" log), else the last tempo, else the section's tempo. Also the speed trainer's start.
+    /// </summary>
+    public double? StartTempo { get; set; }
     public List<Section> Sections { get; set; } = new() { new Section() };
     public string? Notes { get; set; }
     public string? Link { get; set; }

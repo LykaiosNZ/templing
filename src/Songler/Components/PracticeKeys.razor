@@ -43,7 +43,11 @@
         Key(Hotkeys.PrevSection, () => Metro.PrevStepAsync());
         Key(Hotkeys.Tap, () => Metro.TapAsync());
         Key(Hotkeys.CountIn, () => Toggle("Count-in", () => Metro.Settings.CountIn = !Metro.Settings.CountIn));
-        Key(Hotkeys.SpeedTrainer, () => Toggle("Speed trainer", () => Metro.Training.Enabled = !Metro.Training.Enabled));
+        Key(Hotkeys.SpeedTrainer, async () =>
+        {
+            await Metro.SetTrainingEnabledAsync(!Metro.Training.Enabled);
+            Snackbar.Add($"Speed trainer {(Metro.Training.Enabled ? "on" : "off")}", Severity.Normal);
+        });
         Key(Hotkeys.IntervalTrainer, () => Toggle("Interval trainer", () => Metro.Settings.Interval.Enabled = !Metro.Settings.Interval.Enabled));
     }
 

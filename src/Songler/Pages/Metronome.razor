@@ -382,7 +382,7 @@
     async Task SoundChanged() { await Metro.ApplyAsync(); await Metro.PreviewSoundAsync(); }
 
     async Task Toggle(Action a) { a(); await Metro.ApplyAsync(); }
-    Task SetTraining(bool on) => Toggle(() => Metro.Training.Enabled = on);
+    Task SetTraining(bool on) => Metro.SetTrainingEnabledAsync(on);
     Task SetIntervals(bool on) => Toggle(() => Metro.Settings.Interval.Enabled = on);
     Task SetCountIn(bool on) => Toggle(() => Metro.Settings.CountIn = on);
     Task SetPlayThrough(bool on) => Toggle(() => Metro.PlayThrough = on);

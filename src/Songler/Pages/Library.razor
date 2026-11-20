@@ -89,6 +89,7 @@ else
                             {
                                 <span class="muted"> / @g.ToString("0")@piece.Unit.Suffix()</span>
                             }
+                            <GoalChip Piece="piece" Last="st.Last" />
                         }
                     </div>
                     <GoalBar Progress="st.Progress" Class="@(st.Sessions == 0 ? "d-none" : null)" AriaLabel="Progress to goal" />
