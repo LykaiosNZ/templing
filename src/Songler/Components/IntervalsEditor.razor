@@ -19,10 +19,14 @@
         }
     </MudSelect>
 }
+@* Work · Rounds (a Repeat toggle for "until stopped", else a count), then Rest only when there's more than one round *@
 <div class="form-grid interval-grid">
     <DurationInput Seconds="iv.WorkMin * 60" SecondsChanged="async v => { iv.WorkMin = (v ?? 15) / 60; await Apply(); }" Label="Work" MinSeconds="15" MaxSeconds="7200" Variant="Variant.Outlined" Margin="Margin.Dense" />
-    <DurationInput Seconds="iv.RestMin * 60" SecondsChanged="async v => { iv.RestMin = (v ?? 0) / 60; await Apply(); }" Label="Rest" MaxSeconds="3600" Variant="Variant.Outlined" Margin="Margin.Dense" />
-    <MudNumericField T="int" @bind-Value="iv.Rounds" @bind-Value:after="Apply" Label="Rounds" Min="0" Max="99" HelperText="0 = endless" Variant="Variant.Outlined" Margin="Margin.Dense" />
+    <RoundsInput Rounds="iv.Rounds" RoundsChanged="async v => { iv.Rounds = v; await Apply(); }" />
+    @if (iv.Rounds != 1)
+    {
+        <DurationInput Seconds="iv.RestMin * 60" SecondsChanged="async v => { iv.RestMin = (v ?? 0) / 60; await Apply(); }" Label="Rest" MaxSeconds="3600" Variant="Variant.Outlined" Margin="Margin.Dense" />
+    }
 </div>
 <MudSwitch T="bool" @bind-Value="iv.VoiceCues" @bind-Value:after="Apply" Color="Color.Primary" Label="Audio cues" Class="rail-line-switch" />
 

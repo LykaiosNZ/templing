@@ -13,8 +13,7 @@
                            MinSeconds="15" MaxSeconds="7200" Variant="Variant.Outlined" Margin="Margin.Dense" />
             <DurationInput Seconds="p.RestMin * 60" SecondsChanged="v => Edit(idx, x => x.RestMin = (v ?? 0) / 60)" Label="Rest" AriaLabel="@($"Preset {n} rest")"
                            MaxSeconds="3600" Variant="Variant.Outlined" Margin="Margin.Dense" />
-            <MudNumericField T="int" Value="p.Rounds" ValueChanged="v => Edit(idx, x => x.Rounds = v)" Label="Rounds" Placeholder="0 = endless" Min="0" Max="99"
-                             Variant="Variant.Outlined" Margin="Margin.Dense" aria-label="@($"Preset {n} rounds")" />
+            <RoundsInput Rounds="p.Rounds" RoundsChanged="v => Edit(idx, x => x.Rounds = v)" AriaName="@($"Preset {n} rounds")" />
             <MudTooltip Text="Remove">
                 <MudIconButton Icon="@Icons.Material.Rounded.Close" Size="Size.Small" aria-label="@($"Remove preset {n}")" OnClick="() => Remove(idx)" />
             </MudTooltip>

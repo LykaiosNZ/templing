@@ -1,0 +1,31 @@
+@* Interval rounds: a Repeat toggle for "until you stop" (stored as 0 rounds), else a number from 1. Works like a
+   section's Loop toggle; turning Repeat off brings back the last count. *@
+
+<div class="rounds-input">
+    <MudTooltip Text="@($"Repeat until stopped: {(Endless ? "on" : "off")}")">
+        <MudIconButton Icon="@Icons.Material.Rounded.Repeat" Size="Size.Small" Class="@(Endless ? "opt-toggle on" : "opt-toggle")"
+                       aria-label="@($"Repeat until stopped{(AriaName is { } n ? $" ({n})" : "")}")" aria-pressed="@(Endless ? "true" : "false")" OnClick="ToggleEndless" />
+    </MudTooltip>
+    @if (!Endless)
+    {
+        <MudNumericField T="int" Value="Rounds" ValueChanged="Set" Label="Rounds" Min="1" Max="99"
+                         Variant="Variant.Outlined" Margin="Margin.Dense" Class="rounds-number" aria-label="@AriaName" />
+    }
+</div>
+
+@code {
+    /// <summary>Rounds; 0 = repeat until stopped.</summary>
+    [Parameter] public int Rounds { get; set; }
+    [Parameter] public EventCallback<int> RoundsChanged { get; set; }
+    /// <summary>Extra accessible context, e.g. "Preset 2 rounds".</summary>
+    [Parameter] public string? AriaName { get; set; }
+
+    bool Endless => Rounds == 0;
+    int _last = 2; // what Repeat-off goes back to
+
+    protected override void OnParametersSet() { if (Rounds > 0) _last = Rounds; }
+
+    Task ToggleEndless() => Set(Endless ? Math.Max(1, _last) : 0);
+
+    Task Set(int v) => RoundsChanged.InvokeAsync(Math.Clamp(v, 0, 99));
+}

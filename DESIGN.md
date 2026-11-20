@@ -56,7 +56,7 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
   - Hiding the rail leaves a 56 px strip of quick controls rather than a copy of the sections: `RailToggle`s for the features, plus `RailVolume` (click turns sound on or off, hover shows the slider).
   - Below `lg` the same sections open as a bottom sheet from an Options button in the page head.
   - The rail starts open; hiding it lasts for the session.
-  - Everything in the rail must fit its 320 px without a sideways scrollbar. A row of three fields gives fixed-content fields (durations, time signatures) the flexible columns and small numbers a fixed one (`interval-grid`: Work · Rest · Rounds).
+  - Everything in the rail must fit its 320 px without a sideways scrollbar. Keep rows to two fields (`interval-grid`: Work · Rounds, then Rest).
   - Put `<OptionsRail>` last in the page markup. MudBlazor gives every `div` after a right-hand drawer a right margin the width of the drawer, so anything placed after it (e.g. the tab view) gets squeezed.
   - Tooltips on controls at the rail's right edge (Save, ⋮, strip buttons, Hide options) use `Placement.Left`. Below or above, they hit the window edge, wrap and jitter.
 - Must work at phone width (≥ 360 px): wide tables switch to compact rows (`hide-phone` / `show-phone-block`).
@@ -121,6 +121,7 @@ Reuse these instead of rebuilding them. When two screens show the same thing, th
 | `OptionsRail`, `RailSection`, `RailToggle`, `RailVolume` | The Metronome / Timer options rail, its sections, and the hidden rail's strip controls |
 | `VolumeControl` | Sound on/off + volume slider (rail Sound section, strip pop-up) |
 | `PracticeGuard`, `PracticeKeys` | On the Metronome and Timer pages: ask before leaving while running; the practice shortcuts |
+| `RoundsInput` | Interval rounds: a Repeat toggle ("until stopped", stored as 0) else a count from 1; turning Repeat off restores the last count. In the interval editor the row is Work · Rounds, with Rest shown only when there's more than one round |
 | `FavouriteToggle` | The star that adds a piece or plan to the Dashboard's Favourites |
 | `SessionPanel` | Practised time on the Metronome and Timer, inside the stage. Hidden until there's time; one line while playing; once stopped, Log + Discard + page extras (Timer: +5 min, +10 min, Rest). Hidden while a plan runs. |
 | `DurationInput` | Any duration field: hours, minutes and seconds as separate numbers with fixed colons (like `MeterInput`). ↑/↓ step the number you're in, ←/→ and Backspace move between them, ":" or a digit typed into a full number moves on |
