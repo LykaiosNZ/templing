@@ -1,5 +1,5 @@
 // Minimal IndexedDB wrapper. Values are passed as JSON strings so .NET controls serialization.
-const DB_NAME = 'songler';   // the app's old name: kept, since renaming the database would orphan existing data
+const DB_NAME = 'templing';   // also opened by the boot script in index.html: keep the two in step
 const DB_VERSION = 5; // 5: "items" store renamed "pieces"
 // Adding a store? Bump DB_VERSION and follow the "Persisted data" checklist in CLAUDE.md
 // (DataStore load/import/clear, Backup.cs export/restore).

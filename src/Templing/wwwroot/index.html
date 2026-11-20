@@ -41,7 +41,7 @@
         // Never creates the database: on a first visit the upgrade is aborted and the default (dark) stays.
         (function () {
             try {
-                var q = indexedDB.open('songler');
+                var q = indexedDB.open('templing');   // DB_NAME in js/db.js
                 q.onupgradeneeded = function (e) { e.target.transaction.abort(); };
                 q.onsuccess = function () {
                     var db = q.result;
