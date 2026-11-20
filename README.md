@@ -12,7 +12,7 @@ Then open http://localhost:5075. You need the .NET 11 SDK.
 
 ## Features
 
-- **Dashboard**: a launch pad. Star pieces and plans to keep them under **Favourites**, each one click from the metronome or a plan run; **Recent** lists what you practised last; and this week's goal and your streak sit at the top. Fuller statistics are on Stats.
+- **Dashboard**: a launch pad of cards, each one click from the metronome or a plan run: **Jump back in** (what you practised last), **Favourites** (star pieces and plans to pin them), **Closest to goal** and **Not practised lately**. This week's goal and your streak sit at the top; fuller statistics are on Stats.
 - **Library**: songs, exercises and riffs. Each piece measures progress in **BPM** or **% of song tempo**, and has a goal and a tempo map of **sections**. Each section has its own tempo, time signature, division (what clicks: 1/4, 1/8, 1/8t … 1/32) and bar count.
 - **Metronome**: a Web Audio look-ahead scheduler, so timing is sample-accurate. You can open it on its own (free mode), from a piece, or as a saved **custom metronome** with its own tempo changes. Practice stays on its page: leaving the Metronome or Timer while it runs asks first, and stops it.
   - **Speed trainer**: goes from a start tempo to an end tempo in a set number of whole-bpm steps (e.g. +6, +5, +6), spread over N minutes of playing or one every N bars. Tempo changes land on bar lines. It can hold at the end tempo or stop.
