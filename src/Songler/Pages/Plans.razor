@@ -22,54 +22,67 @@
 }
 else
 {
-    <div class="plan-grid">
+    @* One row per plan: name and totals; the row expands to its steps. The running plan is open and outlined. *@
+    <div class="plan-rows" role="list">
         @foreach (var plan in Store.Plans.OrderByDescending(p => p.LastRun ?? p.Created))
         {
             var running = Runner.Active && Runner.Plan?.Id == plan.Id;
-            <article class="card plan-card @(running ? "running" : "")">
-                <div class="card-head">
-                    <div>
-                        <h2 class="card-title">@plan.Name</h2>
-                        <MudText Typo="Typo.caption" Class="muted">@Meta(plan, running)</MudText>
-                    </div>
-                    <div class="d-flex">
-                        <FavouriteToggle On="plan.Favourite" Name="@plan.Name" OnToggle="() => ToggleFavourite(plan)" />
+            var open = IsOpen(plan, running);
+            var bodyId = $"plan-steps-{plan.Id}";
+            var p = plan;
+            <div class="plan-row @(open ? "open" : "") @(running ? "running" : "")" role="listitem">
+                <div class="plr-head">
+                    <button type="button" class="plr-toggle" aria-expanded="@(open ? "true" : "false")" aria-controls="@bodyId" @onclick="() => Toggle(p, running)">
+                        <MudIcon Icon="@Icons.Material.Rounded.ExpandMore" Size="Size.Small" Class="er-chevron" />
+                        <span class="plr-name">@plan.Name</span>
+                        <span class="plr-meta">@Meta(plan, running)</span>
+                    </button>
+                    <div class="plr-actions">
+                        <FavouriteToggle On="plan.Favourite" Name="@plan.Name" OnToggle="() => ToggleFavourite(p)" />
                         <MudTooltip Text="Edit">
-                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit {plan.Name}")" OnClick="() => Edit(plan)" />
+                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit {plan.Name}")" OnClick="() => Edit(p)" />
                         </MudTooltip>
                         <MudTooltip Text="More">
                             <MudMenu Icon="@Icons.Material.Rounded.MoreVert" Size="Size.Small" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" AriaLabel="@($"More for {plan.Name}")">
-                                <MudMenuItem Icon="@Icons.Material.Rounded.ContentCopy" OnClick="() => Duplicate(plan)">Duplicate</MudMenuItem>
-                                <MudMenuItem Icon="@Icons.Material.Rounded.Delete" OnClick="() => AfterMenu(() => Delete(plan))">Delete…</MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Rounded.ContentCopy" OnClick="() => Duplicate(p)">Duplicate</MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Rounded.Delete" OnClick="() => AfterMenu(() => Delete(p))">Delete…</MudMenuItem>
                             </MudMenu>
                         </MudTooltip>
+                        @if (running)
+                        {
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Rounded.Stop" OnClick="() => Runner.EndAsync()" Class="plr-run" aria-label="@($"End {plan.Name}")">End plan</MudButton>
+                        }
+                        else
+                        {
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Rounded.PlayArrow" OnClick="() => Run(p)" Class="plr-run" aria-label="@($"Run {plan.Name}")">Run plan</MudButton>
+                        }
                     </div>
                 </div>
-                <ol class="plan-list">
-                    @for (int i = 0; i < plan.Steps.Count; i++)
-                    {
-                        var s = plan.Steps[i];
-                        var idx = i;
-                        var missing = PlanStepSummary.IsMissing(s, Store);
-                        <li class="@(s.Kind == PlanStepKind.Rest ? "rest" : "") @(missing ? "missing" : "") @(running && Runner.Index == idx ? "on" : "")">
-                            <PlanStepSummary Step="s" Index="idx" />
-                        </li>
-                    }
-                </ol>
-                @if (running)
+                @if (open)
                 {
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.Stop" OnClick="() => Runner.EndAsync()" FullWidth="true">End plan</MudButton>
+                    <ol class="plan-list" id="@bodyId">
+                        @for (int i = 0; i < plan.Steps.Count; i++)
+                        {
+                            var s = plan.Steps[i];
+                            var idx = i;
+                            var missing = PlanStepSummary.IsMissing(s, Store);
+                            <li class="@(s.Kind == PlanStepKind.Rest ? "rest" : "") @(missing ? "missing" : "") @(running && Runner.Index == idx ? "on" : "")">
+                                <PlanStepSummary Step="s" Index="idx" />
+                            </li>
+                        }
+                    </ol>
                 }
-                else
-                {
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.PlayArrow" OnClick="() => Run(plan)" FullWidth="true">Run plan</MudButton>
-                }
-            </article>
+            </div>
         }
     </div>
 }
 
 @code {
+    // Rows the user opened or closed this visit; anything not listed follows the default (only the running plan is open)
+    readonly Dictionary<string, bool> _open = new();
+    bool IsOpen(PracticePlan p, bool running) => _open.TryGetValue(p.Id, out var o) ? o : running;
+    void Toggle(PracticePlan p, bool running) => _open[p.Id] = !IsOpen(p, running);
+
     async Task ToggleFavourite(PracticePlan p) { p.Favourite = !p.Favourite; await Store.SavePlanAsync(p); }
 
     // MudMenu only closes once a menu item's handler finishes; start dialogs after it closes instead of awaiting them inside the click

@@ -538,9 +538,29 @@ html.boot-light .boot { --boot-bg: #f7f6f2; --boot-ink: #0b0b0b; --boot-muted: #
     .plan-bar-actions { gap: 2px; }
     .plan-dots { margin-top: 8px; }
 }
-.plan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
-.plan-card { display: flex; flex-direction: column; gap: 10px; }
-.plan-card.running { border-color: var(--accent); }
+/* Plans page: one row per plan (name, totals, actions) that expands to its steps */
+.plan-rows { display: flex; flex-direction: column; gap: 8px; }
+.plan-row { background: var(--card); border: 1px solid var(--ring); border-radius: var(--radius); }
+.plan-row.running { border-color: var(--accent); }
+.plr-head { display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; }
+.plr-toggle { flex: 1; min-width: 0; display: flex; justify-content: flex-start; align-items: baseline; gap: 10px; padding: 10px 8px; background: none; border: none; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: 10px; }
+.plr-toggle:hover { background: var(--card-2); }
+.plr-toggle:focus-visible { outline: 2px solid var(--mud-palette-primary); }
+.plr-toggle .er-chevron { align-self: center; flex: none; }
+.plan-row.open .er-chevron { transform: none; }
+.plr-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.plr-meta { color: var(--ink-2); font-size: .82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.plr-actions { display: flex; align-items: center; gap: 2px; flex: none; }
+.plr-actions .plr-run { margin-left: 6px; min-width: 112px; }
+.plan-row .plan-list { padding: 2px 16px 14px 42px; }
+@media (max-width: 700px) {
+    .plr-head { flex-wrap: wrap; padding: 4px 6px 8px 4px; }
+    .plr-toggle { flex-basis: 100%; flex-wrap: wrap; row-gap: 2px; }
+    .plr-meta { flex-basis: 100%; padding-left: 30px; }
+    .plr-actions { width: 100%; padding-left: 30px; }
+    .plr-actions .plr-run { margin-left: auto; }
+    .plan-row .plan-list { padding-left: 34px; }
+}
 .plan-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; flex: 1; }
 .plan-list li { font-size: .88rem; display: flex; align-items: baseline; gap: 8px; }
 .plan-list .pl-num { min-width: 1.2em; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; flex: none; }
