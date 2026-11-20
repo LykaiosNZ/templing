@@ -251,7 +251,7 @@
                 <MudToggleItem Value="RampMode.EveryNBars" Text="Every N bars" />
             </MudToggleGroup>
             <div class="form-grid">
-                <MudNumericField Disabled="Metro.TrainingPinned" T="int" Value="tr.StepCount" ValueChanged="async v => { tr.Steps = v; await Apply(); }" Label="Steps" Min="1" Max="tr.MaxSteps"
+                <MudNumericField Disabled="Metro.TrainingPinned" T="int" Value="tr.StepCount" ValueChanged="async v => { tr.Steps = v; await Apply(); }" Label="Increments" Min="1" Max="tr.MaxSteps"
                                  Variant="Variant.Outlined" Margin="Margin.Dense" />
                 @if (tr.Mode == RampMode.OverTime)
                 {

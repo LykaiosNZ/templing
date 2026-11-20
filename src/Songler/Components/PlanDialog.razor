@@ -93,10 +93,10 @@
                                                 <MudNumericField T="double" @bind-Value="s.TrainerStart" Label="@($"From ({u})")" Min="10" Max="400" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
                                                 <MudNumericField T="double" @bind-Value="s.TrainerEnd" Label="@($"To ({u})")" Min="10" Max="400" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
                                                 var ts = s.TrainerSettings();
-                                                <MudNumericField T="int" Value="ts.StepCount" ValueChanged="v => s.TrainerSteps = v" Label="Steps" Min="1" Max="ts.MaxSteps"
+                                                <MudNumericField T="int" Value="ts.StepCount" ValueChanged="v => s.TrainerSteps = v" Label="Increments" Min="1" Max="ts.MaxSteps"
                                                                  Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
                                                 <MudToggleGroup T="RampMode" @bind-Value="s.TrainerMode" Color="Color.Primary" Size="Size.Small" Outlined="true" CheckMark="false" Class="ps-ramp">
-                                                    <MudToggleItem Value="RampMode.OverTime" Text="Over the step" />
+                                                    <MudToggleItem Value="RampMode.OverTime" Text="Over time" />
                                                     <MudToggleItem Value="RampMode.EveryNBars" Text="Every N bars" />
                                                 </MudToggleGroup>
                                                 @if (s.TrainerMode == RampMode.EveryNBars)
