@@ -18,6 +18,8 @@
 const LOOKAHEAD_MS = 25;
 const SCHEDULE_AHEAD = 0.12;
 
+const OUTPUT_GAIN = 2; // applied after the volume slider, so 100% = twice the samples' recorded level
+
 let ctx = null;
 let master = null;
 let dotnet = null;
@@ -32,8 +34,21 @@ let st = null;
 function ensureCtx() {
     if (!ctx) {
         ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+        // sources -> master (the volume slider, 0-1) -> a fixed boost -> a limiter -> speakers.
+        // The click samples are quiet at their recorded level; the boost makes 100% loud enough, and the
+        // limiter keeps boosted accents and cues from clipping.
         master = ctx.createGain();
-        master.connect(ctx.destination);
+        const boost = ctx.createGain();
+        boost.gain.value = OUTPUT_GAIN;
+        const limiter = ctx.createDynamicsCompressor();
+        limiter.threshold.value = -1;
+        limiter.knee.value = 0;
+        limiter.ratio.value = 20;
+        limiter.attack.value = 0.001;
+        limiter.release.value = 0.1;
+        master.connect(boost);
+        boost.connect(limiter);
+        limiter.connect(ctx.destination);
     }
     if (ctx.state === 'suspended') ctx.resume();
     master.gain.value = cfg ? cfg.volume : 0.8;

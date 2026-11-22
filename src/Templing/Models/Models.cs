@@ -341,8 +341,8 @@ public class MetronomeSettings
 {
     public bool CountIn { get; set; } = true;
     public int CountInBars { get; set; } = 1;
-    /// <summary>Master gain, 0–1 (shown as 0–100%). Older versions allowed up to 1.5, so saved settings and backups
-    /// are clamped as they load.</summary>
+    /// <summary>Volume, 0–1 (shown as 0–100%). The engine applies a fixed boost after it (<c>OUTPUT_GAIN</c> in
+    /// metronome.js). Older versions allowed up to 1.5, so saved settings and backups are clamped as they load.</summary>
     public double Volume { get => _volume; set => _volume = Math.Clamp(value, 0, 1); }
     double _volume = 0.8;
     /// <summary>The default click (a <c>ClickSounds</c> id); pieces and custom metronomes can pick their own. Unknown ids
