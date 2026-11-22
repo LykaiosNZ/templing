@@ -29,6 +29,7 @@ dotnet run --project src/Templing/Templing.csproj --launch-profile http   # http
 | `Services/Stats.cs`, `Services/LogCsv.cs` | Stats maths, tempo parsing + CSV log export |
 | `Services/Hotkeys.cs`, `Services/Shortcuts.cs`, `wwwroot/js/keys.js` | Keyboard shortcuts: the one catalog of keys, the handler registry, the key listener |
 | `wwwroot/js/metronome.js` | Audio engine (look-ahead scheduler, intervals, trainer, per-bar meters) |
+| `Services/ClickSounds.cs` + `wwwroot/sounds` | Click sounds: hi/lo WAV pairs (CC0, `Credits.txt`), the catalog and display names, `Default`. Audio cues stay synthesised in `metronome.js` |
 | `wwwroot/js/db.js` | IndexedDB wrapper (JSON stores + binary `files` store) |
 | `Components/Charts/*` + `wwwroot/js/charts.js` | Charts via Apache ECharts (Apache-2.0): a trimmed bundle in `wwwroot/lib/echarts`, built by `tools/echarts`; C# formats all text, JS draws |
 

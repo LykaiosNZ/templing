@@ -29,6 +29,19 @@
         </div>
     </section>
 
+    <section aria-labelledby="set-metronome">
+        <h2 class="settings-heading" id="set-metronome">Metronome</h2>
+        <div class="setting-row">
+            <div class="setting-text">
+                <div class="setting-title">Click sound</div>
+                <div class="setting-desc">Pieces and custom metronomes can have their own.</div>
+            </div>
+            <div class="setting-control">
+                <ClickSoundPicker Value="@ClickSounds.Resolve(Store.Settings.Metronome.Sound)" ValueChanged="SetClickSound" Label="@null" />
+            </div>
+        </div>
+    </section>
+
     <section aria-labelledby="set-presets">
         <h2 class="settings-heading" id="set-presets">Interval presets</h2>
         <div class="setting-row setting-row-top">
@@ -112,6 +125,13 @@
     }
 
     Task Save() => Store.SaveSettingsAsync();
+
+    async Task SetClickSound(string? id)
+    {
+        Store.Settings.Metronome.Sound = ClickSounds.Resolve(id);
+        await Save();
+        await Metro.ApplyAsync(persist: false);
+    }
 
     async Task ExportJson() =>
         await Store.DownloadAsync($"templing-backup-{DateTime.Today:yyyy-MM-dd}.json", Backup.Export(Store), "application/json");
