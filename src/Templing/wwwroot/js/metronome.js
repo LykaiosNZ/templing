@@ -18,7 +18,9 @@
 const LOOKAHEAD_MS = 25;
 const SCHEDULE_AHEAD = 0.12;
 
-const OUTPUT_GAIN = 2; // applied after the volume slider, so 100% = twice the samples' recorded level
+// Applied after the volume slider: at 100% the Default click peaks around -6 dB (tuned by ear and on an
+// interface's meter). The synthesised cues are scaled down by it, so they stay at their old level.
+const OUTPUT_GAIN = 4;
 
 let ctx = null;
 let master = null;
@@ -143,7 +145,7 @@ function click(time, kind) {
         o.frequency.value = kind === 'cue-hi' ? 1046 : kind === 'cue-end' ? 523 : 784;
         const dur = kind === 'cue-end' ? 0.6 : 0.18;
         g.gain.setValueAtTime(0.0001, time);
-        g.gain.exponentialRampToValueAtTime(0.6, time + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.6 / OUTPUT_GAIN, time + 0.01);
         g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
         o.connect(g); o.start(time); o.stop(time + dur + 0.02);
         return;
