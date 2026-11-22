@@ -7,7 +7,7 @@
 @inject ISnackbar Snackbar
 
 @code {
-    /// <summary>The Timer page: start/stop, stop, sound and log only (no tempo, sections or metronome options).</summary>
+    /// <summary>The Timer page: start/stop, stop, skip rest, sound and log only (no tempo, sections or metronome options).</summary>
     [Parameter] public bool Timer { get; set; }
     /// <summary>What Space does (the Timer starts its countdown rather than the click).</summary>
     [Parameter] public Func<Task>? StartStop { get; set; }
@@ -26,6 +26,7 @@
 
         Key(Hotkeys.StartStop, () => StartStop?.Invoke() ?? Metro.ToggleAsync());
         Key(Hotkeys.Stop, () => Metro.StopAsync());
+        Key(Hotkeys.SkipRest, () => Metro.SkipRestAsync());
         Key(Hotkeys.Mute, async () =>
         {
             await Metro.SetMutedAsync(!Metro.Muted);

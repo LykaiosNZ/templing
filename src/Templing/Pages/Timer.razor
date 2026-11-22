@@ -50,9 +50,19 @@
         </div>
 
         <div class="transport">
+            @* side slots keep the play button centred when Skip rest appears *@
+            <span class="transport-slot"></span>
             <button class="play-btn @(Metro.IsRunning ? "on" : "")" @onclick="Toggle" aria-label="@(Metro.IsRunning ? "Stop" : "Start")">
                 <MudIcon Icon="@(Metro.IsRunning ? Icons.Material.Rounded.Stop : Icons.Material.Rounded.PlayArrow)" Style="font-size:2.6rem" />
             </button>
+            <span class="transport-slot">
+                @if (Rest)
+                {
+                    <MudTooltip Text="Skip rest">
+                        <MudIconButton Icon="@Icons.Material.Rounded.SkipNext" aria-label="Skip rest" OnClick="() => Metro.SkipRestAsync()" />
+                    </MudTooltip>
+                }
+            </span>
         </div>
 
         <SessionPanel Ended="ShowEndPanel" Title="AfterRest ? RestTitle : null" Lead="AfterRest ? RestLead : null" OnClosed="() => _dismissed = true">

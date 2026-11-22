@@ -242,6 +242,17 @@ export function restartSection() {
     emit('state');
 }
 
+// Ends a rest now: the next round starts as if the rest had run out (a rest-only countdown finishes).
+// Its 3-2-1 pips are skipped (they'd fall before the new start), the start cue still plays.
+export function skipRest() {
+    if (!st || !st.running || st.phase !== 'rest') return;
+    const now = ctx.currentTime;
+    st.restStart = now;
+    st.restEnd = now + 0.05;
+    scheduler();
+    emit('state');
+}
+
 export function setStep(i) {
     if (!cfg) return;
     cfg.step = i;

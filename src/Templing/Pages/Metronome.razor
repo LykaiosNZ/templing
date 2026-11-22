@@ -155,9 +155,19 @@
         }
 
         <div class="transport">
-            <MudTooltip Text="Restart section">
-                <MudIconButton Icon="@Icons.Material.Rounded.Replay" aria-label="Restart section" OnClick="() => Metro.RestartSectionAsync()" />
-            </MudTooltip>
+            @* restarting does nothing during a rest, so skipping it takes the slot *@
+            @if (Metro.Resting)
+            {
+                <MudTooltip Text="Skip rest">
+                    <MudIconButton Icon="@Icons.Material.Rounded.SkipNext" aria-label="Skip rest" OnClick="() => Metro.SkipRestAsync()" />
+                </MudTooltip>
+            }
+            else
+            {
+                <MudTooltip Text="Restart section">
+                    <MudIconButton Icon="@Icons.Material.Rounded.Replay" aria-label="Restart section" OnClick="() => Metro.RestartSectionAsync()" />
+                </MudTooltip>
+            }
             <button class="play-btn @(Metro.IsRunning ? "on" : "")" @onclick="() => Metro.ToggleAsync()" aria-label="@(Metro.IsRunning ? "Stop" : "Start")">
                 <MudIcon Icon="@(Metro.IsRunning ? Icons.Material.Rounded.Stop : Icons.Material.Rounded.PlayArrow)" Style="font-size:2.6rem" />
             </button>
