@@ -277,11 +277,7 @@
 
         <RailSection Title="Sound" Icon="@Icons.Material.Rounded.VolumeUp">
             @{ var s = Metro.Settings; }
-            <MudSelect T="string" @bind-Value="s.Sound" @bind-Value:after="SoundChanged" Label="Click sound" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
-                <MudSelectItem T="string" Value="@("click")">Click</MudSelectItem>
-                <MudSelectItem T="string" Value="@("wood")">Woodblock</MudSelectItem>
-                <MudSelectItem T="string" Value="@("beep")">Beep</MudSelectItem>
-            </MudSelect>
+            <ClickSoundPicker Value="@Metro.SourceSound" ValueChanged="Metro.SetSoundAsync" DefaultOption="true" Label="Click sound" />
             <VolumeControl />
             <MudSwitch T="bool" @bind-Value="s.AccentFirst" @bind-Value:after="Apply" Color="Color.Primary" Label="Accent the first beat" Class="rail-line-switch" />
             <MudSwitch T="bool" @bind-Value="s.Flash" @bind-Value:after="Apply" Color="Color.Primary" Label="Flash on each beat" Class="rail-line-switch" />
@@ -376,8 +372,6 @@
     public void Dispose() => Metro.Changed -= OnChanged;
 
     Task Apply() => Metro.ApplyAsync();
-
-    async Task SoundChanged() { await Metro.ApplyAsync(); await Metro.PreviewSoundAsync(); }
 
     async Task Toggle(Action a) { a(); await Metro.ApplyAsync(); }
     Task SetTraining(bool on) => Metro.SetTrainingEnabledAsync(on);

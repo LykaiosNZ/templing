@@ -1,0 +1,76 @@
+@* Picks a metronome click (ClickSounds): a select grouped Percussion / Synth, previous / next buttons to step through
+   the sounds, and Play to hear a bar of the current one. Picking or stepping plays it too, unless the metronome is
+   running (then the running metronome is the preview). With DefaultOption, the first option is "Default (…)", value null. *@
+@implements IDisposable
+@inject MetronomeService Metro
+
+<div class="click-sound-picker">
+    <MudSelect T="string" Value="Key" ValueChanged="Pick" ToStringFunc="Text" Label="@Label" aria-label="@(Label ?? "Click sound")"
+               Variant="Variant" Margin="Margin.Dense" Dense="true" Class="click-sound-select">
+        @if (DefaultOption)
+        {
+            <MudSelectItem T="string" Value="@DefaultKey">@Text(DefaultKey)</MudSelectItem>
+        }
+        @foreach (var group in ClickSounds.All.GroupBy(s => s.Group))
+        {
+            var heading = group.Key;
+            <MudSelectItem T="string" Value="@($"group:{heading}")" Disabled="true" Class="select-group">@heading</MudSelectItem>
+            @foreach (var sound in group)
+            {
+                var name = sound.Name;
+                <MudSelectItem T="string" Value="@sound.Id">@name</MudSelectItem>
+            }
+        }
+    </MudSelect>
+    <MudTooltip Text="Previous sound">
+        <MudIconButton Icon="@Icons.Material.Rounded.ChevronLeft" Size="Size.Small" aria-label="Previous sound" OnClick="() => Step(-1)" />
+    </MudTooltip>
+    <MudTooltip Text="Next sound">
+        <MudIconButton Icon="@Icons.Material.Rounded.ChevronRight" Size="Size.Small" aria-label="Next sound" OnClick="() => Step(1)" />
+    </MudTooltip>
+    @if (!Metro.IsRunning)
+    {
+        <MudTooltip Text="Play sound">
+            <MudIconButton Icon="@Icons.Material.Rounded.PlayArrow" Size="Size.Small" aria-label="@($"Play {ClickSounds.NameOf(Effective)}")" OnClick="Preview" />
+        </MudTooltip>
+    }
+</div>
+
+@code {
+    /// <summary>A <see cref="ClickSounds"/> id; null = the default (with <see cref="DefaultOption"/>).</summary>
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    /// <summary>Offer "Default (…)" first, for a piece's or custom metronome's own click.</summary>
+    [Parameter] public bool DefaultOption { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public Variant Variant { get; set; } = Variant.Outlined;
+
+    const string DefaultKey = "default"; // MudSelect treats "" as no value
+    string Default => ClickSounds.Resolve(Metro.Settings.Sound);
+    string Key => DefaultOption && Value == null ? DefaultKey : ClickSounds.Resolve(Value);
+    /// <summary>The sound that plays.</summary>
+    string Effective => Key == DefaultKey ? Default : Key;
+
+    string Text(string? key) => key == DefaultKey ? $"Default ({ClickSounds.NameOf(Default)})" : ClickSounds.NameOf(key);
+
+    protected override void OnInitialized() => Metro.Changed += OnChanged;
+    void OnChanged() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Metro.Changed -= OnChanged;
+
+    async Task Pick(string key)
+    {
+        if (key.StartsWith("group:")) return;
+        await ValueChanged.InvokeAsync(key == DefaultKey ? null : key);
+        await Preview();
+    }
+
+    /// <summary>The next or previous sound in the list, round the ends ("Default" isn't a stop: it's one of them).</summary>
+    async Task Step(int by)
+    {
+        var all = ClickSounds.All;
+        var i = Math.Max(0, all.ToList().FindIndex(s => s.Id == Effective));
+        await Pick(all[(i + by + all.Count) % all.Count].Id);
+    }
+
+    Task Preview() => Metro.IsRunning ? Task.CompletedTask : Metro.PreviewSoundAsync(Effective);
+}

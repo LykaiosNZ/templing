@@ -87,6 +87,7 @@ dotnet run --project src/Templing/Templing.csproj --launch-profile lan
 - [Blazor WebAssembly](https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor) and [MudBlazor](https://mudblazor.com)
 - [alphaTab](https://alphatab.net) for reading and rendering Guitar Pro / MusicXML
 - [Apache ECharts](https://echarts.apache.org) for the charts
+- Metronome click sounds recorded by Ludwig Peter Müller (CC0)
 - The Web Audio API for the metronome engine
 
 Contributors: [CLAUDE.md](CLAUDE.md) covers the code layout and the rules for persisted data, and [DESIGN.md](DESIGN.md) the UI conventions.

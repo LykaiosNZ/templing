@@ -60,6 +60,11 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     public double Factor { get; private set; } = 1;
     public TempoUnit Unit => Source == MetronomeSource.Piece && Piece != null ? Piece.Unit : TempoUnit.Bpm;
     public MetronomeSettings Settings => store.Settings.Metronome;
+
+    /// <summary>The loaded piece's, custom metronome's or free metronome's own click; null = the default from Settings.</summary>
+    public string? SourceSound { get; private set; }
+    /// <summary>The click that plays (a <see cref="ClickSounds"/> id).</summary>
+    public string Sound => ClickSounds.Resolve(SourceSound ?? Settings.Sound);
     public EngineState State { get; private set; } = new();
     public bool IsRunning => State.running;
 
@@ -217,6 +222,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     private void LoadFreeInternal()
     {
         Source = MetronomeSource.Free; Piece = null; Preset = null; _pieceTraining = null;
+        SourceSound = store.Settings.FreeSound;
         // the free metronome is a single click: tempo maps belong to custom metronomes and pieces
         Sections = [store.Settings.FreeSections.FirstOrDefault() ?? new Section { Name = "Click", Bpm = 100 }];
         PlayThrough = false;
@@ -271,6 +277,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         }
         await StopAsync();
         Source = MetronomeSource.Piece; Piece = piece; Preset = null;
+        SourceSound = piece.Sound;
         Sections = piece.Sections.Count > 0 ? piece.Sections.Select(s => s.Clone()).ToList() : [new Section()];
         PlayThrough = piece.PlayThrough && Sections.Count > 1; Loop = piece.Loop;
         CurrentStep = sectionId == null ? 0 : Math.Max(0, Sections.FindIndex(s => s.Id == sectionId));
@@ -291,6 +298,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     {
         await StopAsync();
         Source = MetronomeSource.Preset; Preset = p; Piece = null; _pieceTraining = null;
+        SourceSound = p.Sound;
         Sections = p.Sections.Select(s => s.Clone()).ToList();
         if (Sections.Count == 0) Sections.Add(new Section());
         PlayThrough = p.PlayThrough; Loop = p.Loop;
@@ -312,7 +320,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     }
 
     /// <summary>Copy the current tempo map into a new free/custom metronome.</summary>
-    public MetronomePreset ToPreset(string name) => new() { Name = name, Sections = Sections.Select(s => s.Clone()).ToList(), PlayThrough = PlayThrough, Loop = Loop };
+    public MetronomePreset ToPreset(string name) => new() { Name = name, Sections = Sections.Select(s => s.Clone()).ToList(), PlayThrough = PlayThrough, Loop = Loop, Sound = SourceSound };
 
     /// <summary>
     /// How sections play: loop the current one, or play through in order (then stop, or <paramref name="loop"/> back to
@@ -435,7 +443,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
             factor = Factor,
             countIn = new { enabled = s.CountIn, bars = s.CountInBars },
             volume = Muted ? 0 : s.Volume,
-            sound = s.Sound,
+            sound = Sound,
             accentFirst = s.AccentFirst,
             flash = s.Flash,
             training = new
@@ -464,10 +472,35 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         await _mod.InvokeVoidAsync("configure", JsonSerializer.Serialize(cfg));
     }
 
-    public async Task PreviewSoundAsync()
+    /// <summary>
+    /// The click for what's loaded, saved with it straight away: the piece, the custom metronome or the free metronome.
+    /// Null goes back to the default from Settings. A running metronome changes sound on its next click.
+    /// </summary>
+    public async Task SetSoundAsync(string? id)
     {
+        SourceSound = id;
+        switch (Source)
+        {
+            case MetronomeSource.Piece when Piece != null: Piece.Sound = id; await store.SavePieceAsync(Piece); break;
+            case MetronomeSource.Preset when Preset != null: Preset.Sound = id; await store.SavePresetAsync(Preset); break;
+            default: store.Settings.FreeSound = id; await store.SaveSettingsAsync(); break;
+        }
         await PushConfig();
-        await _mod!.InvokeVoidAsync("previewClick");
+        Changed?.Invoke();
+    }
+
+    /// <summary>Plays a bar of a click (hi, then three lo), <paramref name="id"/> or the one that plays now.</summary>
+    public async Task PreviewSoundAsync(string? id = null)
+    {
+        if (_mod == null) return;
+        await PushConfig();
+        await _mod.InvokeVoidAsync("previewSound", ClickSounds.Resolve(id ?? Sound));
+    }
+
+    /// <summary>Starts loading a click's samples, so the first preview or click isn't silent.</summary>
+    public async Task PreloadSoundAsync(string id)
+    {
+        if (_mod != null) await _mod.InvokeVoidAsync("loadSound", ClickSounds.Resolve(id));
     }
 
     // ------------------------------------------------------------ engine callbacks

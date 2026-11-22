@@ -135,6 +135,8 @@ public class Piece
     public bool Archived { get; set; }
     /// <summary>Starred: shown under Favourites on the Dashboard.</summary>
     public bool Favourite { get; set; }
+    /// <summary>The metronome's click for this piece (a <c>ClickSounds</c> id); null = the default from Settings.</summary>
+    public string? Sound { get; set; }
     public DateTime Created { get; set; } = DateTime.Now;
 }
 
@@ -270,6 +272,8 @@ public class MetronomePreset
     public bool PlayThrough { get; set; }
     /// <summary>When playing through: go back to the first section at the end (false: stop there).</summary>
     public bool Loop { get; set; } = true;
+    /// <summary>The click for this custom metronome (a <c>ClickSounds</c> id); null = the default from Settings.</summary>
+    public string? Sound { get; set; }
     public DateTime Created { get; set; } = DateTime.Now;
 }
 
@@ -338,7 +342,9 @@ public class MetronomeSettings
     public bool CountIn { get; set; } = true;
     public int CountInBars { get; set; } = 1;
     public double Volume { get; set; } = 0.8;
-    public string Sound { get; set; } = "click";
+    /// <summary>The default click (a <c>ClickSounds</c> id); pieces and custom metronomes can pick their own. Unknown ids
+    /// (the old synthesised "click", "wood", "beep") play <c>ClickSounds.Default</c>.</summary>
+    public string Sound { get; set; } = "";
     public bool AccentFirst { get; set; } = true;
     public bool Flash { get; set; } = true;
     public TrainingSettings Training { get; set; } = new();
@@ -354,6 +360,8 @@ public class AppSettings
     public MetronomeSettings Metronome { get; set; } = new();
     public List<Section> FreeSections { get; set; } = new() { new Section { Name = "Click", Bpm = 100 } };
     public bool FreePlayThrough { get; set; }
+    /// <summary>The free metronome's click (a <c>ClickSounds</c> id); null = <see cref="MetronomeSettings.Sound"/>.</summary>
+    public string? FreeSound { get; set; }
     public int WeeklyGoalMin { get; set; } = 150;
     /// <summary>Library shows pieces as a list (rows) instead of cards.</summary>
     public bool LibraryList { get; set; }

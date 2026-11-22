@@ -8,7 +8,7 @@
 //   step: index,                      // current step
 //   factor: number,                   // manual tempo factor (when training disabled)
 //   countIn: { enabled, bars },
-//   volume, sound: 'click'|'beep'|'wood', accentFirst,
+//   volume, sound: a click's id (sounds/<id>_hi.wav + _lo.wav, see ClickSounds.cs), accentFirst,
 //   training: { enabled, startFactor, endFactor, mode: 'time'|'bars', durationSec, everyBars, levels, stopAtEnd },
 //     levels: the tempo factors to play in turn, start first and end last (whole bpm / %, worked out in C#);
 //     one jump every everyBars bars, or spread evenly over durationSec
@@ -45,6 +45,7 @@ export function configure(json) {
     const next = JSON.parse(json);
     const prev = cfg;
     cfg = next;
+    loadSound(cfg.sound);
     if (master) master.gain.value = cfg.volume;
     if (!st) return;
     // live updates while running
@@ -94,15 +95,31 @@ function jumpToStep(i) {
 }
 
 // ------------------------------------------------------------------ sound
+// Click samples, by id: { hi, lo } AudioBuffers once decoded. Each pair is fetched the first time it's needed.
+const samples = new Map();
+const loading = new Map();
+let decoder = null;
+
+// Decoded with an OfflineAudioContext, which (unlike an AudioContext) needs no user gesture first;
+// an AudioBuffer can play in any context.
+export function loadSound(id) {
+    if (!id || samples.has(id)) return;
+    if (loading.has(id)) return loading.get(id);
+    decoder ??= new OfflineAudioContext(1, 1, 48000);
+    const one = (v) => fetch(`sounds/${id}_${v}.wav`)
+        .then(r => { if (!r.ok) throw new Error(`${r.status} ${r.url}`); return r.arrayBuffer(); })
+        .then(b => decoder.decodeAudioData(b));
+    const p = Promise.all([one('hi'), one('lo')])
+        .then(([hi, lo]) => samples.set(id, { hi, lo }))
+        .catch(e => console.warn('[metronome] click sound not loaded:', id, e))
+        .finally(() => loading.delete(id));
+    loading.set(id, p);
+    return p;
+}
+
 function click(time, kind) {
     // kind: 'accent' | 'beat' | 'sub' | 'count' | 'cue-hi' | 'cue-lo' | 'cue-end'
     if (cfg.silent && !kind.startsWith('cue')) return;
-    const sound = cfg.sound;
-    const freqs = {
-        click: { accent: 2000, beat: 1400, sub: 1000, count: 1700 },
-        beep: { accent: 1320, beat: 880, sub: 660, count: 1100 },
-        wood: { accent: 1100, beat: 800, sub: 600, count: 950 },
-    }[sound] || { accent: 2000, beat: 1400, sub: 1000, count: 1700 };
     const g = ctx.createGain();
     g.connect(master);
     if (kind.startsWith('cue')) {
@@ -116,30 +133,29 @@ function click(time, kind) {
         o.connect(g); o.start(time); o.stop(time + dur + 0.02);
         return;
     }
-    const level = kind === 'accent' ? 1 : kind === 'beat' ? 0.7 : kind === 'count' ? 0.8 : 0.35;
-    const o = ctx.createOscillator();
-    let dur;
-    if (sound === 'beep') {
-        o.type = 'sine'; dur = 0.07;
-    } else if (sound === 'wood') {
-        o.type = 'triangle'; dur = 0.05;
-        o.frequency.setValueAtTime(freqs[kind] * 1.5, time);
-        o.frequency.exponentialRampToValueAtTime(freqs[kind], time + 0.02);
-    } else {
-        o.type = 'square'; dur = 0.025;
+    playSample(cfg.sound, time, kind, g);
+}
+
+// The hi sample on the accent, the lo one on other beats (quieter on subdivisions)
+function playSample(id, time, kind, g) {
+    const level = kind === 'accent' ? 1 : kind === 'beat' ? 0.8 : kind === 'count' ? 0.8 : 0.4;
+    g.gain.value = level;
+    const pair = samples.get(id);
+    if (!pair) {
+        // not loaded yet (the first beats after picking a sound, or offline): a short synthesised tick
+        loadSound(id);
+        const o = ctx.createOscillator();
+        o.type = 'square'; o.frequency.value = kind === 'accent' ? 2000 : 1400;
+        g.gain.setValueAtTime(0.0001, time);
+        g.gain.exponentialRampToValueAtTime(level * 0.5, time + 0.002);
+        g.gain.exponentialRampToValueAtTime(0.0001, time + 0.025);
+        o.connect(g); o.start(time); o.stop(time + 0.05);
+        return;
     }
-    if (sound !== 'wood') o.frequency.value = freqs[kind];
-    let node = o;
-    if (sound === 'click') {
-        const f = ctx.createBiquadFilter();
-        f.type = 'bandpass'; f.frequency.value = freqs[kind]; f.Q.value = 3;
-        o.connect(f); node = f;
-    }
-    g.gain.setValueAtTime(0.0001, time);
-    g.gain.exponentialRampToValueAtTime(level, time + 0.002);
-    g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
-    node.connect(g);
-    o.start(time); o.stop(time + dur + 0.02);
+    const src = ctx.createBufferSource();
+    src.buffer = kind === 'accent' ? pair.hi : pair.lo;
+    src.connect(g);
+    src.start(time);
 }
 
 // ------------------------------------------------------------------ transport
@@ -147,6 +163,7 @@ export function start() {
     if (!cfg) return;
     ensureCtx();
     stopInternal(false);
+    if (previewOut) { previewOut.disconnect(); previewOut = null; } // the run takes over from a sound preview
     const now = ctx.currentTime + 0.08;
     st = {
         running: true,
@@ -563,9 +580,23 @@ function emit(type, reason) {
     dotnet.invokeMethodAsync('OnEngineEvent', JSON.stringify(s)).catch(() => { });
 }
 
-// a single quick tick used for tap/test sound
-export function previewClick() {
-    if (!cfg) return;
+// a bar of a click sound (hi, lo, lo, lo), to hear it while picking one; nothing while the metronome runs.
+// A new preview cuts off the last one, so stepping through the sounds doesn't pile them up.
+let previewOut = null; // the running preview's output
+let previewSeq = 0;
+export async function previewSound(id) {
+    if (st && st.running) return;
     ensureCtx();
-    click(ctx.currentTime + 0.01, 'accent');
+    const seq = ++previewSeq;
+    await loadSound(id);
+    if (seq !== previewSeq) return; // another sound was picked while this one loaded
+    if (previewOut) previewOut.disconnect();
+    const out = previewOut = ctx.createGain();
+    out.connect(master);
+    const t0 = ctx.currentTime + 0.03;
+    ['accent', 'beat', 'beat', 'beat'].forEach((kind, k) => {
+        const g = ctx.createGain();
+        g.connect(out);
+        playSample(id, t0 + k * 0.4, kind, g);
+    });
 }
