@@ -7,12 +7,16 @@ const LIB = 'lib/alphatab/';
 let loading = null;
 let pending = null; // { bytes, name } of the last parsed file, saved on confirm
 
+// The published file is fingerprinted (alphaTab.min.<hash>.js) and listed in the import map, which import.meta.resolve
+// applies; see charts.js. The fonts aren't fingerprinted, so fontDirectory keeps the plain path.
+const resolveAsset = path => import.meta.resolve(new URL(path, document.baseURI).href);
+
 function loadAlphaTab() {
     if (window.alphaTab) return Promise.resolve(window.alphaTab);
     if (loading) return loading;
     loading = new Promise((resolve, reject) => {
         const s = document.createElement('script');
-        s.src = LIB + 'alphaTab.min.js';
+        s.src = resolveAsset(LIB + 'alphaTab.min.js');
         s.onload = () => resolve(window.alphaTab);
         s.onerror = () => { loading = null; reject(new Error('Could not load the score library.')); };
         document.head.appendChild(s);

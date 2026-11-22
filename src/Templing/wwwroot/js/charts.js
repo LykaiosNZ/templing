@@ -7,12 +7,16 @@ const LIB = 'lib/echarts/echarts.min.js';
 let loading = null;
 const charts = new WeakMap(); // element → { chart, observer, relayout? }
 
+// Published builds fingerprint the file (echarts.min.<hash>.js) and list it in the import map; import.meta.resolve
+// applies that map, so a new release never runs with a cached old copy. In dev there's no mapping and the URL is unchanged.
+const resolveAsset = path => import.meta.resolve(new URL(path, document.baseURI).href);
+
 function loadECharts() {
     if (window.echarts) return Promise.resolve(window.echarts);
     if (loading) return loading;
     loading = new Promise((resolve, reject) => {
         const s = document.createElement('script');
-        s.src = LIB;
+        s.src = resolveAsset(LIB);
         s.onload = () => resolve(window.echarts);
         s.onerror = () => { loading = null; reject(new Error('Could not load the chart library.')); };
         document.head.appendChild(s);

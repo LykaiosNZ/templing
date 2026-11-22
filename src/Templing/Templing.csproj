@@ -11,6 +11,14 @@
     <StaticWebAssetSpaFallbackEnabled>true</StaticWebAssetSpaFallbackEnabled>
   </PropertyGroup>
 
+  <!-- Fingerprint every .js file (name.<hash>.js) and list it in index.html's import map. GitHub Pages lets browsers
+       cache files for 10 minutes, so an unfingerprinted module could stay old after a release while the new app code
+       calls functions it doesn't have yet. JS imports go through the map; plain script tags must use #[.{fingerprint}]
+       (index.html) or import.meta.resolve (charts.js, score.js), as the old names aren't published. -->
+  <ItemGroup>
+    <StaticWebAssetFingerprintPattern Include="AppJs" Pattern="*.js" Expression="#[.{fingerprint}]!" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="11.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Gateway" Version="11.0.0" PrivateAssets="all" />
