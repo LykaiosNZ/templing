@@ -12,7 +12,7 @@
 <PageTitle>@(Metro.IsRunning ? $"{Clock} · " : "")Timer · Templing</PageTitle>
 
 <PracticeGuard Route="timer" />
-<PracticeKeys Timer="true" StartStop="Toggle" />
+<PracticeKeys Timer="true" Start="StartTimer" />
 
 <div class="page-head">
     <div>
@@ -50,19 +50,27 @@
         </div>
 
         <div class="transport">
-            @* side slots keep the play button centred when Skip rest appears *@
-            <span class="transport-slot"></span>
-            <button class="play-btn @(Metro.IsRunning ? "on" : "")" @onclick="Toggle" aria-label="@(Metro.IsRunning ? "Stop" : "Start")">
-                <MudIcon Icon="@(Metro.IsRunning ? Icons.Material.Rounded.Stop : Icons.Material.Rounded.PlayArrow)" Style="font-size:2.6rem" />
-            </button>
-            <span class="transport-slot">
-                @if (Rest)
-                {
-                    <MudTooltip Text="Skip rest">
-                        <MudIconButton Icon="@Icons.Material.Rounded.SkipNext" aria-label="Skip rest" OnClick="() => Metro.SkipRestAsync()" />
-                    </MudTooltip>
-                }
-            </span>
+            <div class="transport-side start">
+                <span class="transport-slot">
+                    @if (Metro.IsRunning)
+                    {
+                        <MudTooltip Text="Stop">
+                            <MudIconButton Icon="@Icons.Material.Rounded.Stop" aria-label="Stop" OnClick="() => Metro.StopAsync()" />
+                        </MudTooltip>
+                    }
+                </span>
+            </div>
+            <PlayButton Start="StartTimer" />
+            <div class="transport-side">
+                <span class="transport-slot">
+                    @if (Rest)
+                    {
+                        <MudTooltip Text="Skip rest">
+                            <MudIconButton Icon="@Icons.Material.Rounded.SkipNext" aria-label="Skip rest" OnClick="() => Metro.SkipRestAsync()" />
+                        </MudTooltip>
+                    }
+                </span>
+            </div>
         </div>
 
         <SessionPanel Ended="ShowEndPanel" Title="AfterRest ? RestTitle : null" Lead="AfterRest ? RestLead : null" OnClosed="() => _dismissed = true">
@@ -124,9 +132,11 @@
     bool Work => Metro.IsRunning && Metro.State.phase == "work";
     bool ShowEndPanel => !Runner.Active && !Metro.IsRunning && !_dismissed && (Metro.SessionActiveSec >= 1 || Metro.LastFinishReason == "rest");
 
-    string PhaseClass => !Metro.IsRunning ? (ShowEndPanel ? "phase-done" : "phase-idle") : Rest ? "phase-rest" : "phase-work";
+    string PhaseClass => (!Metro.IsRunning ? (ShowEndPanel ? "phase-done" : "phase-idle") : Rest ? "phase-rest" : "phase-work")
+        + (Metro.IsPaused ? " paused" : "");
 
     string PhaseLabel => !Metro.IsRunning ? (ShowEndPanel ? "Finished" : "Ready")
+        : Metro.IsPaused ? "Paused"
         : Metro.RestOnlyRunning ? "Rest"
         : Rest ? "Rest"
         : "Practise";
@@ -213,10 +223,10 @@
         try { await JS.InvokeVoidAsync("navigator.vibrate", (object)new[] { 120, 60, 120 }); } catch { /* not supported */ }
     }
 
-    async Task Toggle()
+    Task StartTimer()
     {
-        if (Metro.IsRunning) await Metro.StopAsync();
-        else { _dismissed = false; await Metro.StartTimerAsync(); }
+        _dismissed = false;
+        return Metro.StartTimerAsync();
     }
 
     Task Apply() => Metro.ApplyAsync();

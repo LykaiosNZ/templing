@@ -52,7 +52,7 @@ public static class Hotkeys
     public static readonly Hotkey GoStats = Add(Navigation, "Go to stats", "g s");
     public static readonly Hotkey GoSettings = Add(Navigation, "Go to settings", "g ,");
 
-    public static readonly Hotkey StartStop = Add(Metronome, "Start / stop the metronome or timer", "Space");
+    public static readonly Hotkey PlayPause = Add(Metronome, "Play / pause the metronome or timer", "Space");
     public static readonly Hotkey Stop = Add(Metronome, "Stop", "Escape");
     public static readonly Hotkey SkipRest = Add(Metronome, "Skip rest", "s");
     public static readonly Hotkey RestartSection = Add(Metronome, "Restart section (with count-in)", "r");

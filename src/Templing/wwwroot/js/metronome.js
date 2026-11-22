@@ -63,7 +63,7 @@ export function configure(json) {
 // used to wait for it: laggy and snapped to the beat, and at slow tempos you could hear it.)
 function retime(before, after) {
     if (!(before > 0) || !(after > 0) || Math.abs(before - after) < 1e-9) return;
-    if (st.phase !== 'work' && st.phase !== 'countin') return;
+    if (st.paused || (st.phase !== 'work' && st.phase !== 'countin')) return;
     if (st.lastPulse == null || st.lastPulse >= st.nextTime) return;
     const now = ctx.currentTime;
     const from = Math.max(now, st.lastPulse); // the last scheduled click may still be ahead: it can't move
@@ -228,6 +228,7 @@ export function stop() { stopInternal(true); }
 
 export function restartSection() {
     if (!st || !st.running) { start(); return; }
+    resume();
     const t = ctx.currentTime + 0.05;
     queue.length = 0;
     st.bar = 0; st.beat = 0; st.sub = 0; st.meter = null; st.heardBeat = null;
@@ -246,6 +247,7 @@ export function restartSection() {
 // Its 3-2-1 pips are skipped (they'd fall before the new start), the start cue still plays.
 export function skipRest() {
     if (!st || !st.running || st.phase !== 'rest') return;
+    resume();
     const now = ctx.currentTime;
     st.restStart = now;
     st.restEnd = now + 0.05;
@@ -253,10 +255,51 @@ export function skipRest() {
     emit('state');
 }
 
+// Pausing freezes the run where it is: the clock stops, so the work or rest countdown, the speed trainer and the
+// practice time all wait, and resume() carries on from there (unlike stop, which ends the run). Clicks the scheduler
+// has already handed to the audio clock (up to SCHEDULE_AHEAD) still sound, as they do on a stop.
+export function pause() {
+    if (!st || !st.running || st.paused) return;
+    const p = ctx.currentTime;
+    if (st.lastActiveStamp != null) {
+        st.active = Math.round((st.active + Math.max(0, p - st.lastActiveStamp)) * 1e6) / 1e6;
+        st.activeUntil = p;
+        st.lastActiveStamp = null;
+    }
+    st.paused = true;
+    st.pausedAt = p;
+    if (timer) clearInterval(timer);
+    timer = null;
+    if (raf) cancelAnimationFrame(raf);
+    raf = null;
+    while (queue.length) consume(queue.shift(), false); // what's queued is as good as heard
+    clearVisual();
+    emit('state');
+}
+
+// Carries on from a pause: every time still ahead moves on by the length of the pause, and the next click plays
+// straight away (not after the rest of the beat that was cut off, which could be most of a beat at slow tempos).
+export function resume() {
+    if (!st || !st.running || !st.paused) return;
+    ensureCtx();
+    const r = ctx.currentTime + 0.05;
+    const d = r - st.pausedAt;
+    for (const k of ['phaseEnd', 'workStart', 'restStart', 'restEnd', 'lastBarTime', 'activeUntil'])
+        if (st[k] != null && Number.isFinite(st[k])) st[k] += d;
+    st.nextTime = r;
+    st.lastPulse = null; // nothing to retime from until the next click
+    st.paused = false;
+    st.pausedAt = null;
+    timer = setInterval(scheduler, LOOKAHEAD_MS);
+    raf = requestAnimationFrame(drawLoop);
+    scheduler();
+    emit('state');
+}
+
 export function setStep(i) {
     if (!cfg) return;
     cfg.step = i;
-    if (st && st.running && st.phase !== 'rest') { jumpToStep(i); st.nextTime = Math.max(st.nextTime, ctx.currentTime + 0.03); st.lastPulse = null; queue.length = 0; }
+    if (st && st.running && st.phase !== 'rest') { jumpToStep(i); if (!st.paused) st.nextTime = Math.max(st.nextTime, ctx.currentTime + 0.03); st.lastPulse = null; queue.length = 0; }
     emit('state');
 }
 
@@ -308,7 +351,7 @@ function trainingNextStep() {
     const levels = tr.levels || [tr.startFactor, tr.endFactor];
     const n = Math.max(1, levels.length - 1);
     const levelOf = f => { let i = 0; levels.forEach((l, j) => { if (Math.abs(l - f) < Math.abs(levels[i] - f)) i = j; }); return i; };
-    const now = ctx.currentTime;
+    const now = clock();
     const ahead = st.lastBarTime != null && st.lastBarTime > now; // the scheduler has decided the next bar line already
     const heardFactor = ahead && st.heardBar ? st.heardBar.factor : st.factor;
     const cur = levelOf(heardFactor); // the level sounding now
@@ -351,16 +394,19 @@ function trainingDone() {
     return activeNow() - st.trainingStartActive >= tr.durationSec;
 }
 
+// The run's "now": while paused, the moment it paused, so countdowns and the trainer read as frozen.
+function clock() { return st && st.paused ? st.pausedAt : ctx.currentTime; }
+
 function activeNow() {
     if (!st) return 0;
-    const now = ctx.currentTime;
+    const now = clock();
     if (st.lastActiveStamp != null) return st.active + Math.max(0, now - st.lastActiveStamp);
     return st.active - Math.max(0, (st.activeUntil ?? now) - now); // banked up to an end that's still ahead
 }
 
 // ------------------------------------------------------------------ scheduler
 function scheduler() {
-    if (!st || !st.running) return;
+    if (!st || !st.running || st.paused) return;
     const horizon = ctx.currentTime + SCHEDULE_AHEAD;
 
     // rest phase: wait, play cues, then start next round
@@ -496,25 +542,29 @@ function drawLoop() {
     if (!ctx) return;
     const now = ctx.currentTime;
     let changed = false;
-    while (queue.length && queue[0].time <= now) {
-        const e = queue.shift();
-        if (e.kind === 'beat' || e.kind === 'count') {
-            flashBeat(e.beat, e.kind === 'count');
-            window.dispatchEvent(new CustomEvent('templing-beat', { detail: {
-                scoreBar: e.scoreBar, beat: e.beat, beats: e.beats, unit: e.unit, counting: e.kind === 'count', step: e.step, bar: e.bar } }));
-            changed = true;
-        }
-        // what's sounding now (the scheduler runs ahead of it): the trainer countdown counts from here
-        if (e.kind === 'beat') st.heardBeat = { beat: e.beat, beats: e.beats, unit: e.unit, step: e.step, bar: e.bar };
-        if (e.kind === 'count') st.heardBeat = null; // a count-in (or a restart's) starts again from bar 1
-        if (e.kind === 'bar') st.heardBar = { factor: e.factor, trainingBars: e.trainingBars };
-        if (e.kind === 'phase' && st.phase === 'rest') clearVisual();
-        if (e.kind === 'bar' || e.kind === 'phase' || e.kind === 'workstart' || e.kind === 'count') changed = true;
-        if (e.kind === 'count') st.countDisplay = e.num; else if (e.kind !== 'beat') st.countDisplay = null;
-    }
+    while (queue.length && queue[0].time <= now) if (consume(queue.shift(), true)) changed = true;
     const ms = performance.now();
     if (changed || ms - lastEmit > 500) { emit('state'); lastEmit = ms; }
-    if (st && (st.running || queue.length)) raf = requestAnimationFrame(drawLoop);
+    if (st && ((st.running && !st.paused) || queue.length)) raf = requestAnimationFrame(drawLoop);
+}
+
+// One queued event, now heard: updates what's sounding and, with `visual`, flashes the beat. True if the display changed.
+function consume(e, visual) {
+    let changed = false;
+    if (visual && (e.kind === 'beat' || e.kind === 'count')) {
+        flashBeat(e.beat, e.kind === 'count');
+        window.dispatchEvent(new CustomEvent('templing-beat', { detail: {
+            scoreBar: e.scoreBar, beat: e.beat, beats: e.beats, unit: e.unit, counting: e.kind === 'count', step: e.step, bar: e.bar } }));
+        changed = true;
+    }
+    // what's sounding now (the scheduler runs ahead of it): the trainer countdown counts from here
+    if (e.kind === 'beat') st.heardBeat = { beat: e.beat, beats: e.beats, unit: e.unit, step: e.step, bar: e.bar };
+    if (e.kind === 'count') st.heardBeat = null; // a count-in (or a restart's) starts again from bar 1
+    if (e.kind === 'bar') st.heardBar = { factor: e.factor, trainingBars: e.trainingBars };
+    if (e.kind === 'phase' && st.phase === 'rest') clearVisual();
+    if (e.kind === 'bar' || e.kind === 'phase' || e.kind === 'workstart' || e.kind === 'count') changed = true;
+    if (e.kind === 'count') st.countDisplay = e.num; else if (e.kind !== 'beat') st.countDisplay = null;
+    return changed;
 }
 
 function flashBeat(beat, counting) {
@@ -541,7 +591,7 @@ function clearVisual() {
 
 function snapshot() {
     if (!st) return { running: false, phase: 'stopped' };
-    const now = ctx ? ctx.currentTime : 0;
+    const now = ctx ? clock() : 0;
     let remaining = null;
     // measured from the block's start if that's still ahead: starts are scheduled a moment into the future
     // (a short lead so the first click isn't late), and counting that lead showed a 2:00 rest as 2:01
@@ -564,6 +614,7 @@ function snapshot() {
     const sb = cfg.steps[Math.min(step, cfg.steps.length - 1)].scoreBars;
     return {
         running: st.running,
+        paused: !!(st.running && st.paused),
         phase: st.running ? st.phase : 'stopped',
         step: st.step, // where the scheduler is: what the app keeps as the current section (and sends back)
         heardStep: step, // the section sounding now, for display

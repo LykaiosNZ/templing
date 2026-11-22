@@ -7,10 +7,10 @@
 @inject ISnackbar Snackbar
 
 @code {
-    /// <summary>The Timer page: start/stop, stop, skip rest, sound and log only (no tempo, sections or metronome options).</summary>
+    /// <summary>The Timer page: play/pause, stop, skip rest, sound and log only (no tempo, sections or metronome options).</summary>
     [Parameter] public bool Timer { get; set; }
-    /// <summary>What Space does (the Timer starts its countdown rather than the click).</summary>
-    [Parameter] public Func<Task>? StartStop { get; set; }
+    /// <summary>How Space starts a run when nothing is running (the Timer starts its countdown rather than the click).</summary>
+    [Parameter] public Func<Task>? Start { get; set; }
 
     readonly List<IDisposable> _keys = new();
 
@@ -24,7 +24,7 @@
             Snackbar.Add($"{name} {(on ? "on" : "off")}", Severity.Normal);
         }
 
-        Key(Hotkeys.StartStop, () => StartStop?.Invoke() ?? Metro.ToggleAsync());
+        Key(Hotkeys.PlayPause, () => Metro.PlayPauseAsync(Start));
         Key(Hotkeys.Stop, () => Metro.StopAsync());
         Key(Hotkeys.SkipRest, () => Metro.SkipRestAsync());
         Key(Hotkeys.Mute, async () =>
