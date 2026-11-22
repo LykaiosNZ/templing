@@ -72,12 +72,19 @@
         }
 
         <div class="tempo-row">
-            <MudTooltip Text="Slower">
-                <MudIconButton Icon="@Icons.Material.Rounded.Remove" Variant="Variant.Outlined" Size="Size.Large" aria-label="Slower" OnClick="() => Metro.NudgeAsync(-1)" />
-            </MudTooltip>
+            <div class="tempo-step">
+                <MudTooltip Text="Slower">
+                    <MudIconButton Icon="@Icons.Material.Rounded.Remove" Variant="Variant.Outlined" Size="Size.Large" aria-label="Slower" OnClick="() => Metro.NudgeAsync(-1)" />
+                </MudTooltip>
+                <MudTooltip Text="5 slower">
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small" Class="tempo-step5" aria-label="5 slower" OnClick="() => Metro.NudgeAsync(-5)">−5</MudButton>
+                </MudTooltip>
+            </div>
             <div class="tempo-display" aria-live="polite">
                 <div id="metro-pulse" class="pulse" aria-hidden="true"></div>
-                <div class="tempo-value">@Metro.Value.ToString("0")<span class="tempo-unit">@(Metro.Unit == TempoUnit.Percent ? "%" : "")</span></div>
+                <MudTooltip Text="Set tempo">
+                    <button type="button" class="tempo-value" aria-label="@($"Set tempo, now {Metro.Value:0}{(Metro.Unit == TempoUnit.Percent ? "%" : " bpm")}")" @onclick="EditTempoAsync">@Metro.Value.ToString("0")<span class="tempo-unit">@(Metro.Unit == TempoUnit.Percent ? "%" : "")</span></button>
+                </MudTooltip>
                 <div class="tempo-sub">
                     @if (Metro.Unit == TempoUnit.Percent)
                     {
@@ -95,9 +102,14 @@
                     }
                 </div>
             </div>
-            <MudTooltip Text="Faster">
-                <MudIconButton Icon="@Icons.Material.Rounded.Add" Variant="Variant.Outlined" Size="Size.Large" aria-label="Faster" OnClick="() => Metro.NudgeAsync(1)" />
-            </MudTooltip>
+            <div class="tempo-step">
+                <MudTooltip Text="Faster">
+                    <MudIconButton Icon="@Icons.Material.Rounded.Add" Variant="Variant.Outlined" Size="Size.Large" aria-label="Faster" OnClick="() => Metro.NudgeAsync(1)" />
+                </MudTooltip>
+                <MudTooltip Text="5 faster">
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small" Class="tempo-step5" aria-label="5 faster" OnClick="() => Metro.NudgeAsync(5)">+5</MudButton>
+                </MudTooltip>
+            </div>
         </div>
 
         <div class="tempo-slider">
@@ -367,6 +379,12 @@
                         : Stats.Clock(Math.Ceiling(n.sec ?? 0));
             return $"Next {step} in {when}";
         }
+    }
+
+    async Task EditTempoAsync()
+    {
+        var v = await TempoDialog.ShowAsync(Dialogs, Metro.Value, Metro.Min, Metro.Max, Metro.Unit == TempoUnit.Percent);
+        if (v is { } t) await Metro.SetValueAsync(t);
     }
 
     /// <summary>The meter under the tempo: the bar that's playing (score bars can change meter mid-section), else the section's.</summary>

@@ -1,0 +1,64 @@
+@* Types a tempo in (opened by clicking the Metronome's big tempo). The field is focused with its value selected,
+   Enter sets it, and Set says why it's disabled (empty or out of range). *@
+<MudDialog>
+    <DialogContent>
+        <MudNumericField @ref="_field" T="int?" @bind-Value="_value" Label="Tempo" Immediate="true" OnKeyDown="KeyDown"
+                         Adornment="Adornment.End" AdornmentText="@UnitText" HideSpinButtons="true" InputMode="InputMode.numeric" />
+    </DialogContent>
+    <DialogActions>
+        @if (Blocker is { } why)
+        {
+            <MudText Typo="Typo.body2" Class="muted ml-2">@why</MudText>
+        }
+        <MudSpacer />
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(Blocker != null)" OnClick="Ok">Set</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public int Value { get; set; }
+    [Parameter] public int Min { get; set; }
+    [Parameter] public int Max { get; set; }
+    [Parameter] public bool Percent { get; set; }
+
+    MudNumericField<int?>? _field;
+    int? _value;
+
+    string UnitText => Percent ? "%" : "bpm";
+
+    string? Blocker => _value is not { } v ? "Add a tempo"
+        : v < Min || v > Max ? $"Pick {Min}–{Max}{(Percent ? "%" : " bpm")}"
+        : null;
+
+    protected override void OnInitialized() => _value = Value;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _field is null) return;
+        await Task.Yield(); // after the dialog has taken focus for itself
+        await _field.FocusAsync();
+        await _field.SelectAsync();
+    }
+
+    void Ok()
+    {
+        if (Blocker != null) return;
+        Dialog.Close(DialogResult.Ok(_value!.Value));
+    }
+
+    void KeyDown(KeyboardEventArgs e) { if (e.Key == "Enter") Ok(); }
+
+    /// <summary>Asks for a tempo; null if cancelled.</summary>
+    public static async Task<int?> ShowAsync(IDialogService d, double value, double min, double max, bool percent)
+    {
+        var p = new DialogParameters<TempoDialog>
+        {
+            { x => x.Value, (int)Math.Round(value) }, { x => x.Min, (int)min }, { x => x.Max, (int)max }, { x => x.Percent, percent },
+        };
+        var r = await d.ShowAsync<TempoDialog>("Set tempo", p, new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = true });
+        var res = await r.Result;
+        return res is { Canceled: false, Data: int v } ? v : null;
+    }
+}
