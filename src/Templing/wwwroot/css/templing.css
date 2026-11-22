@@ -346,6 +346,8 @@ button.tempo-value:focus-visible { outline: 2px solid var(--ring); outline-offse
 .volume-row { display: flex; align-items: center; gap: 8px; }
 .volume-row .volume-slider { flex: 1; }
 .volume-row.is-muted .volume-slider { opacity: .4; }
+.volume-row .volume-value { flex: none; min-width: 4ch; text-align: right; color: var(--ink-2); font-size: .85rem; font-variant-numeric: tabular-nums; }
+.volume-row.is-muted .volume-value { opacity: .4; }
 .click-sound-picker { display: flex; align-items: center; gap: 2px; min-width: 0; }
 .click-sound-picker .click-sound-select { flex: 1; min-width: 0; }
 .setting-control .click-sound-picker { width: 300px; max-width: 100%; }

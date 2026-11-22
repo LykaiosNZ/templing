@@ -9,12 +9,16 @@
                        aria-label="Sound" aria-pressed="@(Metro.Muted ? "false" : "true")" OnClick="() => Metro.SetMutedAsync(!Metro.Muted)" />
     </MudTooltip>
     <MudSlider T="double" Value="Metro.Settings.Volume" ValueChanged="SetVolume" Min="0" Max="1.5" Step="0.05" Color="Color.Primary" aria-label="Volume" Class="volume-slider" />
+    <span class="volume-value">@Percent</span>
 </div>
 
 @code {
     protected override void OnInitialized() => Metro.Changed += OnChanged;
     void OnChanged() => InvokeAsync(StateHasChanged);
     public void Dispose() => Metro.Changed -= OnChanged;
+
+    // the gain runs 0–1.5, shown as 0–150%
+    string Percent => $"{Math.Round(Metro.Settings.Volume * 100):0}%";
 
     async Task SetVolume(double v)
     {
