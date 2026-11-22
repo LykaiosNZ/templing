@@ -359,6 +359,15 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         if (_mod != null) await _mod.InvokeVoidAsync("restartSection");
     }
 
+    /// <summary>True while a rest is counting down (between interval rounds, before an extra block, or a rest-only countdown).</summary>
+    public bool Resting => IsRunning && State.phase == "rest";
+
+    /// <summary>Ends the current rest now: the next round starts (a rest-only countdown finishes).</summary>
+    public async Task SkipRestAsync()
+    {
+        if (_mod != null && Resting) await _mod.InvokeVoidAsync("skipRest");
+    }
+
     public async Task SetStepAsync(int i)
     {
         if (Sections.Count == 0) return;

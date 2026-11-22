@@ -246,6 +246,7 @@ kbd {
 .training-bar .mud-progress-linear { flex: 1; }
 .training-next { margin-top: -6px; font-family: var(--mono); font-size: .78rem; color: var(--muted); }
 .transport { display: flex; align-items: center; gap: 14px; }
+.transport-slot { width: 48px; display: grid; place-items: center; }
 .play-btn {
     width: 84px; height: 84px; border-radius: 50%; border: none; cursor: pointer; display: grid; place-items: center; color: #fff;
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 80%, #fff), var(--accent)); box-shadow: 0 8px 28px color-mix(in srgb, var(--accent) 45%, transparent); transition: transform .1s ease;

@@ -34,7 +34,7 @@ public static class Hotkeys
     /// <summary>Short note shown beside a group's heading in the shortcuts dialog.</summary>
     public static string? GroupNote(string group) => group switch
     {
-        Metronome => "on the Metronome page (Space, Esc, M and L on the Timer too)",
+        Metronome => "on the Metronome page (Space, Esc, S, M and L on the Timer too)",
         Plan => "while a plan runs",
         _ => null,
     };
@@ -54,6 +54,7 @@ public static class Hotkeys
 
     public static readonly Hotkey StartStop = Add(Metronome, "Start / stop the metronome or timer", "Space");
     public static readonly Hotkey Stop = Add(Metronome, "Stop", "Escape");
+    public static readonly Hotkey SkipRest = Add(Metronome, "Skip rest", "s");
     public static readonly Hotkey RestartSection = Add(Metronome, "Restart section (with count-in)", "r");
     public static readonly Hotkey TempoUp = Add(Metronome, "Tempo +1", "ArrowUp", "+", "=");
     public static readonly Hotkey TempoDown = Add(Metronome, "Tempo −1", "ArrowDown", "-");
