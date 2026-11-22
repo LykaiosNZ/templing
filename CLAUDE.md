@@ -4,6 +4,11 @@ Practice tracker for any instrument: Blazor WebAssembly (.NET 11) + MudBlazor 9,
 
 **UI conventions live in [DESIGN.md](DESIGN.md)** (copy, formats, controls, icons, shared components). Read it before UI work, and add to it when a new UI decision is made.
 
+## Workflow
+
+- **Never commit to `main` directly.** Work on a branch (`git switch -c <short-topic>` from an up-to-date `main`), push it and open a pull request. `main` only changes by merging PRs.
+- A PR for an issue says `Closes #N` in its description, so merging closes the issue.
+
 ## Run / build
 
 ```bash
