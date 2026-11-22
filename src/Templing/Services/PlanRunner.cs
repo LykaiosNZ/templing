@@ -63,11 +63,12 @@ public class PlanRunner
         return (piece?.Name ?? "Missing piece") + (part != null ? $" · {part}" : "");
     }
 
-    public async Task StartAsync(PracticePlan plan)
+    /// <summary>Start a run, from the first step or from <paramref name="startIndex"/> (earlier steps count as skipped).</summary>
+    public async Task StartAsync(PracticePlan plan, int startIndex = 0)
     {
         if (plan.Steps.Count == 0) return;
         await _metro.StopAsync();
-        Plan = plan; Index = 0; Completed.Clear(); Logs = 0; LoggedSec = 0; Summary = null;
+        Plan = plan; Index = Math.Clamp(startIndex, 0, plan.Steps.Count - 1); Completed.Clear(); Logs = 0; LoggedSec = 0; Summary = null;
         plan.LastRun = DateTime.Now;
         await _store.SavePlanAsync(plan);
         await LoadStepAsync(navigate: true, autoStartRest: true);

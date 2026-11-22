@@ -614,6 +614,7 @@ html.boot-light .boot { --boot-accent: var(--boot-accent-light, #0361c3); --boot
 .plan-list li.on { color: var(--accent); font-weight: 700; }
 .plan-list .pl-meta { color: var(--ink-2); font-size: .8rem; }
 .plan-list li.on .pl-meta { color: inherit; }
+.plan-list .pl-start { margin: -6px 0 -6px auto; align-self: center; flex: none; }
 .plan-steps { display: flex; flex-direction: column; gap: 8px; max-height: 55vh; overflow-y: auto; }
 /* plan editor: each step is a one-line summary (PlanStepSummary) that expands to its fields */
 .edit-row { display: flex; flex-direction: column; border-radius: 10px; border: 1px solid var(--mud-palette-lines-default); }
