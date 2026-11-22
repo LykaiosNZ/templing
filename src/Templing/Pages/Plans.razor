@@ -68,6 +68,12 @@ else
                             var missing = PlanStepSummary.IsMissing(s, Store);
                             <li class="@(s.Kind == PlanStepKind.Rest ? "rest" : "") @(missing ? "missing" : "") @(running && Runner.Index == idx ? "on" : "")">
                                 <PlanStepSummary Step="s" Index="idx" />
+                                @if (!running)
+                                {
+                                    <MudTooltip Text="Start from this step" RootClass="pl-start">
+                                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.PlayArrow" aria-label="@($"Run {plan.Name} from step {idx + 1}")" OnClick="() => Run(p, idx)" />
+                                    </MudTooltip>
+                                }
                             </li>
                         }
                     </ol>
@@ -123,11 +129,11 @@ else
         Snackbar.Add($"Deleted “{p.Name}”", Severity.Info);
     }
 
-    async Task Run(PracticePlan p)
+    async Task Run(PracticePlan p, int from = 0)
     {
         if (p.Steps.Any(s => s.Kind == PlanStepKind.Piece && Store.GetPiece(s.PieceId) == null))
             Snackbar.Add("Some steps refer to deleted pieces; skip them when they come up.", Severity.Warning);
-        await Runner.StartAsync(p);
+        await Runner.StartAsync(p, from);
     }
 
     public void Dispose() { Store.Changed -= OnChanged; Runner.Changed -= OnChanged; }
