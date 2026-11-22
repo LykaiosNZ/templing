@@ -20,5 +20,7 @@ builder.Services.AddSingleton<MetronomeService>();
 builder.Services.AddSingleton<Shortcuts>();
 builder.Services.AddSingleton<ScoreImport>();
 builder.Services.AddSingleton<PlanRunner>();
+builder.Services.AddSingleton(new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+builder.Services.AddSingleton<UpdateCheck>();
 
 await builder.Build().RunAsync();

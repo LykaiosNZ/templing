@@ -7,6 +7,7 @@
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
 @inject PlanRunner Runner
+@inject UpdateCheck Updates
 
 <MudThemeProvider Theme="@_theme" IsDarkMode="@_dark" />
 @if (_css.Length > 0)
@@ -95,8 +96,23 @@ else
         await Metro.InitAsync();
         await Runner.RestoreAsync(); // resume a plan that was running before a refresh
         RegisterGlobalKeys();
+        Updates.Changed += OnUpdateAvailable;
+        Updates.Start();
         _ready = true;
     }
+
+    // a newer build is deployed: say so until dismissed (Settings > About keeps saying it)
+    private void OnUpdateAvailable() => InvokeAsync(() =>
+    {
+        Snackbar.Add("A new version of Templing is available", Severity.Info, c =>
+        {
+            c.RequireInteraction = true;
+            c.ShowCloseIcon = true;
+            c.Action = "Reload";
+            c.ActionColor = Color.Primary;
+            c.OnClick = _ => Updates.ReloadAsync().AsTask();
+        }, key: "update-available");
+    });
 
     private void RegisterGlobalKeys()
     {
@@ -151,6 +167,7 @@ else
     public void Dispose()
     {
         Store.Changed -= OnStoreChanged;
+        Updates.Changed -= OnUpdateAvailable;
         Keys.Unregister(this);
     }
 }

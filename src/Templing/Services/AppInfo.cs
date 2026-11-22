@@ -14,7 +14,8 @@ public static class AppInfo
     /// <summary>For display: "0.1.0 (3f2a9c1)", or just "0.1.0" when the build had no commit.</summary>
     public static readonly string Version = Format(InformationalVersion);
 
-    private static string Format(string info)
+    /// <summary>"0.1.0+3f2a9c1…" as "0.1.0 (3f2a9c1)".</summary>
+    public static string Format(string info)
     {
         var parts = info.Split('+', 2);
         return parts.Length == 2 && parts[1].Length > 0 ? $"{parts[0]} ({parts[1][..Math.Min(7, parts[1].Length)]})" : parts[0];

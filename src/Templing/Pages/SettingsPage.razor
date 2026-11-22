@@ -4,6 +4,8 @@
 @inject ISnackbar Snackbar
 @inject MetronomeService Metro
 @inject NavigationManager Nav
+@inject UpdateCheck Updates
+@implements IDisposable
 
 <PageTitle>Settings · Templing</PageTitle>
 
@@ -102,6 +104,19 @@
             <div class="setting-text"><div class="setting-title">Version</div></div>
             <div class="setting-control"><span class="setting-value" title="@AppInfo.InformationalVersion">@AppInfo.Version</span></div>
         </div>
+        @if (Updates.AvailableDisplay is { } next)
+        {
+            <div class="setting-row">
+                <div class="setting-text">
+                    <div class="setting-title">New version available</div>
+                    <div class="setting-desc" title="@Updates.Available">@next</div>
+                </div>
+                <div class="setting-control">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.Refresh"
+                               OnClick="@(() => Updates.ReloadAsync().AsTask())">Reload</MudButton>
+                </div>
+            </div>
+        }
         <div class="setting-row">
             <div class="setting-text"><div class="setting-title">Source code</div></div>
             <div class="setting-control">
@@ -117,12 +132,16 @@
 
     protected override void OnInitialized()
     {
+        Updates.Changed += OnUpdate;
         if (Restored == 1)
         {
             Snackbar.Add($"Backup restored, including settings. You now have {Store.Pieces.Count} pieces and {Store.Logs.Count} log entries.", Severity.Success);
             Nav.NavigateTo("settings", replace: true);
         }
     }
+
+    void OnUpdate() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Updates.Changed -= OnUpdate;
 
     Task Save() => Store.SaveSettingsAsync();
 
