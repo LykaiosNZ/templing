@@ -72,6 +72,7 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 - A row's description (`setting-desc`) is only for information the name can't carry ("Score files aren't included."), never for instructions.
 - Controls in a row have no visible label of their own (the row names them), but still get an accessible name (`aria-label`, `DurationInput AriaLabel`).
 - **About** is the last section: Version (`AppInfo.Version`, "0.1.0 (2778c0a)": `<Version>` in `Templing.csproj` plus the short commit; hovering shows the full informational version) and Source code (an outlined "GitHub" button with `Mdi.Github` and `OpenInNew` that opens the repository in a new tab). A deployed build's version is its release tag (v0.2.0 → 0.2.0), else `<Version>` in the csproj; the build adds the commit, and the Pages workflow passes `SourceRevisionId` so every deployed build carries its own.
+- **New version available:** when a newer build is deployed while the app is open (`UpdateCheck`), a snackbar that stays until closed says "A new version of Templing is available" with a Reload action, and About gets a "New version available" row (its version below, an outlined Reload button). Reloading never happens on its own: a reload mid-practice would lose the session (the browser still asks first while the metronome runs).
 - Links that leave the app are absolute, open with `target="_blank"` and end with the `OpenInNew` icon.
 
 ## Controls

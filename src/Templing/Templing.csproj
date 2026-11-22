@@ -17,4 +17,10 @@
     <PackageReference Include="MudBlazor" Version="9.14.0" />
   </ItemGroup>
 
+  <!-- version.json beside the published app: the running app compares it with its own version to notice a newer
+       deployment (Services/UpdateCheck.cs). Written after publishing, when the commit is already in the version. -->
+  <Target Name="WriteVersionFile" AfterTargets="Publish">
+    <WriteLinesToFile File="$(PublishDir)wwwroot/version.json" Lines="{&quot;version&quot;:&quot;$(InformationalVersion)&quot;}" Overwrite="true" WriteOnlyWhenDifferent="true" />
+  </Target>
+
 </Project>
