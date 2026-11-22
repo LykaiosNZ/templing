@@ -1,0 +1,20 @@
+@* The big round transport button on the Metronome and Timer: Start, then Pause while playing, Resume while paused.
+   Stopping is its own button beside it. *@
+@implements IDisposable
+@inject MetronomeService Metro
+
+<button class="play-btn @(Playing ? "on" : "")" @onclick="() => Metro.PlayPauseAsync(Start)" aria-label="@Label">
+    <MudIcon Icon="@(Playing ? Icons.Material.Rounded.Pause : Icons.Material.Rounded.PlayArrow)" Style="font-size:2.6rem" />
+</button>
+
+@code {
+    /// <summary>How a run starts when nothing is running (the Timer starts its countdown rather than the click).</summary>
+    [Parameter] public Func<Task>? Start { get; set; }
+
+    bool Playing => Metro.IsRunning && !Metro.IsPaused;
+    string Label => !Metro.IsRunning ? "Start" : Metro.IsPaused ? "Resume" : "Pause";
+
+    protected override void OnInitialized() => Metro.Changed += OnChanged;
+    void OnChanged() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Metro.Changed -= OnChanged;
+}

@@ -115,16 +115,24 @@
         <div class="status-line" role="status" aria-live="polite">
             @if (Metro.IsRunning)
             {
+                var paused = Metro.IsPaused;
+                @if (paused)
+                {
+                    <span class="phase paused">Paused</span>
+                }
                 @switch (Metro.State.phase)
                 {
                     case "countin":
-                        <span class="phase countin">Count-in @Metro.State.count</span>
+                        <span class="@(paused ? "muted" : "phase countin")">Count-in @Metro.State.count</span>
                         break;
                     case "rest":
-                        <span class="phase rest">Rest · @Stats.Clock(Metro.State.remaining ?? 0)</span>
+                        <span class="@(paused ? "muted" : "phase rest")">Rest · @Stats.Clock(Metro.State.remaining ?? 0)</span>
                         break;
                     default:
-                        <span class="phase work">Playing</span>
+                        @if (!paused)
+                        {
+                            <span class="phase work">Playing</span>
+                        }
                         <span class="muted">Bar @(Metro.State.barInPart + 1)@(Metro.PlayingSection.Length > 0 ? $"/{Metro.PlayingSection.Length}" : "")</span>
                         @if (Metro.State.remaining is { } rem)
                         {
@@ -155,25 +163,35 @@
         }
 
         <div class="transport">
-            @* restarting does nothing during a rest, so skipping it takes the slot *@
-            @if (Metro.Resting)
-            {
-                <MudTooltip Text="Skip rest">
-                    <MudIconButton Icon="@Icons.Material.Rounded.SkipNext" aria-label="Skip rest" OnClick="() => Metro.SkipRestAsync()" />
+            <div class="transport-side start">
+                @* restarting does nothing during a rest, so skipping it takes the slot *@
+                @if (Metro.Resting)
+                {
+                    <MudTooltip Text="Skip rest">
+                        <MudIconButton Icon="@Icons.Material.Rounded.SkipNext" aria-label="Skip rest" OnClick="() => Metro.SkipRestAsync()" />
+                    </MudTooltip>
+                }
+                else
+                {
+                    <MudTooltip Text="Restart section">
+                        <MudIconButton Icon="@Icons.Material.Rounded.Replay" aria-label="Restart section" OnClick="() => Metro.RestartSectionAsync()" />
+                    </MudTooltip>
+                }
+                <span class="transport-slot">
+                    @if (Metro.IsRunning)
+                    {
+                        <MudTooltip Text="Stop">
+                            <MudIconButton Icon="@Icons.Material.Rounded.Stop" aria-label="Stop" OnClick="() => Metro.StopAsync()" />
+                        </MudTooltip>
+                    }
+                </span>
+            </div>
+            <PlayButton />
+            <div class="transport-side">
+                <MudTooltip Text="Tap tempo">
+                    <MudButton Variant="Variant.Outlined" OnClick="() => Metro.TapAsync()" aria-label="Tap tempo" Class="tap-btn">Tap</MudButton>
                 </MudTooltip>
-            }
-            else
-            {
-                <MudTooltip Text="Restart section">
-                    <MudIconButton Icon="@Icons.Material.Rounded.Replay" aria-label="Restart section" OnClick="() => Metro.RestartSectionAsync()" />
-                </MudTooltip>
-            }
-            <button class="play-btn @(Metro.IsRunning ? "on" : "")" @onclick="() => Metro.ToggleAsync()" aria-label="@(Metro.IsRunning ? "Stop" : "Start")">
-                <MudIcon Icon="@(Metro.IsRunning ? Icons.Material.Rounded.Stop : Icons.Material.Rounded.PlayArrow)" Style="font-size:2.6rem" />
-            </button>
-            <MudTooltip Text="Tap tempo">
-                <MudButton Variant="Variant.Outlined" OnClick="() => Metro.TapAsync()" aria-label="Tap tempo" Class="tap-btn">Tap</MudButton>
-            </MudTooltip>
+            </div>
         </div>
 
         <SessionPanel Ended="SessionEnded" Detail="@SessionDetail" />

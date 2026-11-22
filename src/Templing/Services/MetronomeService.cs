@@ -9,6 +9,8 @@ public enum MetronomeSource { Free, Piece, Preset }
 public class EngineState
 {
     public bool running { get; set; }
+    /// <summary>Paused mid-run: still <see cref="running"/> (the run goes on when resumed), but the clock is stopped.</summary>
+    public bool paused { get; set; }
     public string phase { get; set; } = "stopped";
     /// <summary>The section the scheduler is on (it runs ahead of what's heard): the one the app keeps as current.</summary>
     public int step { get; set; }
@@ -66,7 +68,10 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     /// <summary>The click that plays (a <see cref="ClickSounds"/> id).</summary>
     public string Sound => ClickSounds.Resolve(SourceSound ?? Settings.Sound);
     public EngineState State { get; private set; } = new();
+    /// <summary>A run is under way, playing or paused.</summary>
     public bool IsRunning => State.running;
+    /// <summary>Paused mid-run: <see cref="IsRunning"/> stays true, and play resumes from where it was.</summary>
+    public bool IsPaused => State.running && State.paused;
 
     // session tracking (survives multiple start/stop cycles until logged or reset)
     public double SessionBankedSec { get; private set; }
@@ -352,7 +357,21 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         if (_mod != null && IsRunning) await _mod.InvokeVoidAsync("stop");
     }
 
-    public Task ToggleAsync() => IsRunning ? StopAsync() : StartAsync();
+    /// <summary>Freezes the run where it is: the click, the work / rest countdown, the speed trainer and practice time all wait.</summary>
+    public async Task PauseAsync()
+    {
+        if (_mod != null && IsRunning && !IsPaused) await _mod.InvokeVoidAsync("pause");
+    }
+
+    /// <summary>Carries on from a pause.</summary>
+    public async Task ResumeAsync()
+    {
+        if (_mod != null && IsPaused) await _mod.InvokeVoidAsync("resume");
+    }
+
+    /// <summary>The play button: starts, pauses, or resumes. <paramref name="start"/> replaces a plain start (the Timer's countdown).</summary>
+    public Task PlayPauseAsync(Func<Task>? start = null) =>
+        !IsRunning ? (start ?? StartAsync)() : IsPaused ? ResumeAsync() : PauseAsync();
 
     public async Task RestartSectionAsync()
     {

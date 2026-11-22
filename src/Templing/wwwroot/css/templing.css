@@ -245,8 +245,12 @@ kbd {
 .training-bar { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 520px; font-family: var(--mono); font-size: .85rem; color: var(--ink-2); }
 .training-bar .mud-progress-linear { flex: 1; }
 .training-next { margin-top: -6px; font-family: var(--mono); font-size: .78rem; color: var(--muted); }
-.transport { display: flex; align-items: center; gap: 14px; }
+/* the play button stays centred whatever shows beside it (Stop, Skip rest) */
+.transport { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 14px; width: 100%; max-width: 420px; }
+.transport-side { display: flex; align-items: center; gap: 14px; }
+.transport-side.start { justify-content: flex-end; }
 .transport-slot { width: 48px; display: grid; place-items: center; }
+.phase.paused { background: color-mix(in srgb, var(--ink-2) 14%, transparent); color: var(--ink-2); }
 .play-btn {
     width: 84px; height: 84px; border-radius: 50%; border: none; cursor: pointer; display: grid; place-items: center; color: #fff;
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 80%, #fff), var(--accent)); box-shadow: 0 8px 28px color-mix(in srgb, var(--accent) 45%, transparent); transition: transform .1s ease;
@@ -528,6 +532,7 @@ html.boot-light .boot { --boot-accent: var(--boot-accent-light, #0361c3); --boot
 .ring-fill { fill: none; stroke: var(--phase); stroke-width: 10; stroke-linecap: round; transition: stroke-dasharray .5s linear, stroke .4s; }
 .timer-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .timer-phase { font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: .85rem; color: var(--phase); }
+.timer-stage.paused .timer-clock, .timer-stage.paused .ring-fill { opacity: .55; }
 .timer-clock { font-family: var(--mono); font-size: clamp(3.2rem, 11vw, 5.4rem); font-weight: 700; letter-spacing: -.04em; line-height: 1.05; color: var(--ink); font-variant-numeric: tabular-nums; }
 .timer-sub { color: var(--ink-2); font-size: .9rem; }
 .session-line { font-size: .9rem; }
