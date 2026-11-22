@@ -212,11 +212,23 @@ export function setStep(i) {
 
 export function isRunning() { return !!(st && st.running); }
 
-function accumulateActive() {
+// Banks the active time up to `at`: now, or when work ends. The end of work is scheduled up to SCHEDULE_AHEAD early,
+// and banking it then, counted to "now", lost that much every round (2 x 5:00 logged as 9:59).
+// st.activeUntil is how far ahead that banked: activeNow() doesn't count it until it's reached, nor does a stop before it.
+function accumulateActive(at) {
     if (!st || !ctx) return;
+    const now = ctx.currentTime;
     if (st.lastActiveStamp != null) {
-        st.active += Math.max(0, ctx.currentTime - st.lastActiveStamp);
+        const end = at ?? now;
+        st.active += Math.max(0, end - st.lastActiveStamp);
+        // round off float error, so a 15 s block adds 15, not 14.999999999998 (the clock shows whole seconds, rounded down)
+        st.active = Math.round(st.active * 1e6) / 1e6;
+        st.activeUntil = end;
         st.lastActiveStamp = null;
+    } else if (at === undefined && st.activeUntil > now) {
+        // stopped before an end that was already banked: take back the part that never played
+        st.active = Math.max(0, st.active - (st.activeUntil - now));
+        st.activeUntil = now;
     }
 }
 
@@ -291,7 +303,9 @@ function trainingDone() {
 
 function activeNow() {
     if (!st) return 0;
-    return st.active + (st.lastActiveStamp != null ? Math.max(0, ctx.currentTime - st.lastActiveStamp) : 0);
+    const now = ctx.currentTime;
+    if (st.lastActiveStamp != null) return st.active + Math.max(0, now - st.lastActiveStamp);
+    return st.active - Math.max(0, (st.activeUntil ?? now) - now); // banked up to an end that's still ahead
 }
 
 // ------------------------------------------------------------------ scheduler
@@ -402,8 +416,7 @@ function scheduler() {
 }
 
 function enterRestOrFinish(t) {
-    accumulateActive();
-    st.lastActiveStamp = null;
+    accumulateActive(t);
     const iv = cfg.interval;
     if (iv.rounds > 0 && st.round >= iv.rounds) { finish(t, 'interval'); return; }
     if (iv.restSec <= 0) { st.round++; beginWork(t, false); return; }
@@ -417,7 +430,7 @@ function enterRestOrFinish(t) {
 
 function finish(t, reason) {
     if (cfg.interval.cues || reason !== 'end') click(Math.max(t, ctx.currentTime), reason === 'rest' ? 'cue-hi' : 'cue-end');
-    accumulateActive();
+    accumulateActive(Math.max(t, ctx.currentTime));
     st.finished = reason;
     st.running = false;
     if (timer) clearInterval(timer);
