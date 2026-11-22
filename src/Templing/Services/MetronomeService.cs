@@ -10,7 +10,10 @@ public class EngineState
 {
     public bool running { get; set; }
     public string phase { get; set; } = "stopped";
+    /// <summary>The section the scheduler is on (it runs ahead of what's heard): the one the app keeps as current.</summary>
     public int step { get; set; }
+    /// <summary>The section sounding now, for display. <see cref="bar"/>, <see cref="beats"/> and <see cref="unit"/> are what's sounding too.</summary>
+    public int? heardStep { get; set; }
     public int bar { get; set; }
     public double factor { get; set; } = 1;
     public double active { get; set; }
@@ -185,7 +188,9 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     };
 
     public Section RefSection => Sections[Math.Clamp(CurrentStep, 0, Sections.Count - 1)];
-    public Section PlayingSection => Sections[Math.Clamp(IsRunning ? State.step : CurrentStep, 0, Sections.Count - 1)];
+    /// <summary>The section sounding now (while running, the scheduler can already be a beat into the next one).</summary>
+    public int PlayingStep => Math.Clamp(IsRunning ? State.heardStep ?? State.step : CurrentStep, 0, Sections.Count - 1);
+    public Section PlayingSection => Sections[PlayingStep];
 
     /// <summary>The tempo value shown to the user, in <see cref="Unit"/>.</summary>
     public double Value => ToValue(IsRunning ? State.factor : Factor);

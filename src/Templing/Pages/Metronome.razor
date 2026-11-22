@@ -296,7 +296,7 @@
     [Parameter] public string? PresetId { get; set; }
     OptionsRail? _rail;
 
-    int CurStep => Metro.IsRunning ? Metro.State.step : Metro.CurrentStep;
+    int CurStep => Metro.PlayingStep;
     string SectionLabel(int i) => i >= 0 && i < Metro.Sections.Count ? $"{i + 1}. {Metro.Sections[i].Name}" : "";
 
     double Factor => Metro.IsRunning ? Metro.State.factor : Metro.Factor;

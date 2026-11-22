@@ -69,6 +69,7 @@ function stepCfg() { return cfg.steps[Math.min(st.step, cfg.steps.length - 1)]; 
 function jumpToStep(i) {
     st.step = Math.max(0, Math.min(i, cfg.steps.length - 1));
     st.bar = 0; st.beat = 0; st.sub = 0; st.meter = null;
+    st.heardBeat = null; // show the new section straight away, not the old one's bar until its next beat
 }
 
 // ------------------------------------------------------------------ sound
@@ -190,7 +191,7 @@ export function restartSection() {
     if (!st || !st.running) { start(); return; }
     const t = ctx.currentTime + 0.05;
     queue.length = 0;
-    st.bar = 0; st.beat = 0; st.sub = 0; st.meter = null;
+    st.bar = 0; st.beat = 0; st.sub = 0; st.meter = null; st.heardBeat = null;
     if (st.phase === 'rest') return;
     st.nextTime = t;
     if (cfg.countIn.enabled && cfg.countIn.bars > 0 && !cfg.silent) {
@@ -439,7 +440,8 @@ function drawLoop() {
             changed = true;
         }
         // what's sounding now (the scheduler runs ahead of it): the trainer countdown counts from here
-        if (e.kind === 'beat') st.heardBeat = { beat: e.beat, beats: e.beats };
+        if (e.kind === 'beat') st.heardBeat = { beat: e.beat, beats: e.beats, unit: e.unit, step: e.step, bar: e.bar };
+        if (e.kind === 'count') st.heardBeat = null; // a count-in (or a restart's) starts again from bar 1
         if (e.kind === 'bar') st.heardBar = { factor: e.factor, trainingBars: e.trainingBars };
         if (e.kind === 'phase' && st.phase === 'rest') clearVisual();
         if (e.kind === 'bar' || e.kind === 'phase' || e.kind === 'workstart' || e.kind === 'count') changed = true;
@@ -488,20 +490,28 @@ function snapshot() {
         trainingProgress = tr.endFactor === tr.startFactor ? 1 : Math.max(0, Math.min(1, (factor - tr.startFactor) / (tr.endFactor - tr.startFactor)));
         if (st.running && st.phase === 'work' && Math.abs(factor - tr.endFactor) > 1e-6) trainingNext = trainingNextStep();
     }
+    // where the bar and section shown come from: the beat sounding now, not the scheduler, which moves on to the next
+    // bar as soon as it has queued the last beat of this one (so the bar number changed a beat early)
+    const hb = st.phase === 'work' ? st.heardBeat : null;
+    const step = hb ? Math.min(hb.step, cfg.steps.length - 1) : st.step;
+    const bar = hb ? hb.bar : st.bar;
+    const meter = hb ? { n: hb.beats, d: hb.unit } : (st.meter || meterAt(stepCfg(), st.bar));
+    const sb = cfg.steps[Math.min(step, cfg.steps.length - 1)].scoreBars;
     return {
         running: st.running,
         phase: st.running ? st.phase : 'stopped',
-        step: st.step,
-        bar: st.bar,
+        step: st.step, // where the scheduler is: what the app keeps as the current section (and sends back)
+        heardStep: step, // the section sounding now, for display
+        bar,
         factor,
         active: activeNow(),
         remaining,
         round: st.round,
         count: st.phase === 'countin' ? st.countDisplay : null,
         workElapsed: st.phase === 'work' && st.workStart != null ? Math.max(0, now - st.workStart) : null,
-        beats: (st.meter || meterAt(stepCfg(), st.bar)).n,
-        unit: (st.meter || meterAt(stepCfg(), st.bar)).d,
-        barInPart: (() => { const sb = stepCfg().scoreBars; return sb && sb.length ? st.bar % sb.length : st.bar; })(),
+        beats: meter.n,
+        unit: meter.d,
+        barInPart: sb && sb.length ? bar % sb.length : bar,
         trainingProgress,
         trainingNext,
         finished: st.finished || null,
