@@ -48,10 +48,31 @@ export function configure(json) {
     if (master) master.gain.value = cfg.volume;
     if (!st) return;
     // live updates while running
+    const stepBefore = st.step;
+    const tempoBefore = prev && prev.steps[st.step] ? prev.steps[st.step].bpm * st.factor : null;
     if (prev && prev.step !== cfg.step && st.phase !== 'rest') jumpToStep(cfg.step);
     if (!cfg.training.enabled) st.factor = cfg.factor;
     else if (!prev || !prev.training.enabled) { st.trainingStartActive = st.active; st.trainingBars = 0; st.factor = cfg.training.startFactor; }
     if (st.step >= cfg.steps.length) jumpToStep(0);
+    if (st.running && st.step === stepBefore && tempoBefore) retime(tempoBefore, stepCfg().bpm * st.factor);
+}
+
+// A new tempo while playing takes effect now, not from the next beat: the beat that's due is moved to where it falls
+// at the new tempo, keeping how far through the beat we are. (The next beat was timed at the old tempo, so a change
+// used to wait for it: laggy and snapped to the beat, and at slow tempos you could hear it.)
+function retime(before, after) {
+    if (!(before > 0) || !(after > 0) || Math.abs(before - after) < 1e-9) return;
+    if (st.phase !== 'work' && st.phase !== 'countin') return;
+    if (st.lastPulse == null || st.lastPulse >= st.nextTime) return;
+    const now = ctx.currentTime;
+    const from = Math.max(now, st.lastPulse); // the last scheduled click may still be ahead: it can't move
+    const gone = (from - st.lastPulse) / (st.nextTime - st.lastPulse); // how far through the gap we are
+    const gap = (st.nextTime - st.lastPulse) * before / after;
+    st.nextTime = Math.max(now + 0.005, from + (1 - Math.min(1, gone)) * gap);
+    // the display shows the tempo sounding now, which is this one from here on (not the bar's, until its next bar line)
+    if (st.heardBar) st.heardBar.factor = st.factor;
+    for (const e of queue) if (e.kind === 'bar') e.factor = st.factor;
+    emit('state');
 }
 
 // Per-bar meter. Sections imported from a score carry scoreBars: [[masterBarIndex, numerator, denominator], ...].
@@ -162,6 +183,7 @@ function beginWork(t, first) {
     if (!first && !cfg.playThrough) { /* keep current step */ }
     st.countInLeft = st.phase === 'countin' ? cfg.countIn.bars * stepCfg().beatsPerBar : 0;
     st.nextTime = t;
+    st.lastPulse = null; // nothing to retime from until the first click
     st.phaseEnd = Infinity; // set when count-in completes
     if (st.phase === 'work') startWorkClock(t);
 }
@@ -193,7 +215,7 @@ export function restartSection() {
     queue.length = 0;
     st.bar = 0; st.beat = 0; st.sub = 0; st.meter = null; st.heardBeat = null;
     if (st.phase === 'rest') return;
-    st.nextTime = t;
+    st.nextTime = t; st.lastPulse = null;
     if (cfg.countIn.enabled && cfg.countIn.bars > 0 && !cfg.silent) {
         accumulateActive();
         st.phase = 'countin';
@@ -206,7 +228,7 @@ export function restartSection() {
 export function setStep(i) {
     if (!cfg) return;
     cfg.step = i;
-    if (st && st.running && st.phase !== 'rest') { jumpToStep(i); st.nextTime = Math.max(st.nextTime, ctx.currentTime + 0.03); queue.length = 0; }
+    if (st && st.running && st.phase !== 'rest') { jumpToStep(i); st.nextTime = Math.max(st.nextTime, ctx.currentTime + 0.03); st.lastPulse = null; queue.length = 0; }
     emit('state');
 }
 
@@ -345,6 +367,7 @@ function scheduler() {
             click(t, beatIdx === 0 ? 'accent' : 'count');
             queue.push({ time: t, kind: 'count', beat: beatIdx, beats: m0.n, unit: m0.d, scoreBar: m0.i, left: Math.ceil(st.countInLeft / m0.n), num: st.countInLeft });
             st.countInLeft--;
+            st.lastPulse = t;
             st.nextTime += beatSeconds(bpm, m0.d);
             if (st.countInLeft <= 0) {
                 st.phase = 'work';
@@ -378,6 +401,7 @@ function scheduler() {
         if (st.sub === 0) queue.push({ time: t, kind: 'beat', beat: st.beat, beats: meter.n, unit: meter.d, scoreBar: meter.i, step: st.step, bar: st.bar });
 
         // advance
+        st.lastPulse = t;
         st.nextTime += beatSeconds(s.bpm * st.factor, meter.d) / subs;
         st.sub++;
         if (st.sub >= subs) {

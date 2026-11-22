@@ -377,6 +377,9 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         }
         else Factor = ToFactor(value);
         if (Training.Enabled && IsRunning) Training.Enabled = false; // manual override ends ramp
+        // the engine plays the new tempo straight away: show it now, not the old one until its next update
+        // (which also made + and - step from a stale value when pressed quickly)
+        if (IsRunning) State.factor = Factor;
         await PushConfig();
         Changed?.Invoke();
     }
