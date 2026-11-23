@@ -245,13 +245,9 @@
             }
             Snackbar.Add(summary, Severity.Success);
         }
-        catch (FormatException ex) when (ex.Message.StartsWith("This backup"))
+        catch (FormatException ex)
         {
-            Snackbar.Add(ex.Message, Severity.Error);   // older / newer version: already readable
-        }
-        catch (Exception ex) when (ex is System.Text.Json.JsonException or FormatException or NotSupportedException)
-        {
-            Snackbar.Add("That file isn't a Templing backup.", Severity.Error);
+            Snackbar.Add(ex.Message, Severity.Error);   // Backup.Parse: not a backup, damaged, too new or too old
         }
         catch (Exception)
         {

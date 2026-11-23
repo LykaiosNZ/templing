@@ -59,7 +59,7 @@ Every new piece of user data has to be wired through **storage, backup/restore a
 **Adding a new entity (a new IndexedDB store):**
 1. `wwwroot/js/db.js`: add the store name to `STORES` **and bump `DB_VERSION`** (the upgrade handler creates missing stores).
 2. `DataStore.cs`: add the list, load it in `LoadAsync`, add save/delete methods that call `Changed`, include it in `ImportAsync` and in `ClearAllAsync` (both the store-name array and the in-memory `.Clear()`).
-3. `Backup.cs`: add a **nullable field with a default** to `BackupFile` (old backups must still load), fill it in `Export`, restore it in `RestoreAsync`, add it to the summary text, **bump `Backup.Version`** and extend the format-history comment.
+3. `Backup.cs`: add a **nullable field with a default** to `BackupFile` (old backups must still load), fill it in `Export`, restore it in `RestoreAsync`, add it to the summary text, **bump the format** (below).
 4. `SettingsPage.razor`: add it to the "Delete all data" confirmation wording. `RestoreDialog.razor`: mention it in the "Songs & data only" description if it's data, or in the settings line if it's a preference.
 5. If other entities reference it by id (e.g. plan steps → pieces), decide what happens on delete (see `DataStore.DeletePieceAsync`) and handle missing references in the UI.
 
@@ -67,6 +67,13 @@ Every new piece of user data has to be wired through **storage, backup/restore a
 - Give it a sensible default in the model, because old IndexedDB rows and old backups won't have it. Nullable is fine.
 - Nothing else is needed for backup (whole objects are serialised), **unless** the field references something that isn't backed up (see score files below).
 - If it's a user preference on `AppSettings`: settings are backed up as one object, and restoring them is the user's choice in `RestoreDialog` ("Songs & data only" or "Everything, including settings"). If the new setting changes what that choice means, update the dialog's description. Restoring settings reloads the app, because services hold references into the settings object.
+
+**Backups must keep restoring** (every format since `Backup.OldestSupported`, which never goes up). A backup carries `Format`, the file's layout, and `AppVersion`, the build that wrote it; only `Format` decides compatibility. Bump `Backup.Format` when a backup would otherwise be read wrongly, by this code or an older build: a new list, a field renamed, moved or removed, a value whose meaning changes, a new enum value. A new nullable field with a default doesn't need it. A bump needs three things, or `BackupTests` fails:
+- a migration in `Backup.Migrations` from the previous format, working on the raw JSON (the models only know the current shape);
+- a sample `tests/Templing.Tests/Backups/format-N.json`: export the `Filled()` data in `BackupTests` with the new code. Never edit the old samples, which stand for backups people have;
+- a line in the format-history comment on `Backup.Format`.
+
+Renaming or removing a field on a persisted type also fails `BackupTests` (every field in the samples has to be read), so add a migration rather than just changing the model.
 
 **Deliberately not in the backup:**
 - Score files (Guitar Pro) are binary blobs in the `files` store, too large for a JSON backup. Pieces keep `ScoreFileId`, and the tab view shows a "re-import" message if the file is missing. If you change this, update the Settings > Backup text.

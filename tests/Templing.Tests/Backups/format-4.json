@@ -1,0 +1,201 @@
+{
+  "Format": 4,
+  "AppVersion": "0.1.0\u002Bfd207f99c1ece99992b3ef0dc330048d000ef902",
+  "Exported": "2026-11-23T12:00:00+13:00",
+  "Pieces": [
+    {
+      "Id": "ecf76d2eaf31412f9c8fb91f053dda4e",
+      "Name": "Spain",
+      "Type": "Exercise",
+      "Unit": "Bpm",
+      "Goal": 140,
+      "StartTempo": null,
+      "Sections": [
+        {
+          "Id": "49b20b34",
+          "Name": "Intro",
+          "Bpm": 90,
+          "BeatsPerBar": 4,
+          "BeatUnit": 4,
+          "Subdivision": 1,
+          "Bars": 0,
+          "ScoreBars": [
+            [
+              0,
+              4,
+              4
+            ],
+            [
+              1,
+              3,
+              4
+            ]
+          ],
+          "FromScore": true,
+          "Length": 2,
+          "MixedMeter": true,
+          "Meter": "4/4 (mixed)",
+          "Division": "1/4"
+        }
+      ],
+      "PlayThrough": false,
+      "Loop": false,
+      "Notes": null,
+      "Link": null,
+      "ScoreFileId": null,
+      "ScoreFileName": null,
+      "ScoreTrack": 0,
+      "ScoreStave": "tab",
+      "Archived": false,
+      "Favourite": false,
+      "Sound": null,
+      "Created": "2026-11-23T18:24:59.2762985+13:00"
+    }
+  ],
+  "Logs": [
+    {
+      "Id": "234a2526a3684e49a8e4116124f02996",
+      "Date": "2026-11-23T00:00:00+13:00",
+      "PieceId": "ecf76d2eaf31412f9c8fb91f053dda4e",
+      "PieceName": "Spain",
+      "SectionId": null,
+      "Unit": "Bpm",
+      "ValueMin": 90,
+      "Value": 100,
+      "DurationSec": null,
+      "Notes": null,
+      "Effort": 2,
+      "Logged": null,
+      "Source": "manual",
+      "ValueText": "90\u2013100"
+    }
+  ],
+  "Presets": [
+    {
+      "Id": "9b307ff4326b4882bdfa81bfff8e821a",
+      "Name": "Odd",
+      "Sections": [
+        {
+          "Id": "f07980ae",
+          "Name": "Main",
+          "Bpm": 120,
+          "BeatsPerBar": 4,
+          "BeatUnit": 4,
+          "Subdivision": 1,
+          "Bars": 0,
+          "ScoreBars": null,
+          "FromScore": false,
+          "Length": 0,
+          "MixedMeter": false,
+          "Meter": "4/4",
+          "Division": "1/4"
+        }
+      ],
+      "PlayThrough": false,
+      "Loop": true,
+      "Sound": null,
+      "Created": "2026-11-23T18:24:59.3359259+13:00"
+    }
+  ],
+  "Settings": {
+    "Id": "app",
+    "DarkMode": false,
+    "Metronome": {
+      "CountIn": true,
+      "CountInBars": 1,
+      "Volume": 0.8,
+      "Sound": "",
+      "AccentFirst": true,
+      "Flash": true,
+      "BeatDisplay": "Strip",
+      "BeatFill": "OnClick",
+      "NewBar": "Clear",
+      "BarPulse": true,
+      "MarkFirstBeat": true,
+      "ShowSubdivisions": true,
+      "ThinSubdivisions": false,
+      "Training": {
+        "Enabled": false,
+        "Start": 80,
+        "End": 120,
+        "Mode": "OverTime",
+        "DurationMin": 5,
+        "EveryBars": 4,
+        "Increment": 2,
+        "Steps": null,
+        "StopAtEnd": false
+      },
+      "Interval": {
+        "Enabled": false,
+        "WorkMin": 5,
+        "RestMin": 1,
+        "Rounds": 2,
+        "VoiceCues": true
+      },
+      "Timer": {
+        "Enabled": true,
+        "WorkMin": 10,
+        "RestMin": 0,
+        "Rounds": 1,
+        "VoiceCues": true
+      }
+    },
+    "FreeSections": [
+      {
+        "Id": "1c04fb70",
+        "Name": "Click",
+        "Bpm": 100,
+        "BeatsPerBar": 4,
+        "BeatUnit": 4,
+        "Subdivision": 1,
+        "Bars": 0,
+        "ScoreBars": null,
+        "FromScore": false,
+        "Length": 0,
+        "MixedMeter": false,
+        "Meter": "4/4",
+        "Division": "1/4"
+      }
+    ],
+    "FreePlayThrough": false,
+    "FreeSound": null,
+    "WeeklyGoalMin": 99,
+    "LibraryList": false,
+    "MetronomeIntervalPresets": null,
+    "TimerIntervalPresets": null,
+    "AutoLogPlanSteps": false,
+    "Colours": null
+  },
+  "Plans": [
+    {
+      "Id": "9cf17ae1894c4432b37debe6b9e897ca",
+      "Name": "My routine",
+      "Steps": [
+        {
+          "Id": "3224d46a",
+          "Kind": "Piece",
+          "PieceId": "ecf76d2eaf31412f9c8fb91f053dda4e",
+          "SectionId": null,
+          "Mode": "Metronome",
+          "Minutes": 10,
+          "Rounds": 1,
+          "RestMin": 0,
+          "StartTempo": null,
+          "Trainer": true,
+          "TrainerStart": 80,
+          "TrainerEnd": 120,
+          "TrainerMode": "OverTime",
+          "TrainerSteps": null,
+          "TrainerEveryBars": 4,
+          "WorkMinutes": 10,
+          "TotalMinutes": 10,
+          "IntervalText": "10 min"
+        }
+      ],
+      "Created": "2026-11-23T18:24:59.3371261+13:00",
+      "LastRun": null,
+      "Favourite": false,
+      "TotalMinutes": 10
+    }
+  ]
+}

@@ -21,6 +21,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- sample backups, one per format: BackupTests restores each -->
+    <None Include="Backups\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="xunit.v3" Version="4.0.3" />
   </ItemGroup>
 
