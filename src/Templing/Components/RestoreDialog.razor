@@ -6,7 +6,13 @@
     </TitleContent>
     <DialogContent>
         <MudText Typo="Typo.body2" Class="mb-1"><strong>@FileName</strong></MudText>
-        <MudText Typo="Typo.body2" Class="muted mb-4">@Backup.Describe(File, File.Settings != null)</MudText>
+        <div class="mb-4">
+            <MudText Typo="Typo.body2" Class="muted">@Backup.Describe(File, File.Settings != null)</MudText>
+            @if (Backup.Origin(File) is { } origin)
+            {
+                <MudText Typo="Typo.caption" Class="muted d-block">@origin</MudText>
+            }
+        </div>
 
         <MudRadioGroup T="bool" @bind-Value="_includeSettings" aria-label="What to restore">
             @* the whole card picks the option, not just the radio and its title *@
