@@ -417,7 +417,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         {
             // single-section free metronome: tempo *is* the section tempo
             Sections[0].Bpm = value; Factor = 1;
-            if (Source == MetronomeSource.Free) _ = store.SaveSettingsAsync();
+            if (Source == MetronomeSource.Free) store.SaveSettingsSoon(); // +/− and held keys change it many times a second
         }
         else Factor = ToFactor(value);
         if (Training.Enabled && IsRunning) Training.Enabled = false; // manual override ends ramp
@@ -459,7 +459,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
         if (persist)
         {
             if (Source == MetronomeSource.Free) { store.Settings.FreeSections = Sections; store.Settings.FreePlayThrough = PlayThrough; }
-            await store.SaveSettingsAsync();
+            store.SaveSettingsSoon(); // sliders call this on every step
         }
         Changed?.Invoke();
     }

@@ -215,15 +215,23 @@ else
         Refresh();
     }
 
-    void OnStoreChanged() { Refresh(); InvokeAsync(StateHasChanged); }
+    void OnStoreChanged() { _statsByPiece.Clear(); Refresh(); InvokeAsync(StateHasChanged); }
+
+    // each piece's row, kept until the data changes: searching, filtering and sorting only pick and order them
+    readonly Dictionary<string, Row> _statsByPiece = new();
+    Row RowFor(Piece i)
+    {
+        if (_statsByPiece.TryGetValue(i.Id, out var row) && row.Piece == i) return row;
+        var logs = Store.LogsFor(i.Id);
+        return _statsByPiece[i.Id] = new Row(i, Stats.ForPiece(i, logs), Stats.LastRated(i, logs), i.HasParts() ? Stats.ForSections(i, logs) : null);
+    }
 
     void Refresh()
     {
         var q = Store.Pieces.Where(i => _showArchived || !i.Archived);
         if (!string.IsNullOrWhiteSpace(_search)) q = q.Where(i => i.Name.Contains(_search, StringComparison.OrdinalIgnoreCase));
         if (_type is { } t && t != "all") q = q.Where(i => i.Type.ToString() == t);
-        var rows = q.Select(i => new Row(i, Stats.ForPiece(i, Store.Logs), Stats.LastRated(i, Store.Logs),
-            i.HasParts() ? Stats.ForSections(i, Store.Logs) : null));
+        var rows = q.Select(RowFor);
         _rows = (_sort switch
         {
             "name" => rows.OrderBy(r => r.Piece.Name),

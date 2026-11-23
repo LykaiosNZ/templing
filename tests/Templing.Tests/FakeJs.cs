@@ -85,7 +85,7 @@ public sealed class FakeDb : FakeModule
         object? result = null;
         switch (identifier)
         {
-            case "getAll": result = new JsonArray(Store((string)a[0]!).Values.Select(r => (JsonNode)r.DeepClone()).ToArray()).ToJsonString(); break;
+            case "getAll": result = System.Text.Encoding.UTF8.GetBytes(new JsonArray(Store((string)a[0]!).Values.Select(r => (JsonNode)r.DeepClone()).ToArray()).ToJsonString()); break;
             case "get": result = Store((string)a[0]!).TryGetValue((string)a[1]!, out var row) ? row.ToJsonString() : null; break;
             case "put": Put((string)a[0]!, (string)a[1]!); break;
             case "putMany": foreach (var r in JsonNode.Parse((string)a[1]!)!.AsArray()) Put((string)a[0]!, r!.ToJsonString()); break;

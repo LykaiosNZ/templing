@@ -14,5 +14,5 @@
 @code {
     [Parameter, EditorRequired] public Piece Piece { get; set; } = default!;
     PracticeLog? _last;
-    protected override void OnParametersSet() => _last = Stats.LastRated(Piece, Store.Logs);
+    protected override void OnParametersSet() => _last = Stats.LastRated(Piece, Store.LogsFor(Piece.Id));
 }

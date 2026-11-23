@@ -289,15 +289,15 @@ else
     {
         _piece = Store.GetPiece(Id);
         if (_piece == null) return;
-        _st = Stats.ForPiece(_piece, Store.Logs, _section);
-        _points = Stats.TempoHistory(_piece, Store.Logs, _section);
+        _st = Stats.ForPiece(_piece, Store.LogsFor(_piece.Id), _section);
+        _points = Stats.TempoHistory(_piece, Store.LogsFor(_piece.Id), _section);
         if (_rangeMonths > 0) _points = _points.Where(pt => pt.Date >= DateTime.Today.AddMonths(-_rangeMonths)).ToList();
         _logs = Store.LogsFor(_piece.Id).OrderByDescending(l => l.Date).ToList();
         var weeks = Stats.WeeklySeconds(Store.LogsFor(_piece.Id), DateTime.Today, 12);
         _weekLabels = Stats.WeekLabels(weeks);
         _weekTips = Stats.WeekTips(weeks);
         _weekValues = weeks.Select(w => w.sec / 60.0).ToList();
-        _parts = Stats.ForSections(_piece, Store.Logs);
+        _parts = Stats.ForSections(_piece, Store.LogsFor(_piece.Id));
         _weakest = _parts.Count > 1 && _parts.Any(p => p.Progress < 1)
             ? _parts.OrderBy(p => p.Progress ?? 0).First() : null;
     }
@@ -319,7 +319,7 @@ else
     async Task Delete()
     {
         if (_piece == null) return;
-        var count = Store.LogsFor(_piece.Id).Count();
+        var count = Store.LogsFor(_piece.Id).Count;
         var logs = count switch { 0 => null, 1 => "Its log entry is deleted too.", _ => $"Its {count} log entries are deleted too." };
         if (!await ConfirmDialog.DeleteAsync(Dialogs, "piece", _piece.Name, logs)) return;
         var name = _piece.Name;
