@@ -251,7 +251,6 @@ button.tempo-value:focus-visible { outline: 2px solid var(--ring); outline-offse
 .bd-track { fill: var(--bd-track); stroke: var(--bd-track); }
 .bd-track.one { fill: color-mix(in srgb, var(--bd-on) 22%, transparent); stroke: color-mix(in srgb, var(--bd-on) 22%, transparent); }
 .bd-fill, .bd-ghost { fill: var(--bd-on); stroke: var(--bd-on); }
-.beat-display[data-paused="1"] .bd-fill { fill: var(--muted); stroke: var(--muted); }
 .bd-hit { fill: #fff; stroke: #fff; mix-blend-mode: soft-light; }
 .bd-sonar { fill: none; stroke: var(--bd-on); }
 .bd-rest { display: none; }
@@ -262,7 +261,6 @@ button.tempo-value:focus-visible { outline: 2px solid var(--ring); outline-offse
     font-family: var(--mono); font-weight: 700; font-size: 5.5rem; letter-spacing: -.05em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--ink); }
 .beat-display[data-phase=countin] .bd-center { color: var(--series); }
 .beat-display[data-phase=rest] .bd-center { color: var(--rest); font-size: 3.4rem; }
-.beat-display[data-paused="1"] .bd-center { opacity: .45; }
 .bd-labels { position: relative; height: 18px; margin-top: 8px; }
 .bd-labels span { position: absolute; top: 0; text-align: center; font: 600 .8rem var(--mono); color: var(--muted); }
 .bd-labels span.past { color: var(--ink-2); }
@@ -568,9 +566,14 @@ html.boot-light .boot { --boot-accent: var(--boot-accent-light, #0361c3); --boot
 .timer-ring .countdown svg { display: block; width: 100%; height: 100%; }
 .timer-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .timer-phase { font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: .85rem; color: var(--phase); }
-.timer-stage.paused .timer-clock, .timer-stage.paused .cd-fill { opacity: .55; }
 .timer-clock { font-family: var(--mono); font-size: clamp(3.2rem, 11vw, 5.4rem); font-weight: 700; letter-spacing: -.04em; line-height: 1.05; color: var(--ink); font-variant-numeric: tabular-nums; }
 .timer-sub { color: var(--ink-2); font-size: .9rem; }
+
+/* Paused looks the same on every practice display (data-paused on the host: the beat display, the Timer's ring),
+   working or resting, ring or strip: every fill turns grey and the time or beat in the centre dims */
+.beat-display[data-paused="1"], .beat-display[data-paused="1"] .bd-rest, .countdown[data-paused="1"] { --bd-on: var(--muted); --cd-on: var(--muted); }
+.beat-display[data-paused="1"] .bd-center, .timer-stage.paused .timer-clock { opacity: .45; }
+.timer-stage.paused .timer-phase { color: var(--ink-2); } /* as the Metronome's Paused chip */
 .session-line { font-size: .9rem; }
 .session-end { width: 100%; max-width: 560px; border-radius: 14px; padding: 14px 16px; background: var(--card-2); border: 1px solid var(--ring); display: flex; flex-direction: column; gap: 10px; align-items: center; }
 .session-end-title { font-size: 1.05rem; }

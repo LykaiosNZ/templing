@@ -36,7 +36,7 @@
         <div class="timer-flash" @key="_flashKey" aria-hidden="true"></div>
         <div class="timer-ring">
             @* drawn by countdown.js, with the same ring as the Metronome's rest *@
-            <div id="timer-ring" class="countdown" data-full="@(RingFull ? "1" : "0")"></div>
+            <div id="timer-ring" class="countdown" data-full="@(RingFull ? "1" : "0")" data-paused="@(Metro.IsPaused ? "1" : "0")"></div>
             <div class="timer-center" role="timer" aria-live="off">
                 <div class="timer-phase" aria-live="polite">@PhaseLabel</div>
                 <div class="timer-clock">@Clock</div>
