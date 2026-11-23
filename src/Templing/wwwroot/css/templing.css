@@ -607,8 +607,8 @@ html.boot-light .boot { --boot-accent: var(--boot-accent-light, #0361c3); --boot
 .plan-bar.rest .plan-dot.on::before { background: var(--series); }
 .plan-left { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--ink-2); }
 .plan-nav { display: inline-flex; }
-.mud-button-root.plan-end { color: var(--muted); }
-.mud-button-root.plan-end:hover { color: var(--mud-palette-error); }
+.mud-icon-button.plan-end { color: var(--muted); }
+.mud-icon-button.plan-end:hover { color: var(--mud-palette-error); }
 @media (max-width: 700px) {
     .plan-bar { padding: 8px 14px 6px; }
     .plan-next, .plan-step-meta { display: none; }
