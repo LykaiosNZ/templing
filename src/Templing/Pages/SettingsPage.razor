@@ -23,19 +23,29 @@
                                AriaLabel="Weekly goal" StepSeconds="900" MaxSeconds="100 * 3600" Variant="Variant.Outlined" Margin="Margin.Dense" Style="width:140px" />
             </div>
         </div>
+    </section>
+
+    <section aria-labelledby="set-plans">
+        <h2 class="settings-heading" id="set-plans">Plans</h2>
         <div class="setting-row">
-            <div class="setting-text"><div class="setting-title">Log finished plan steps automatically</div></div>
+            <div class="setting-text"><div class="setting-title">Log finished steps automatically</div></div>
             <div class="setting-control">
                 <MudSwitch T="bool" @bind-Value="Store.Settings.AutoLogPlanSteps" @bind-Value:after="Save" Color="Color.Primary" aria-label="Log finished plan steps automatically" Class="ma-0" />
             </div>
         </div>
         <div class="setting-row">
             <div class="setting-text">
-                <div class="setting-title">Start the next plan step automatically</div>
+                <div class="setting-title">Start the next step automatically</div>
                 <div class="setting-desc">Rests always start on their own.</div>
             </div>
             <div class="setting-control">
                 <MudSwitch T="bool" @bind-Value="Store.Settings.AutoStartPlanSteps" @bind-Value:after="Save" Color="Color.Primary" aria-label="Start the next plan step automatically" Class="ma-0" />
+            </div>
+        </div>
+        <div class="setting-row">
+            <div class="setting-text"><div class="setting-title">Start steps automatically on Skip and Back</div></div>
+            <div class="setting-control">
+                <MudSwitch T="bool" @bind-Value="Store.Settings.AutoStartPlanStepsOnSkip" @bind-Value:after="Save" Color="Color.Primary" aria-label="Start plan steps automatically on Skip and Back" Class="ma-0" />
             </div>
         </div>
     </section>

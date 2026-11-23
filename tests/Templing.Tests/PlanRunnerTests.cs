@@ -148,6 +148,36 @@ public class PlanRunnerTests
     {
         var (runner, store, _, _) = await Init();
         store.Settings.AutoStartPlanSteps = true;
+        await runner.GoToAsync(1);
+        await runner.SkipAsync();
+        Assert.Equal("s3", runner.Current!.Id);
+        Assert.Equal(StepState.Ready, runner.State);
+    }
+
+    [Theory]
+    [InlineData(false, StepState.Ready)]
+    [InlineData(true, StepState.Running)]
+    public async Task Skip_and_Back_start_a_piece_step_only_with_their_setting_on(bool onSkip, StepState expected)
+    {
+        var (runner, store, _, _) = await Init();
+        store.Settings.AutoStartPlanStepsOnSkip = onSkip;
+        await runner.GoToAsync(1);
+
+        await runner.SkipAsync();
+        Assert.Equal("s3", runner.Current!.Id);
+        Assert.Equal(expected, runner.State);
+
+        await runner.GoToAsync(1);
+        await runner.BackAsync();
+        Assert.Equal("s1", runner.Current!.Id);
+        Assert.Equal(expected, runner.State);
+    }
+
+    [Fact]
+    public async Task Jumping_to_a_step_waits_for_start_with_the_Skip_setting_on()
+    {
+        var (runner, store, _, _) = await Init();
+        store.Settings.AutoStartPlanStepsOnSkip = true;
         await runner.GoToAsync(2);
         Assert.Equal(StepState.Ready, runner.State);
     }

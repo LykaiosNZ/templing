@@ -100,16 +100,19 @@ public class PlanRunner
         await LoadStepAsync(navigate: false, autoStartRest: false);
     }
 
-    public async Task GoToAsync(int index)
+    /// <summary>Go to a step. Rests start straight away; a piece step only with <paramref name="autoStartPiece"/>.</summary>
+    public async Task GoToAsync(int index, bool autoStartPiece = false)
     {
         if (Plan == null) return;
         await _metro.StopAsync();
         Index = Math.Clamp(index, 0, Plan.Steps.Count - 1);
-        await LoadStepAsync(navigate: true, autoStartRest: true);
+        await LoadStepAsync(navigate: true, autoStartRest: true, autoStartPiece);
     }
 
-    public Task SkipAsync() => IsLast ? EndAsync() : GoToAsync(Index + 1);
-    public Task BackAsync() => GoToAsync(Math.Max(0, Index - 1));
+    /// <summary>The next step (or end, after the last). Starts a piece step with <see cref="AppSettings.AutoStartPlanStepsOnSkip"/> on.</summary>
+    public Task SkipAsync() => IsLast ? EndAsync() : GoToAsync(Index + 1, _store.Settings.AutoStartPlanStepsOnSkip);
+    /// <summary>The previous step. Starts a piece step with <see cref="AppSettings.AutoStartPlanStepsOnSkip"/> on.</summary>
+    public Task BackAsync() => GoToAsync(Math.Max(0, Index - 1), _store.Settings.AutoStartPlanStepsOnSkip);
 
     /// <summary>Record a log saved for the current step (for the end-of-plan summary).</summary>
     public async Task RecordLoggedAsync(int? seconds)
