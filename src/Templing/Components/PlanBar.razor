@@ -32,7 +32,7 @@
                     }
                 }
                 <span class="plan-nav" role="group" aria-label="Step navigation">
-                    <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Rounded.SkipPrevious" Disabled="Runner.Index == 0" OnClick="() => JumpTo(Runner.Index - 1)">Back</MudButton>
+                    <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Rounded.SkipPrevious" Disabled="Runner.Index == 0" OnClick="Back">Back</MudButton>
                     <MudButton Size="Size.Small" Variant="Variant.Text" EndIcon="@Icons.Material.Rounded.SkipNext" OnClick="Skip">@(Runner.IsLast ? "Finish" : "Skip")</MudButton>
                 </span>
                 <MudTooltip Text="Edit plan">
@@ -80,7 +80,7 @@ else if (Runner.Summary is { } sum)
         Metro.Changed += OnChanged;
         Runner.StepFinished += OnStepFinished;
         Runner.EditRequested += OnEditRequested;
-        Keys.Register(this, Hotkeys.PrevPlanStep, async () => { if (Runner.Active && Runner.Index > 0) await JumpTo(Runner.Index - 1); });
+        Keys.Register(this, Hotkeys.PrevPlanStep, async () => { if (Runner.Active && Runner.Index > 0) await Back(); });
         Keys.Register(this, Hotkeys.NextPlanStep, async () => { if (Runner.Active) await Skip(); });
     }
 
@@ -177,6 +177,12 @@ else if (Runner.Summary is { } sum)
         if (index == Runner.Index || index < 0) return;
         if (!await ConfirmLeave("Leave this step")) return;
         await Runner.GoToAsync(index);
+    }
+
+    async Task Back()
+    {
+        if (Runner.Index == 0 || !await ConfirmLeave("Leave this step")) return;
+        await Runner.BackAsync();
     }
 
     async Task Skip()
