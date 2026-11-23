@@ -11,7 +11,8 @@
 //   volume, sound: a click's id (sounds/<id>_hi.wav + _lo.wav, see ClickSounds.cs), accentFirst,
 //   training: { enabled, startFactor, endFactor, mode: 'time'|'bars', durationSec, everyBars, levels, stopAtEnd },
 //     levels: the tempo factors to play in turn, start first and end last (whole bpm / %, worked out in C#);
-//     one jump every everyBars bars, or spread evenly over durationSec
+//     one jump every everyBars bars, or over durationSec, where each level plays for an equal share of it (the end
+//     level too, so it's reached before the time is up rather than as it runs out)
 //   interval: { enabled, workSec, restSec, rounds, cues }
 // }
 
@@ -357,7 +358,7 @@ function trainingFactorAtBar() {
         done = Math.floor(st.trainingBars / Math.max(1, tr.everyBars));
     } else {
         const elapsed = activeNow() - st.trainingStartActive;
-        done = Math.floor(Math.min(1, elapsed / Math.max(1, tr.durationSec)) * n + 1e-9);
+        done = Math.floor(Math.min(1, elapsed / Math.max(1, tr.durationSec)) * (n + 1) + 1e-9);
     }
     return levels[Math.min(done, n)];
 }
@@ -389,7 +390,7 @@ function trainingNextStep() {
     if (ahead && levelOf(st.factor) !== cur) return { beats: beatsLeft, sec: st.lastBarTime - now, level: levelOf(st.factor) };
     // walk the bar lines the scheduler hasn't reached, at the current tempo, until one lands on a new level
     const dur = Math.max(1, tr.durationSec);
-    const levelAt = e => Math.min(n, Math.floor(Math.min(1, e / dur) * n + 1e-9));
+    const levelAt = e => Math.min(n, Math.floor(Math.min(1, e / dur) * (n + 1) + 1e-9));
     const elapsed = activeNow() - st.trainingStartActive;
     const subs = Math.max(1, s.subdivision);
     const beatSec = beatSeconds(s.bpm * st.factor, meter.d);
