@@ -65,9 +65,10 @@ else
                 <span></span>
             </div>
             @* only the rows near the screen are drawn: a big library has hundreds, each with a dozen components *@
+            @* @key: Virtualize reuses elements as you scroll, so without it a bar animated from the last piece's progress *@
             <Virtualize Items="_rows" Context="row" ItemSize="41" OverscanCount="10">
                 @{ var piece = row.Piece; var st = row.Stats; }
-                <div class="piece-row @(piece.Archived ? "archived" : "")" role="listitem">
+                <div class="piece-row @(piece.Archived ? "archived" : "")" role="listitem" @key="piece.Id">
                     <a class="piece-row-link pr-cols" href="library/@piece.Id" aria-label="@($"{piece.Name} details")">
                         <MudIcon Icon="@piece.Type.Icon()" Size="Size.Small" Class="fav-kind" title="@piece.Type.Label()" />
                         <span class="pr-name">@piece.Name</span>
@@ -108,11 +109,12 @@ else
         @if (_columns > 0)
         {
         <Virtualize Items="_cardRows" Context="cardRow" ItemSize="232" OverscanCount="3">
-        <div class="piece-grid-row">
+        @* @key: Virtualize reuses elements as you scroll, so without it a bar animated from the last piece's progress *@
+        <div class="piece-grid-row" @key="cardRow[0].Piece.Id">
         @foreach (var row in cardRow)
         {
             var piece = row.Piece; var st = row.Stats;
-            <article class="piece-card @(piece.Archived ? "archived" : "")" role="listitem">
+            <article class="piece-card @(piece.Archived ? "archived" : "")" role="listitem" @key="piece.Id">
                 <a class="piece-card-link" href="library/@piece.Id" aria-label="@($"{piece.Name} details")">
                     <div class="piece-card-top">
                         <span class="type-pill type-@piece.Type"><MudIcon Icon="@piece.Type.Icon()" Size="Size.Small" />@piece.Type.Label()</span>
