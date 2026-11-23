@@ -44,8 +44,8 @@
     /// <summary>Quick controls for the hidden rail: <see cref="RailToggle"/>s and <see cref="RailVolume"/>.</summary>
     [Parameter] public RenderFragment? Strip { get; set; }
 
-    // starts open; kept for the session (shared by the Metronome and Timer pages) but not saved
-    static bool _open = true;
+    // starts hidden (the open rail floats over the page); kept for the session (shared by the Metronome and Timer pages) but not saved
+    static bool _open;
     bool _sheet;
 
     /// <summary>Opens the bottom sheet (narrow screens).</summary>
