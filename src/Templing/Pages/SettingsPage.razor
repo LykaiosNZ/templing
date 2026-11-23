@@ -29,6 +29,15 @@
                 <MudSwitch T="bool" @bind-Value="Store.Settings.AutoLogPlanSteps" @bind-Value:after="Save" Color="Color.Primary" aria-label="Log finished plan steps automatically" Class="ma-0" />
             </div>
         </div>
+        <div class="setting-row">
+            <div class="setting-text">
+                <div class="setting-title">Start the next plan step automatically</div>
+                <div class="setting-desc">Rests always start on their own.</div>
+            </div>
+            <div class="setting-control">
+                <MudSwitch T="bool" @bind-Value="Store.Settings.AutoStartPlanSteps" @bind-Value:after="Save" Color="Color.Primary" aria-label="Start the next plan step automatically" Class="ma-0" />
+            </div>
+        </div>
     </section>
 
     <section aria-labelledby="set-metronome">
