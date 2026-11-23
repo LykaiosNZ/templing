@@ -105,7 +105,10 @@ kbd {
     .pr-wide { display: none; }
     .pr-actions { justify-content: flex-start; margin: -4px 0 4px 26px; }
 }
-.piece-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+/* Library cards are virtualised a row at a time (Library.razor, js/columns.js): each row is its own grid of --cols columns,
+   and its bottom padding is the gap between rows, so it counts towards the height <Virtualize> measures */
+.piece-grid { --card-min: 260px; --card-gap: 14px; }
+.piece-grid-row { display: grid; grid-template-columns: repeat(var(--cols, 1), minmax(0, 1fr)); gap: var(--card-gap); padding-bottom: var(--card-gap); }
 .piece-card {
     background: var(--card); border: 1px solid var(--ring); border-radius: var(--radius); display: flex; flex-direction: column;
     transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease;

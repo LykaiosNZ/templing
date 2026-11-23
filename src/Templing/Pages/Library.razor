@@ -1,6 +1,7 @@
 @page "/library"
-@implements IDisposable
+@implements IAsyncDisposable
 @inject DataStore Store
+@inject IJSRuntime JS
 @inject IDialogService Dialogs
 @inject NavigationManager Nav
 
@@ -63,9 +64,9 @@ else
                 <span class="pr-cols"><span></span><span>Piece</span><span>Tempo</span><span class="pr-wide">Progress</span><span class="pr-wide">Last practised</span><span class="pr-wide">Practice time</span></span>
                 <span></span>
             </div>
-            @foreach (var row in _rows)
-            {
-                var piece = row.Piece; var st = row.Stats;
+            @* only the rows near the screen are drawn: a big library has hundreds, each with a dozen components *@
+            <Virtualize Items="_rows" Context="row" ItemSize="41" OverscanCount="10">
+                @{ var piece = row.Piece; var st = row.Stats; }
                 <div class="piece-row @(piece.Archived ? "archived" : "")" role="listitem">
                     <a class="piece-row-link pr-cols" href="library/@piece.Id" aria-label="@($"{piece.Name} details")">
                         <MudIcon Icon="@piece.Type.Icon()" Size="Size.Small" Class="fav-kind" title="@piece.Type.Label()" />
@@ -97,13 +98,18 @@ else
                         @ManageActions(piece)
                     </span>
                 </div>
-            }
+            </Virtualize>
         </div>
     }
     else
     {
-    <div class="piece-grid" role="list">
-        @foreach (var row in _rows)
+    @* drawn a row of cards at a time, and only the rows near the screen (each card is about 20 components) *@
+    <div class="piece-grid" role="list" @ref="_grid" style="--cols:@_columns">
+        @if (_columns > 0)
+        {
+        <Virtualize Items="_cardRows" Context="cardRow" ItemSize="232" OverscanCount="3">
+        <div class="piece-grid-row">
+        @foreach (var row in cardRow)
         {
             var piece = row.Piece; var st = row.Stats;
             <article class="piece-card @(piece.Archived ? "archived" : "")" role="listitem">
@@ -169,6 +175,9 @@ else
                 </div>
             </article>
         }
+        </div>
+        </Virtualize>
+        }
     </div>
     }
 }
@@ -209,6 +218,37 @@ else
     record Row(Piece Piece, PieceStats Stats, PracticeLog? Feel, List<SectionStats>? Parts);
     List<Row> _rows = new();
 
+    // card view: _rows in rows of as many cards as fit (js/columns.js reports the count)
+    List<Row[]> _cardRows = new();
+    int _columns;
+    ElementReference _grid;
+    ElementReference? _watched;
+    IJSObjectReference? _columnsJs;
+    DotNetObjectReference<Library>? _self;
+
+    void ChunkRows() => _cardRows = _columns > 0 ? _rows.Chunk(_columns).ToList() : new();
+
+    [JSInvokable]
+    public void OnColumns(int columns)
+    {
+        if (columns == _columns) return;
+        _columns = columns;
+        ChunkRows();
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // watch the grid's width while it's shown; the list view has no grid
+        var grid = Store.Settings.LibraryList || Store.Pieces.Count == 0 ? (ElementReference?)null : _grid;
+        if (grid?.Id == _watched?.Id) return;
+        _columnsJs ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/columns.js");
+        if (_watched is { } old) await _columnsJs.InvokeVoidAsync("unwatch", old);
+        _watched = grid;
+        if (grid is { } g) await _columnsJs.InvokeVoidAsync("watch", g, _self ??= DotNetObjectReference.Create(this));
+        else _columns = 0; // a grid shown again starts from its own measurement
+    }
+
     protected override void OnInitialized()
     {
         Store.Changed += OnStoreChanged;
@@ -239,6 +279,7 @@ else
             "time" => rows.OrderByDescending(r => r.Stats.TotalSec),
             _ => rows.OrderByDescending(r => r.Stats.LastDate ?? DateTime.MinValue).ThenBy(r => r.Piece.Name)
         }).ToList();
+        ChunkRows();
     }
 
     async Task Add()
@@ -266,5 +307,11 @@ else
     async Task Log(Piece piece) =>
         await LogDialog.ShowAsync(Dialogs, new PracticeLog { PieceId = piece.Id, PieceName = piece.Name, Unit = piece.Unit }, true);
 
-    public void Dispose() => Store.Changed -= OnStoreChanged;
+    public async ValueTask DisposeAsync()
+    {
+        Store.Changed -= OnStoreChanged;
+        try { if (_columnsJs != null && _watched is { } g) await _columnsJs.InvokeVoidAsync("unwatch", g); }
+        catch (JSDisconnectedException) { }
+        _self?.Dispose();
+    }
 }
