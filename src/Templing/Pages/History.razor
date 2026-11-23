@@ -14,7 +14,7 @@
 </div>
 
 <div class="toolbar">
-    <MudTextField @bind-Value="_search" @bind-Value:after="Refresh" Placeholder="Search" Immediate="true" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense"
+    <MudTextField @bind-Value="_search" @bind-Value:after="Refresh" Placeholder="Search" Immediate="true" DebounceInterval="150" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense"
                   Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.Search" Class="search-box" aria-label="Search notes and pieces" />
     <MudSpacer />
     <div class="toolbar-end">
