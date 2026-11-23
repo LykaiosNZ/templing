@@ -2,7 +2,7 @@
    it's disabled (empty, or a name that's already taken). *@
 <MudDialog>
     <DialogContent>
-        <MudTextField @ref="_field" T="string" @bind-Value="_value" Label="@Label" Placeholder="@Placeholder" Immediate="true" OnKeyDown="KeyDown" />
+        <MudTextField @ref="_field" T="string" @bind-Value="_value" Label="@Label" Placeholder="@Placeholder" Immediate="true" OnKeyDown="KeyDown" OnKeyUp="KeyUp" />
     </DialogContent>
     <DialogActions>
         @if (Blocker is { } why)
@@ -55,7 +55,12 @@
         Dialog.Close(DialogResult.Ok(_value!.Trim()));
     }
 
-    void KeyDown(KeyboardEventArgs e) { if (e.Key == "Enter") Ok(); }
+    // Enter acts on its keyup: closing on the keydown hands focus back to the button that opened the dialog, and the
+    // same key's keypress then clicks it, opening the dialog again. Only an Enter that went down here counts, so
+    // opening the dialog with Enter doesn't close it as the key comes up.
+    bool _enterDown;
+    void KeyDown(KeyboardEventArgs e) { if (e.Key == "Enter") _enterDown = true; }
+    void KeyUp(KeyboardEventArgs e) { if (e.Key == "Enter" && _enterDown) Ok(); }
 
     public static async Task<string?> ShowAsync(IDialogService d, string title, string label, string? value = null, string ok = "Save",
         string? placeholder = null, IEnumerable<string>? taken = null)

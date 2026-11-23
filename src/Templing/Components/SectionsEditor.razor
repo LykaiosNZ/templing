@@ -55,7 +55,7 @@
                 {
                     <div class="er-body sec-body" id="@($"sec-body-{s.Id}")">
                         <MudTextField @bind-Value="s.Name" @bind-Value:after="Changed" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-name" />
-                        <MudNumericField T="double" @bind-Value="s.Bpm" @bind-Value:after="Changed" Label="@BpmLabel" Min="20" Max="400" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num" />
+                        <MudNumericField T="double" @bind-Value="s.Bpm" @bind-Value:after="Changed" Label="@BpmLabel" Min="TempoLimits.MinBpm" Max="TempoLimits.MaxBpm" Variant="Variant.Outlined" Margin="Margin.Dense" Class="sec-num" />
                         @if (!s.FromScore)
                         {
                             <MeterInput Section="s" OnChanged="Changed" />

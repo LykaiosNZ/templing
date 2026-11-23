@@ -44,6 +44,12 @@
         </div>
         @{ var m = Store.Settings.Metronome; }
         <div class="setting-row">
+            <div class="setting-text"><div class="setting-title">Tempo slider</div></div>
+            <div class="setting-control">
+                <MudSwitch T="bool" @bind-Value="m.TempoSlider" @bind-Value:after="Save" Color="Color.Primary" aria-label="Tempo slider" Class="ma-0" />
+            </div>
+        </div>
+        <div class="setting-row">
             <div class="setting-text"><div class="setting-title">Beat display</div></div>
             <div class="setting-control">
                 <MudSelect T="BeatDisplayStyle" @bind-Value="m.BeatDisplay" @bind-Value:after="Save" aria-label="Beat display"
