@@ -21,7 +21,7 @@
 
 <div class="toolbar">
     <MudTextField @bind-Value="_search" @bind-Value:after="Refresh" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.Search"
-                  Immediate="true" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="search-box" InputId="library-search" aria-label="Search library" />
+                  Immediate="true" DebounceInterval="150" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="search-box" InputId="library-search" aria-label="Search library" />
     <MudChipSet T="string" @bind-SelectedValue="_type" @bind-SelectedValue:after="Refresh" SelectionMode="SelectionMode.SingleSelection" CheckMark="false" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" aria-label="Filter by type">
         <MudChip T="string" Value="@("all")" Default="true">All</MudChip>
         @foreach (var t in PieceTypeExt.Ordered)
