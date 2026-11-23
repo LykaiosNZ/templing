@@ -32,13 +32,19 @@
                     }
                 }
                 <span class="plan-nav" role="group" aria-label="Step navigation">
-                    <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Rounded.SkipPrevious" Disabled="Runner.Index == 0" OnClick="Back">Back</MudButton>
-                    <MudButton Size="Size.Small" Variant="Variant.Text" EndIcon="@Icons.Material.Rounded.SkipNext" OnClick="Skip">@(Runner.IsLast ? "Finish" : "Skip")</MudButton>
+                    <MudTooltip Text="Back">
+                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.SkipPrevious" aria-label="Previous step" Disabled="Runner.Index == 0" OnClick="Back" />
+                    </MudTooltip>
+                    <MudTooltip Text="@(Runner.IsLast ? "Finish" : "Skip")">
+                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.SkipNext" aria-label="@(Runner.IsLast ? "Finish the plan" : "Skip to the next step")" OnClick="Skip" />
+                    </MudTooltip>
                 </span>
                 <MudTooltip Text="Edit plan">
                     <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit {plan.Name}")" OnClick="EditPlan" />
                 </MudTooltip>
-                <MudButton Size="Size.Small" Variant="Variant.Text" Class="plan-end" OnClick="End">End plan</MudButton>
+                <MudTooltip Text="End plan">
+                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Close" Class="plan-end" aria-label="@($"End {plan.Name}")" OnClick="End" />
+                </MudTooltip>
             </div>
         </div>
         <div class="plan-dots" role="group" aria-label="Steps">
@@ -61,13 +67,17 @@ else if (Runner.Summary is { } sum)
             <div class="plan-bar-info">
                 <span class="plan-name">@sum.Name</span>
                 <span class="plan-step">
-                    <strong>@(sum.Logs > 0 || sum.Done > 0 ? "Plan complete. Nice work!" : "Plan ended.")</strong>
+                    <strong>@(sum.Logs > 0 || sum.Done > 0 ? "Plan complete." : "Plan ended.")</strong>
                     <span class="muted"> @sum.Done of @sum.Steps steps · @(sum.Logs == 1 ? "1 log" : $"{sum.Logs} logs") · @Stats.Duration(sum.LoggedSec) practised</span>
                 </span>
             </div>
             <div class="plan-bar-actions">
-                <MudButton Size="Size.Small" Variant="Variant.Outlined" Href="history" StartIcon="@Icons.Material.Rounded.History" OnClick="() => Runner.DismissSummary()">View history</MudButton>
-                <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="() => Runner.DismissSummary()">Dismiss</MudButton>
+                <MudTooltip Text="View history">
+                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.History" Href="history" aria-label="View history" OnClick="() => Runner.DismissSummary()" />
+                </MudTooltip>
+                <MudTooltip Text="Dismiss">
+                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Close" aria-label="Dismiss" OnClick="() => Runner.DismissSummary()" />
+                </MudTooltip>
             </div>
         </div>
     </section>
