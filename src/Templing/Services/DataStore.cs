@@ -22,6 +22,14 @@ public class DataStore(IJSRuntime js)
     /// <summary>Raised after any write.</summary>
     public event Action? Changed;
 
+    // Lookups built from the lists on first use and dropped on every change, so screens don't scan
+    // every log for every piece (pieces × logs) each time they refresh.
+    private Dictionary<string, List<PracticeLog>>? _logsByPiece;
+    private Dictionary<string, Piece>? _pieceById;
+
+    private void Invalidate() { _logsByPiece = null; _pieceById = null; }
+    private void Notify() { Invalidate(); Changed?.Invoke(); }
+
     public Task EnsureLoadedAsync() => _loading ??= LoadAsync();
 
     private async Task LoadAsync()
@@ -35,12 +43,12 @@ public class DataStore(IJSRuntime js)
         Settings = settings.FirstOrDefault() ?? new AppSettings();
         Pieces.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
         Loaded = true;
-        Changed?.Invoke();
+        Notify();
     }
 
     private async Task<List<T>> GetAll<T>(string store)
     {
-        var json = await _db!.InvokeAsync<string>("getAll", store);
+        var json = await _db!.InvokeAsync<byte[]>("getAll", store); // UTF-8 JSON (see db.js)
         return JsonSerializer.Deserialize<List<T>>(json, Json) ?? new();
     }
 
@@ -49,7 +57,8 @@ public class DataStore(IJSRuntime js)
     private Task Remove(string store, string id) => _db!.InvokeVoidAsync("remove", store, id).AsTask();
 
     // ---------- Pieces ----------
-    public Piece? GetPiece(string? id) => id is null ? null : Pieces.FirstOrDefault(i => i.Id == id);
+    public Piece? GetPiece(string? id) =>
+        id is null ? null : (_pieceById ??= Pieces.GroupBy(p => p.Id).ToDictionary(g => g.Key, g => g.First())).GetValueOrDefault(id);
 
     public Piece? FindPieceByName(string name) =>
         Pieces.FirstOrDefault(i => string.Equals(i.Name.Trim(), name.Trim(), StringComparison.OrdinalIgnoreCase));
@@ -58,13 +67,14 @@ public class DataStore(IJSRuntime js)
     {
         var idx = Pieces.FindIndex(i => i.Id == piece.Id);
         if (idx >= 0) Pieces[idx] = piece; else Pieces.Add(piece);
+        Invalidate();
         Pieces.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
         // keep log name snapshots in sync after a rename
         var renamed = Logs.Where(l => l.PieceId == piece.Id && l.PieceName != piece.Name).ToList();
         foreach (var l in renamed) l.PieceName = piece.Name;
         await Put("pieces", piece);
         if (renamed.Count > 0) await PutMany("logs", renamed);
-        Changed?.Invoke();
+        Notify();
     }
 
     public async Task DeletePieceAsync(Piece piece, bool deleteLogs)
@@ -72,34 +82,45 @@ public class DataStore(IJSRuntime js)
         if (piece.ScoreFileId != null && !Pieces.Any(i => i.Id != piece.Id && i.ScoreFileId == piece.ScoreFileId))
             await _db!.InvokeVoidAsync("removeFile", piece.ScoreFileId);
         Pieces.RemoveAll(i => i.Id == piece.Id);
+        Invalidate();
         await Remove("pieces", piece.Id);
         var logs = Logs.Where(l => l.PieceId == piece.Id).ToList();
         foreach (var l in logs)
         {
-            if (deleteLogs) { Logs.Remove(l); await Remove("logs", l.Id); }
+            if (deleteLogs) Logs.Remove(l);
             else l.PieceId = null;
         }
+        Invalidate();
+        if (deleteLogs) foreach (var l in logs) await Remove("logs", l.Id);
         if (!deleteLogs && logs.Count > 0) await PutMany("logs", logs);
-        Changed?.Invoke();
+        Notify();
     }
 
     // ---------- Logs ----------
-    public IEnumerable<PracticeLog> LogsFor(string pieceId) => Logs.Where(l => l.PieceId == pieceId);
+    private static readonly List<PracticeLog> NoLogs = new();
+
+    /// <summary>A piece's logs, oldest first. Pass these to <see cref="Stats"/> rather than <see cref="Logs"/>.</summary>
+    public IReadOnlyList<PracticeLog> LogsFor(string? pieceId) =>
+        pieceId is null ? NoLogs
+        : (_logsByPiece ??= Logs.Where(l => l.PieceId != null).OrderBy(l => l.Date).GroupBy(l => l.PieceId!).ToDictionary(g => g.Key, g => g.ToList()))
+            .GetValueOrDefault(pieceId, NoLogs);
 
     public async Task SaveLogAsync(PracticeLog log)
     {
         var idx = Logs.FindIndex(l => l.Id == log.Id);
         if (idx >= 0) { log.Logged ??= Logs[idx].Logged; Logs[idx] = log; }
         else { log.Logged ??= DateTime.Now; Logs.Add(log); }
+        Invalidate();
         await Put("logs", log);
-        Changed?.Invoke();
+        Notify();
     }
 
     public async Task DeleteLogAsync(PracticeLog log)
     {
         Logs.RemoveAll(l => l.Id == log.Id);
+        Invalidate();
         await Remove("logs", log.Id);
-        Changed?.Invoke();
+        Notify();
     }
 
     // ---------- Presets ----------
@@ -108,22 +129,21 @@ public class DataStore(IJSRuntime js)
         var idx = Presets.FindIndex(x => x.Id == p.Id);
         if (idx >= 0) Presets[idx] = p; else Presets.Add(p);
         await Put("presets", p);
-        Changed?.Invoke();
+        Notify();
     }
 
     public async Task DeletePresetAsync(MetronomePreset p)
     {
         Presets.RemoveAll(x => x.Id == p.Id);
         await Remove("presets", p.Id);
-        Changed?.Invoke();
+        Notify();
     }
 
     /// <summary>Pieces for pickers: most recently logged first, never-logged last (see DESIGN.md).</summary>
     public List<Piece> PiecesByRecent(bool includeArchived = false, string? keepId = null)
     {
-        var last = Logs.Where(l => l.PieceId != null).GroupBy(l => l.PieceId!).ToDictionary(g => g.Key, g => g.Max(l => l.Date));
         return Pieces.Where(i => includeArchived || !i.Archived || i.Id == keepId)
-            .OrderByDescending(i => last.TryGetValue(i.Id, out var d) ? d : DateTime.MinValue).ThenBy(i => i.Name).ToList();
+            .OrderByDescending(i => LogsFor(i.Id) is { Count: > 0 } l ? l[^1].Date : DateTime.MinValue).ThenBy(i => i.Name).ToList();
     }
 
     // ---------- Plans ----------
@@ -134,14 +154,14 @@ public class DataStore(IJSRuntime js)
         var idx = Plans.FindIndex(x => x.Id == p.Id);
         if (idx >= 0) Plans[idx] = p; else Plans.Add(p);
         await Put("plans", p);
-        Changed?.Invoke();
+        Notify();
     }
 
     public async Task DeletePlanAsync(PracticePlan p)
     {
         Plans.RemoveAll(x => x.Id == p.Id);
         await Remove("plans", p.Id);
-        Changed?.Invoke();
+        Notify();
     }
 
     // ---------- Session (transient state that survives a refresh; deliberately not backed up) ----------
@@ -153,17 +173,50 @@ public class DataStore(IJSRuntime js)
     /// <summary>Replaces all settings (backup restore). Reload the app afterwards.</summary>
     public async Task ReplaceSettingsAsync(AppSettings settings)
     {
+        CancelSettingsSave();
         settings.Id = "app";
         Settings = settings;
         await Put("settings", Settings);
-        Changed?.Invoke();
+        Changed?.Invoke(); // settings don't feed the lookups
     }
 
     public async Task SaveSettingsAsync()
     {
+        CancelSettingsSave();
         await Put("settings", Settings);
-        Changed?.Invoke();
+        Changed?.Invoke(); // settings don't feed the lookups
     }
+
+    private CancellationTokenSource? _settingsSave;
+    private Task _pendingSettingsSave = Task.CompletedTask;
+    public const int SettingsSaveDelayMs = 400;
+
+    /// <summary>
+    /// Saves settings once they stop changing for <see cref="SettingsSaveDelayMs"/>: for controls that change many times a second
+    /// (tempo +/−, sliders). The in-memory settings are already current, so only the write (and <see cref="Changed"/>) waits.
+    /// </summary>
+    public void SaveSettingsSoon()
+    {
+        CancelSettingsSave();
+        var cts = _settingsSave = new CancellationTokenSource();
+        _pendingSettingsSave = SaveLaterAsync(cts.Token);
+    }
+
+    private async Task SaveLaterAsync(CancellationToken ct)
+    {
+        try { await Task.Delay(SettingsSaveDelayMs, ct); }
+        catch (OperationCanceledException) { return; }
+        await SaveSettingsAsync();
+    }
+
+    /// <summary>Writes a pending <see cref="SaveSettingsSoon"/> now (also lets tests wait for it).</summary>
+    public async Task FlushSettingsAsync()
+    {
+        if (_settingsSave is null) { await _pendingSettingsSave; return; }
+        await SaveSettingsAsync();
+    }
+
+    private void CancelSettingsSave() { _settingsSave?.Cancel(); _settingsSave = null; }
 
     // ---------- Bulk ----------
     /// <summary>Bulk upsert used by backup restore. New persisted entity? Add it here and in Backup.cs (see CLAUDE.md).</summary>
@@ -175,19 +228,21 @@ public class DataStore(IJSRuntime js)
         foreach (var l in ll) { Logs.RemoveAll(x => x.Id == l.Id); Logs.Add(l); }
         foreach (var p in pl) { Presets.RemoveAll(x => x.Id == p.Id); Presets.Add(p); }
         foreach (var p in pp) { Plans.RemoveAll(x => x.Id == p.Id); Plans.Add(p); }
+        Invalidate();
         Pieces.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
         if (il.Count > 0) await PutMany("pieces", il);
         if (ll.Count > 0) await PutMany("logs", ll);
         if (pl.Count > 0) await PutMany("presets", pl);
         if (pp.Count > 0) await PutMany("plans", pp);
-        Changed?.Invoke();
+        Notify();
     }
 
     public async Task ClearAllAsync()
     {
         foreach (var s in new[] { "pieces", "logs", "presets", "files", "plans", "session" }) await _db!.InvokeVoidAsync("clear", s);
         Pieces.Clear(); Logs.Clear(); Presets.Clear(); Plans.Clear();
-        Changed?.Invoke();
+        Invalidate();
+        Notify();
     }
 
     public ValueTask DownloadAsync(string filename, string text, string mime) =>

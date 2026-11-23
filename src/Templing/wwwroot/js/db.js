@@ -37,9 +37,11 @@ function tx(store, mode, fn) {
     }));
 }
 
+// UTF-8 bytes rather than a string: Blazor passes a Uint8Array to .NET as it is, where a string goes through
+// interop's own JSON encoding (a big log store took seconds), and System.Text.Json reads UTF-8 directly.
 export async function getAll(store) {
     const rows = await tx(store, 'readonly', os => os.getAll());
-    return JSON.stringify(rows || []);
+    return new TextEncoder().encode(JSON.stringify(rows || []));
 }
 
 export async function get(store, id) {

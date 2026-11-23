@@ -1,21 +1,24 @@
-// The IndexedDB wrapper, on an in-memory IndexedDB. DataStore.cs talks to it in JSON strings.
+// The IndexedDB wrapper, on an in-memory IndexedDB. DataStore.cs writes JSON strings and reads getAll as UTF-8 JSON bytes.
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach } from 'vitest';
 import * as db from '../../src/Templing/wwwroot/js/db.js';
 
 const STORES = ['pieces', 'logs', 'presets', 'settings', 'files', 'plans', 'session'];
 
+// getAll's bytes, as the JSON text DataStore reads
+const all = async store => new TextDecoder().decode(await db.getAll(store));
+
 beforeEach(async () => { for (const s of STORES) await db.clear(s); });
 
 describe('db.js', () => {
     it('creates every store the app uses', async () => {
-        for (const s of STORES) expect(await db.getAll(s)).toBe('[]');
+        for (const s of STORES) expect(await all(s)).toBe('[]');
     });
 
     it('stores rows by Id, as JSON in and out', async () => {
         await db.put('pieces', JSON.stringify({ Id: 'a', Name: 'Spain' }));
         await db.put('pieces', JSON.stringify({ Id: 'a', Name: 'Spain (live)' }));
-        expect(JSON.parse(await db.getAll('pieces'))).toEqual([{ Id: 'a', Name: 'Spain (live)' }]);
+        expect(JSON.parse(await all('pieces'))).toEqual([{ Id: 'a', Name: 'Spain (live)' }]);
         expect(JSON.parse(await db.get('pieces', 'a')).Name).toBe('Spain (live)');
         expect(await db.get('pieces', 'missing')).toBeNull();
     });
@@ -23,9 +26,9 @@ describe('db.js', () => {
     it('writes many rows in one go, removes and clears', async () => {
         await db.putMany('logs', JSON.stringify([{ Id: '1' }, { Id: '2' }, { Id: '3' }]));
         await db.remove('logs', '2');
-        expect(JSON.parse(await db.getAll('logs')).map(r => r.Id)).toEqual(['1', '3']);
+        expect(JSON.parse(await all('logs')).map(r => r.Id)).toEqual(['1', '3']);
         await db.clear('logs');
-        expect(await db.getAll('logs')).toBe('[]');
+        expect(await all('logs')).toBe('[]');
     });
 
     it('keeps score files as bytes, never through JSON', async () => {

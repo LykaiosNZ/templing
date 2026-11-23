@@ -141,14 +141,14 @@
         _goalsReached = 0;
         foreach (var piece in Store.Pieces)
         {
-            var pts = _logs.Where(l => l.PieceId == piece.Id && l.Unit == piece.Unit && l.Value.HasValue).OrderBy(l => l.Date).ToList();
+            var pts = Store.LogsFor(piece.Id).Where(l => l.Date >= from && l.Unit == piece.Unit && l.Value.HasValue).ToList(); // already oldest first
             if (pts.Count >= 2)
             {
                 var first = pts[0].Value!.Value; var best = pts.Max(p => p.Value!.Value);
                 var gain = best - first;
                 if (gain > 0) _gains.Add(new HBars.Row(piece.Name, first > 0 ? gain / first : 0, $"{first:0} → {best:0}{piece.Unit.Suffix()} (+{(first > 0 ? gain / first : 0):P0})", $"library/{piece.Id}"));
             }
-            var st = Stats.ForPiece(piece, Store.Logs);
+            var st = Stats.ForPiece(piece, Store.LogsFor(piece.Id));
             if (!piece.Archived && st.Progress is { } p && st.LastDate >= from)
             {
                 if (p >= 1) _goalsReached++;

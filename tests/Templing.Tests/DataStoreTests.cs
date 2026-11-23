@@ -173,4 +173,59 @@ public class DataStoreTests
         Assert.NotNull(store.FindPieceByName("  spain"));
         Assert.Null(store.FindPieceByName("Spai"));
     }
+
+    [Fact]
+    public async Task LogsFor_follows_saves_and_deletes_oldest_first()
+    {
+        var piece = new Piece { Name = "P" };
+        var (store, _) = await FakeJs.StoreAsync(db =>
+        {
+            db.Seed("pieces", piece);
+            db.Seed("logs", new PracticeLog { PieceId = piece.Id, Date = new DateTime(2026, 3, 2) },
+                new PracticeLog { PieceId = piece.Id, Date = new DateTime(2026, 3, 1) }, new PracticeLog { Date = new DateTime(2026, 3, 3) });
+        });
+        Assert.Equal([1, 2], store.LogsFor(piece.Id).Select(l => l.Date.Day));
+        Assert.Empty(store.LogsFor(null));
+        Assert.Equal("P", store.GetPiece(piece.Id)!.Name);
+
+        var added = new PracticeLog { PieceId = piece.Id, Date = new DateTime(2026, 3, 5) };
+        await store.SaveLogAsync(added);
+        Assert.Equal([1, 2, 5], store.LogsFor(piece.Id).Select(l => l.Date.Day));
+
+        await store.DeleteLogAsync(added);
+        Assert.Equal(2, store.LogsFor(piece.Id).Count);
+
+        await store.DeletePieceAsync(piece, deleteLogs: false);
+        Assert.Empty(store.LogsFor(piece.Id));
+        Assert.Null(store.GetPiece(piece.Id));
+    }
+
+    [Fact]
+    public async Task Rapid_settings_changes_are_written_once()
+    {
+        var (store, js) = await FakeJs.StoreAsync();
+        var changed = 0;
+        store.Changed += () => changed++;
+        for (var i = 0; i < 20; i++) { store.Settings.WeeklyGoalMin = i; store.SaveSettingsSoon(); }
+        Assert.Equal(0, changed);
+
+        await Task.Delay(DataStore.SettingsSaveDelayMs + 300, TestContext.Current.CancellationToken);
+        await store.FlushSettingsAsync();
+        Assert.Equal(1, js.Db.Calls.Count(c => c.fn == "put"));
+        Assert.Equal(19, js.Db.Row<AppSettings>("settings", "app")!.WeeklyGoalMin);
+        Assert.Equal(1, changed);
+    }
+
+    [Fact]
+    public async Task Flushing_writes_a_pending_settings_save_straight_away()
+    {
+        var (store, js) = await FakeJs.StoreAsync();
+        store.Settings.WeeklyGoalMin = 7;
+        store.SaveSettingsSoon();
+        await store.FlushSettingsAsync();
+        Assert.Equal(7, js.Db.Row<AppSettings>("settings", "app")!.WeeklyGoalMin);
+
+        await Task.Delay(DataStore.SettingsSaveDelayMs + 300, TestContext.Current.CancellationToken);
+        Assert.Equal(1, js.Db.Calls.Count(c => c.fn == "put")); // the cancelled timer doesn't write again
+    }
 }

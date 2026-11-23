@@ -10,7 +10,7 @@ namespace Templing.Services;
 /// this fetches it past the browser cache at start and every few minutes, and raises <see cref="Changed"/> once it
 /// differs from the running build. Builds without the file (the dev server) never report an update.
 /// </summary>
-public sealed class UpdateCheck(HttpClient http, IJSRuntime js) : IAsyncDisposable
+public sealed class UpdateCheck(HttpClient http, IJSRuntime js, DataStore store) : IAsyncDisposable
 {
     private static readonly TimeSpan FirstCheck = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan Every = TimeSpan.FromMinutes(15);
@@ -68,7 +68,11 @@ public sealed class UpdateCheck(HttpClient http, IJSRuntime js) : IAsyncDisposab
     }
 
     /// <summary>Reloads the page. A reload revalidates index.html, where an ordinary navigation could reuse the cached copy.</summary>
-    public ValueTask ReloadAsync() => js.InvokeVoidAsync("location.reload");
+    public async ValueTask ReloadAsync()
+    {
+        await store.FlushSettingsAsync(); // a tempo or slider change may still be waiting to be written
+        await js.InvokeVoidAsync("location.reload");
+    }
 
     public async ValueTask DisposeAsync()
     {
