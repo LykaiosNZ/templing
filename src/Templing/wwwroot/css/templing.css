@@ -324,17 +324,20 @@ button.tempo-value:focus-visible { outline: 2px solid var(--ring); outline-offse
 .meter-slash { color: var(--muted); padding: 0 2px; }
 .sec-body .meter-input { flex: 0 0 auto; width: 120px; }
 .practice-col { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+/* The open Options rail floats over the page: the page always keeps only the hidden rail's strip beside it,
+   so opening or hiding the rail never resizes or moves it (MudBlazor's mini drawer would push it aside). */
+.mud-layout[class*="-mini-md-right"] { --rail-strip-w: 56px; } /* OptionsRail MiniWidth */
+.mud-layout[class*="-mini-md-right"] .mud-main-content { margin-right: var(--rail-strip-w); transition-property: margin-left; } /* no slide in from the right on arriving */
 /* MudContainer (MaxWidth.ExtraLarge, 1920px) centres in the space beside the drawers, so on wide screens the
-   Options rail would pull the page column left of where it sits on other pages. Keep the rail-less left edge
-   and let the column narrow instead. (100% is mud-main-content's width, already minus the rail.) */
-.mud-layout.mud-drawer-open-mini-md-right { --rail-w: 320px; }
-.mud-layout.mud-drawer-close-mini-md-right { --rail-w: 56px; }
+   strip would pull the page column left of where it sits on other pages. Keep the rail-less left edge
+   and let the column narrow instead. (100% is mud-main-content's width, already minus the strip.) */
 .mud-layout[class*="-mini-md-right"] .mud-main-content > main > .mud-container-maxwidth-xl {
     width: auto;
-    margin-left: max(0px, (100% + var(--rail-w) - 1920px) / 2);
+    margin-left: max(0px, (100% + var(--rail-strip-w) - 1920px) / 2);
     margin-right: 0;
 }
-.options-rail.mud-drawer { border-left: 1px solid var(--mud-palette-divider); background: var(--mud-palette-background); }
+.options-rail.mud-drawer { border-left: 1px solid var(--mud-palette-divider); background: var(--mud-palette-background); transition: width 225ms cubic-bezier(0, 0, 0.2, 1), box-shadow 225ms; }
+.options-rail.mud-drawer.mud-drawer--open { box-shadow: var(--mud-elevation-8); }
 .options-rail .mud-drawer-content, .options-sheet .mud-drawer-content { display: flex; flex-direction: column; height: 100%; }
 .rail-head { display: flex; align-items: center; gap: 6px; padding: 10px 10px 10px 16px; border-bottom: 1px solid var(--mud-palette-divider); min-height: 52px; }
 .rail-title { font-size: .85rem; font-weight: 700; margin: 0; flex: 1; }
