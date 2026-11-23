@@ -88,11 +88,11 @@ public sealed class FakeDb : FakeModule
             case "getAll": result = System.Text.Encoding.UTF8.GetBytes(new JsonArray(Store((string)a[0]!).Values.Select(r => (JsonNode)r.DeepClone()).ToArray()).ToJsonString()); break;
             case "get": result = Store((string)a[0]!).TryGetValue((string)a[1]!, out var row) ? row.ToJsonString() : null; break;
             case "put": Put((string)a[0]!, (string)a[1]!); break;
-            case "putMany": foreach (var r in JsonNode.Parse((string)a[1]!)!.AsArray()) Put((string)a[0]!, r!.ToJsonString()); break;
+            case "putMany": foreach (var r in (a[1] is byte[] b ? JsonNode.Parse(b) : JsonNode.Parse((string)a[1]!))!.AsArray()) Put((string)a[0]!, r!.ToJsonString()); break;
             case "remove": Store((string)a[0]!).Remove((string)a[1]!); break;
             case "removeFile": Store("files").Remove((string)a[0]!); break;
             case "clear": Store((string)a[0]!).Clear(); break;
-            case "downloadText": break;
+            case "download": break;
             default: throw new NotSupportedException($"db.js has no {identifier}");
         }
         return ValueTask.FromResult(result is null ? default(TValue)! : (TValue)result);

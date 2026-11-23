@@ -228,4 +228,23 @@ public class DataStoreTests
         await Task.Delay(DataStore.SettingsSaveDelayMs + 300, TestContext.Current.CancellationToken);
         Assert.Equal(1, js.Db.Calls.Count(c => c.fn == "put")); // the cancelled timer doesn't write again
     }
+
+    [Fact]
+    public async Task Importing_replaces_rows_with_the_same_id_and_adds_the_rest()
+    {
+        var piece = new Piece { Name = "P" };
+        var kept = new PracticeLog { PieceId = piece.Id, Notes = "kept" };
+        var replaced = new PracticeLog { PieceId = piece.Id, Notes = "old" };
+        var (store, js) = await FakeJs.StoreAsync(db => { db.Seed("pieces", piece); db.Seed("logs", kept, replaced); });
+
+        var incoming = Enumerable.Range(0, 2000).Select(_ => new PracticeLog { PieceId = piece.Id })
+            .Append(new PracticeLog { Id = replaced.Id, PieceId = piece.Id, Notes = "new" }).ToList();
+        await store.ImportAsync([], incoming);
+
+        Assert.Equal(2002, store.Logs.Count);
+        Assert.Equal(2002, store.LogsFor(piece.Id).Count);
+        Assert.Equal("new", store.Logs.Single(l => l.Id == replaced.Id).Notes);
+        Assert.Equal("new", js.Db.Row<PracticeLog>("logs", replaced.Id)!.Notes);
+        Assert.Equal(2002, js.Db.Count("logs"));
+    }
 }

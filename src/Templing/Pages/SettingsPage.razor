@@ -180,10 +180,10 @@
                 <div class="setting-desc">Score files aren't included.</div>
             </div>
             <div class="setting-control">
-                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Download" OnClick="ExportJson">Export</MudButton>
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Download" OnClick="ExportJson" Disabled="_busy != null">@(_busy == Busy.Export ? "Exporting…" : "Export")</MudButton>
                 <MudFileUpload T="IBrowserFile" @ref="_upload" FilesChanged="ImportJson" Accept=".json,application/json" Class="ma-0">
                     <CustomContent>
-                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Restore" OnClick="@context.OpenFilePickerAsync">Restore…</MudButton>
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Restore" OnClick="@context.OpenFilePickerAsync" Disabled="_busy != null">@(_busy switch { Busy.Read => "Reading…", Busy.Restore => "Restoring…", _ => "Restore…" })</MudButton>
                     </CustomContent>
                     <SelectedTemplate />
                 </MudFileUpload>
@@ -257,24 +257,50 @@
         await Metro.ApplyAsync(persist: false);
     }
 
-    async Task ExportJson() =>
-        await Store.DownloadAsync($"templing-backup-{DateTime.Today:yyyy-MM-dd}.json", Backup.Export(Store), "application/json");
+    // Export and restore hold the page (WebAssembly has one thread) for a moment with a lot of history:
+    // the button says what's happening, and is shown before the work starts
+    enum Busy { Export, Read, Restore }
+    Busy? _busy;
+
+    async Task ShowBusy(Busy? busy)
+    {
+        _busy = busy;
+        StateHasChanged();
+        if (busy != null) await Task.Delay(50); // let the browser paint it before the work blocks the thread
+    }
+
+    async Task ExportJson()
+    {
+        await ShowBusy(Busy.Export);
+        try
+        {
+            var json = Backup.ExportUtf8(Store);
+            await Store.DownloadAsync($"templing-backup-{DateTime.Today:yyyy-MM-dd}.json", json, "application/json");
+        }
+        finally { await ShowBusy(null); }
+    }
 
     async Task ExportCsv() =>
         await Store.DownloadAsync($"templing-log-{DateTime.Today:yyyy-MM-dd}.csv", LogCsv.ExportLogCsv(Store), "text/csv");
 
     MudFileUpload<IBrowserFile>? _upload;
+    const long MaxBackupBytes = 200_000_000;
 
     async Task ImportJson(IBrowserFile? picked)
     {
         if (picked == null) return;
         try
         {
-            using var reader = new StreamReader(picked.OpenReadStream(20_000_000));
-            var file = Backup.Parse(await reader.ReadToEndAsync());
+            await ShowBusy(Busy.Read);
+            // read it whole, in big chunks: each read is a trip to JS, and the default buffer made an 8 MB file take seconds
+            using var bytes = new MemoryStream((int)Math.Min(picked.Size, MaxBackupBytes));
+            await using (var stream = picked.OpenReadStream(MaxBackupBytes)) await stream.CopyToAsync(bytes, 1 << 20);
+            var file = Backup.Parse(bytes.ToArray());
+            await ShowBusy(null);
             var includeSettings = await RestoreDialog.ShowAsync(Dialogs, file, picked.Name);
             if (includeSettings == null) return;
             if (includeSettings == true) await Metro.StopAsync();
+            await ShowBusy(Busy.Restore);
             var summary = await Backup.RestoreAsync(Store, file, includeSettings.Value);
             if (includeSettings == true)
             {
@@ -294,6 +320,7 @@
         }
         finally
         {
+            await ShowBusy(null);
             // forget the picked file, so the same file can be chosen again and no file chip lingers
             if (_upload != null) await _upload.ClearAsync();
         }

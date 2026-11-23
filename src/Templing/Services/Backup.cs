@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Templing.Models;
@@ -63,18 +64,27 @@ public static class Backup
 
     private static readonly JsonSerializerOptions Indented = new(DataStore.Json) { WriteIndented = true };
 
-    public static string Export(DataStore store, DateTimeOffset? now = null) =>
-        JsonSerializer.Serialize(new BackupFile(Format, AppInfo.InformationalVersion, now ?? DateTimeOffset.Now,
+    /// <summary>The backup file as UTF-8 JSON, ready to save (<see cref="DataStore.DownloadAsync(string, byte[], string)"/>).</summary>
+    public static byte[] ExportUtf8(DataStore store, DateTimeOffset? now = null) =>
+        JsonSerializer.SerializeToUtf8Bytes(new BackupFile(Format, AppInfo.InformationalVersion, now ?? DateTimeOffset.Now,
             store.Pieces, store.Logs, store.Presets, store.Settings, store.Plans), Indented);
 
-    /// <summary>Reads and validates a backup file without changing anything. Throws a <see cref="FormatException"/>
+    public static string Export(DataStore store, DateTimeOffset? now = null) => Encoding.UTF8.GetString(ExportUtf8(store, now));
+
+    public static BackupFile Parse(string json) => Parse(Encoding.UTF8.GetBytes(json));
+
+    /// <summary>Reads and validates a backup file (UTF-8 JSON) without changing anything. Throws a <see cref="FormatException"/>
     /// whose message can be shown to the user as it is.</summary>
-    public static BackupFile Parse(string json)
+    public static BackupFile Parse(byte[] utf8)
     {
-        var root = Migrate(json);
         try
         {
-            return root.Deserialize<BackupFile>(DataStore.Json) ?? throw Damaged();
+            // A current backup is read straight from the bytes. Only an older one is loaded as a JSON tree to migrate,
+            // which for a big backup takes a few times longer.
+            var b = CheckFormat(utf8) == Format
+                ? JsonSerializer.Deserialize<BackupFile>(utf8, DataStore.Json)
+                : Migrate(utf8).Deserialize<BackupFile>(DataStore.Json);
+            return b ?? throw Damaged();
         }
         catch (Exception e) when (e is JsonException or NotSupportedException or InvalidOperationException)
         {
@@ -82,28 +92,55 @@ public static class Backup
         }
     }
 
-    /// <summary>Checks a backup's format and brings its JSON up to the current <see cref="Format"/>.</summary>
-    public static JsonObject Migrate(string json)
+    /// <summary>The backup's format, once it's known to be one this build can restore (else a <see cref="FormatException"/>).</summary>
+    static int CheckFormat(byte[] utf8)
     {
-        JsonObject root;
+        int? format = null, version = null;
+        string? appVersion = null;
         try
         {
-            root = JsonNode.Parse(json) as JsonObject ?? throw NotABackup();
+            using var doc = JsonDocument.Parse(utf8);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object) throw NotABackup();
+            foreach (var p in doc.RootElement.EnumerateObject())
+            {
+                if (p.NameEquals("Format")) format = ReadInt(p.Value);
+                else if (p.NameEquals("Version")) version = ReadInt(p.Value);
+                else if (p.NameEquals("AppVersion") && p.Value.ValueKind == JsonValueKind.String) appVersion = p.Value.GetString();
+            }
         }
         catch (JsonException)
         {
             throw NotABackup();
         }
-
         // formats 1–3 kept the format number in "Version"
-        var format = ReadInt(root["Format"]) ?? ReadInt(root["Version"]) ?? throw NotABackup();
-        if (format > Format)
+        var f = format ?? version ?? throw NotABackup();
+        if (f > Format)
         {
-            var by = root["AppVersion"] is JsonValue v && v.TryGetValue<string>(out var app) ? $"Templing {app.Split('+')[0]}" : "a newer version of Templing";
+            var by = appVersion != null ? $"Templing {appVersion.Split('+')[0]}" : "a newer version of Templing";
             throw new FormatException($"This backup was made by {by}, newer than this one. Reload Templing to update it, then try again.");
         }
-        if (format < OldestSupported)
+        if (f < OldestSupported)
             throw new FormatException("This backup is from an early test version of Templing and can't be restored.");
+        return f;
+    }
+
+    static int? ReadInt(JsonElement e) => e.ValueKind == JsonValueKind.Number && e.TryGetInt32(out var n) ? n : null;
+
+    public static JsonObject Migrate(string json) => Migrate(Encoding.UTF8.GetBytes(json));
+
+    /// <summary>Checks a backup's format and brings its JSON up to the current <see cref="Format"/>.</summary>
+    public static JsonObject Migrate(byte[] utf8)
+    {
+        var format = CheckFormat(utf8);
+        JsonObject root;
+        try
+        {
+            root = JsonNode.Parse(utf8) as JsonObject ?? throw NotABackup();
+        }
+        catch (JsonException)
+        {
+            throw NotABackup();
+        }
 
         for (; format < Format; format++)
         {
@@ -113,7 +150,6 @@ public static class Backup
         return root;
     }
 
-    static int? ReadInt(JsonNode? node) => node is JsonValue v && v.TryGetValue<int>(out var n) ? n : null;
     static FormatException NotABackup() => new("That file isn't a Templing backup.");
     static FormatException Damaged() => new("That backup couldn't be read. The file may be damaged.");
 
