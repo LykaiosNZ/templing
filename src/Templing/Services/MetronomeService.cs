@@ -211,6 +211,14 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     public double Min => Unit == TempoUnit.Percent ? 10 : 20;
     public double Max => Unit == TempoUnit.Percent ? 200 : 400;
 
+    /// <summary>Draws the Metronome page's beat display as the run stands. False until the engine has loaded.</summary>
+    public async Task<bool> RefreshDisplayAsync()
+    {
+        if (_mod == null) return false;
+        await _mod.InvokeVoidAsync("refreshDisplay");
+        return true;
+    }
+
     public async Task InitAsync()
     {
         if (_mod != null) return;
@@ -473,7 +481,6 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
             volume = Muted ? 0 : s.Volume,
             sound = Sound,
             accentFirst = s.AccentFirst,
-            flash = s.Flash,
             training = new
             {
                 enabled = tr.Enabled,

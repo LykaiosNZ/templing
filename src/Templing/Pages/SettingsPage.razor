@@ -42,6 +42,72 @@
                 <ClickSoundPicker Value="@ClickSounds.Resolve(Store.Settings.Metronome.Sound)" ValueChanged="SetClickSound" Label="@null" />
             </div>
         </div>
+        @{ var m = Store.Settings.Metronome; }
+        <div class="setting-row">
+            <div class="setting-text"><div class="setting-title">Beat display</div></div>
+            <div class="setting-control">
+                <MudSelect T="BeatDisplayStyle" @bind-Value="m.BeatDisplay" @bind-Value:after="Save" aria-label="Beat display"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="setting-select">
+                    <MudSelectItem T="BeatDisplayStyle" Value="BeatDisplayStyle.Strip">Strip</MudSelectItem>
+                    <MudSelectItem T="BeatDisplayStyle" Value="BeatDisplayStyle.Ring">Ring</MudSelectItem>
+                    <MudSelectItem T="BeatDisplayStyle" Value="BeatDisplayStyle.Both">Strip and ring</MudSelectItem>
+                </MudSelect>
+            </div>
+        </div>
+        <div class="setting-row">
+            <div class="setting-text"><div class="setting-title">Fill</div></div>
+            <div class="setting-control">
+                <MudSelect T="BeatFill" @bind-Value="m.BeatFill" @bind-Value:after="Save" aria-label="Fill"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="setting-select">
+                    <MudSelectItem T="BeatFill" Value="BeatFill.OnClick">On the click</MudSelectItem>
+                    <MudSelectItem T="BeatFill" Value="BeatFill.Sweep">Sweep</MudSelectItem>
+                </MudSelect>
+            </div>
+        </div>
+        <div class="setting-row">
+            <div class="setting-text"><div class="setting-title">New bar</div></div>
+            <div class="setting-control">
+                <MudSelect T="NewBarStyle" @bind-Value="m.NewBar" @bind-Value:after="Save" aria-label="New bar"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="setting-select">
+                    <MudSelectItem T="NewBarStyle" Value="NewBarStyle.Clear">Clear</MudSelectItem>
+                    <MudSelectItem T="NewBarStyle" Value="NewBarStyle.Fade">Fade</MudSelectItem>
+                    <MudSelectItem T="NewBarStyle" Value="NewBarStyle.EmptyOut">Empty out every other bar</MudSelectItem>
+                </MudSelect>
+            </div>
+        </div>
+        <div class="setting-row">
+            <div class="setting-text"><div class="setting-title">Pulse on each new bar</div></div>
+            <div class="setting-control">
+                <MudSwitch T="bool" @bind-Value="m.BarPulse" @bind-Value:after="Save" Color="Color.Primary" aria-label="Pulse on each new bar" Class="ma-0" />
+            </div>
+        </div>
+        <div class="setting-row">
+            <div class="setting-text"><div class="setting-title">Flash on each beat</div></div>
+            <div class="setting-control">
+                <MudSwitch T="bool" @bind-Value="m.Flash" @bind-Value:after="Save" Color="Color.Primary" aria-label="Flash on each beat" Class="ma-0" />
+            </div>
+        </div>
+        <div class="setting-row">
+            <div class="setting-text"><div class="setting-title">Mark the first beat</div></div>
+            <div class="setting-control">
+                <MudSwitch T="bool" @bind-Value="m.MarkFirstBeat" @bind-Value:after="Save" Color="Color.Primary" aria-label="Mark the first beat" Class="ma-0" />
+            </div>
+        </div>
+        <div class="setting-row">
+            <div class="setting-text"><div class="setting-title">Show subdivisions</div></div>
+            <div class="setting-control">
+                <MudSwitch T="bool" @bind-Value="m.ShowSubdivisions" @bind-Value:after="Save" Color="Color.Primary" aria-label="Show subdivisions" Class="ma-0" />
+            </div>
+        </div>
+        @if (m.ShowSubdivisions)
+        {
+            <div class="setting-row setting-row-sub">
+                <div class="setting-text"><div class="setting-title">Thinner subdivisions</div></div>
+                <div class="setting-control">
+                    <MudSwitch T="bool" @bind-Value="m.ThinSubdivisions" @bind-Value:after="Save" Color="Color.Primary" aria-label="Thinner subdivisions" Class="ma-0" />
+                </div>
+            </div>
+        }
     </section>
 
     <section aria-labelledby="set-presets">

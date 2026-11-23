@@ -236,12 +236,36 @@ button.tempo-value:focus-visible { outline: 2px solid var(--ring); outline-offse
 @keyframes pulse-accent { from { opacity: .45; transform: scale(.85); } to { opacity: 0; transform: scale(1.12); } }
 @media (prefers-reduced-motion: reduce) { .pulse.flash, .pulse.flash-accent { animation-duration: 0s; } }
 .tempo-slider { width: 100%; max-width: 520px; }
-.beats { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
-.beat-dot { width: 22px; height: 22px; border-radius: 50%; background: var(--card-2); border: 2px solid var(--grid); transition: background .05s, transform .05s; }
-.beat-dot.accent { border-color: var(--accent); }
-.beat-dot.on { background: var(--ink-2); transform: scale(1.18); }
-.beat-dot.accent.on { background: var(--accent); }
-.beat-dot.count.on { background: var(--series); border-color: var(--series); }
+/* beat display (js/beatdisplay.js): strip and/or ring of segments, one per click */
+.beat-display { --bd-on: var(--accent); --bd-track: color-mix(in srgb, var(--ink) 9%, transparent);
+    display: flex; flex-direction: column; align-items: center; gap: 18px; width: 100%; }
+.beat-display[data-phase=countin] { --bd-on: var(--series); }
+.bd-ring { position: relative; width: min(260px, 70vw); aspect-ratio: 1; }
+.bd-strip { width: min(520px, 100%); }
+.bd-ring svg, .bd-strip svg { display: block; width: 100%; overflow: visible; }
+.bd-ring svg { height: 100%; }
+.bd-track { fill: var(--bd-track); stroke: var(--bd-track); }
+.bd-track.one { fill: color-mix(in srgb, var(--bd-on) 22%, transparent); stroke: color-mix(in srgb, var(--bd-on) 22%, transparent); }
+.bd-fill, .bd-ghost { fill: var(--bd-on); stroke: var(--bd-on); }
+.beat-display[data-paused="1"] .bd-fill { fill: var(--muted); stroke: var(--muted); }
+.bd-hit { fill: #fff; stroke: #fff; mix-blend-mode: soft-light; }
+.bd-sonar { fill: none; stroke: var(--bd-on); }
+.bd-rest { display: none; }
+.beat-display[data-phase=rest] .bd-rest { display: inline; }
+.beat-display[data-phase=rest] .bd-segs { display: none; }
+.bd-rest-track { fill: none; stroke: var(--bd-track); }
+.bd-rest-fill { fill: var(--rest); stroke: var(--rest); }
+.bd-center { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
+    font-family: var(--mono); font-weight: 700; font-size: 5.5rem; letter-spacing: -.05em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--ink); }
+.beat-display[data-phase=countin] .bd-center { color: var(--series); }
+.beat-display[data-phase=rest] .bd-center { color: var(--rest); font-size: 3.4rem; }
+.beat-display[data-paused="1"] .bd-center { opacity: .45; }
+.bd-labels { position: relative; height: 18px; margin-top: 8px; }
+.bd-labels span { position: absolute; top: 0; text-align: center; font: 600 .8rem var(--mono); color: var(--muted); }
+.bd-labels span.past { color: var(--ink-2); }
+.bd-labels span.on { color: var(--bd-on); }
+.beat-display[data-paused="1"] .bd-labels span.on { color: var(--ink-2); }
+.beat-display[data-phase=rest] .bd-labels { visibility: hidden; }
 .status-line { min-height: 26px; display: flex; gap: 8px; align-items: center; font-size: .92rem; flex-wrap: wrap; justify-content: center; }
 .phase { font-weight: 700; padding: 2px 10px; border-radius: 999px; font-size: .82rem; }
 .phase.work { background: var(--accent-soft); color: var(--accent); }
@@ -351,6 +375,8 @@ button.tempo-value:focus-visible { outline: 2px solid var(--ring); outline-offse
 .click-sound-picker { display: flex; align-items: center; gap: 2px; min-width: 0; }
 .click-sound-picker .click-sound-select { flex: 1; min-width: 0; }
 .setting-control .click-sound-picker { width: 300px; max-width: 100%; }
+.setting-control .setting-select { width: 300px; max-width: 100%; } /* the click sound picker's width, so their left and right edges line up */
+.setting-row-sub .setting-text { padding-left: 20px; }
 .rail-strip { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 0; }
 .rail-strip-divider.mud-divider { width: 24px; margin: 2px 0; }
 .rail-vol-pop { padding: 10px 14px; width: 220px; }
