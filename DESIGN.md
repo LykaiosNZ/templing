@@ -133,7 +133,7 @@ Reuse these instead of rebuilding them. When two screens show the same thing, th
 
 | Shared drawing | Used for |
 | --- | --- |
-| `js/shapes.js` (`sector`, `bar`, `countdownRing`, `countdownBar`; CSS `.cd-track`, `.cd-fill`, colour from `--cd-on`) | Every segment, ring and bar in the practice displays: the Metronome's beat display and rest countdown, and the Timer's ring (`js/countdown.js`). A countdown drains clockwise from 12 o'clock, slightly rounded corners, no round caps |
+| `js/shapes.js` (`sector`, `bar`, `countdownRing`, `countdownBar`; CSS `.cd-track`, `.cd-fill`, colour from `--cd-on`) | Every segment, ring and bar in the practice displays: the Metronome's beat display and rest countdown, and the Timer's ring (`js/countdown.js`). A countdown drains clockwise from 12 o'clock, slightly rounded corners, no round caps. **Paused** looks the same on all of them, working or resting, ring or strip: the fill turns grey (`--muted`), the time or beat in the centre dims, and a "Paused" label is grey (one CSS rule keyed on `data-paused` on the display) |
 
 | Component | Used for |
 | --- | --- |
