@@ -5,7 +5,7 @@
 // once on pause / stop), shift(d) when a pause ends. The host's data-* attributes, rendered by Metronome.razor, carry
 // the user's Settings > Metronome choices and the meter to show while stopped; a change to them redraws.
 //
-// host data: style strip|ring|both · fill click|sweep · newbar clear|fade|empty · pulse, mark, subsShow, thin, paused 0|1
+// host data: style strip|ring|both · fill click|sweep · newbar clear|fade|empty · pulse 0|subtle|medium|strong · mark, subsShow, thin, paused 0|1
 //            beats, subs: the loaded section's meter (used until a click says otherwise)
 
 import { svgEl, shape, setD, sector, bar, RING, countdownRing, countdownBar } from './shapes.js';
@@ -17,6 +17,9 @@ let last = null;      // the click sounding now: { time, dur, beat, sub, subs, b
 let state = { phase: 'stopped' }; // from the engine: { phase, now, paused, restStart, restEnd }
 let bars = 0;         // work bars started since the run (or the round) began, for "empty out" and "fade"
 let sonarAt = null;   // when the last bar started, for the pulse
+
+// the pulse at each intensity: brightness, line width and how far it spreads, as a share of the full (strong) pulse
+const PULSE = { subtle: { op: .35, sw: .5, far: .55 }, medium: { op: .6, sw: .75, far: .8 }, strong: { op: 1, sw: 1, far: 1 } };
 
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -235,19 +238,20 @@ function draw() {
     });
 
     // the pulse: two echoes ripple out as a bar starts
-    const t0 = playing && motion && d.pulse === '1' && sonarAt != null ? now - sonarAt : -1;
+    const pk = PULSE[d.pulse]; // undefined while off ('0')
+    const t0 = playing && motion && pk && sonarAt != null ? now - sonarAt : -1;
     for (let j = 0; j < 2; j++) {
         const t = t0 - j * .14, p = t / .7, on = t0 >= 0 && t >= 0 && p < 1;
-        const op = on ? Math.pow(1 - p, 1.5) * (j ? .45 : .8) : 0, sw = (3.2 * (1 - p) + .6).toFixed(2);
+        const op = on ? Math.pow(1 - p, 1.5) * (j ? .45 : .8) * pk.op : 0, sw = ((3.2 * (1 - p) + .6) * pk.sw).toFixed(2);
         if (v.ring) {
             const c = v.ring.sonar[j];
-            if (on) { c.setAttribute('r', (v.ring.R + 2 + p * 24).toFixed(2)); c.setAttribute('stroke-width', sw); }
+            if (on) { c.setAttribute('r', (v.ring.R + 2 + p * 24 * pk.far).toFixed(2)); c.setAttribute('stroke-width', sw); }
             setOp(c, op);
         }
         if (v.strip) {
             const r = v.strip.sonar[j];
             if (on) {
-                const g = 2 + p * 16;
+                const g = 2 + p * 16 * pk.far;
                 r.setAttribute('x', -g); r.setAttribute('y', -g);
                 r.setAttribute('width', v.strip.W + 2 * g); r.setAttribute('height', v.strip.H + 2 * g);
                 r.setAttribute('rx', (5 + g * .7).toFixed(1)); r.setAttribute('stroke-width', sw);

@@ -291,6 +291,10 @@ public enum BeatFill { OnClick, Sweep }
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum NewBarStyle { Clear, Fade, EmptyOut }
 
+/// <summary>How bold the pulse on each new bar is (<see cref="MetronomeSettings.BarPulse"/>): Strong is the original pulse.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum PulseIntensity { Subtle, Medium, Strong }
+
 public class TrainingSettings
 {
     public bool Enabled { get; set; }
@@ -370,6 +374,8 @@ public class MetronomeSettings
     public NewBarStyle NewBar { get; set; } = NewBarStyle.Clear;
     /// <summary>A ripple out from the strip or ring as each bar starts.</summary>
     public bool BarPulse { get; set; } = true;
+    /// <summary>How bold the pulse is: brightness, line width and how far it spreads.</summary>
+    public PulseIntensity BarPulseIntensity { get; set; } = PulseIntensity.Medium;
     /// <summary>Beat 1's empty segments are tinted, so you can see where the bar starts.</summary>
     public bool MarkFirstBeat { get; set; } = true;
     /// <summary>A segment per click; off, a segment per beat.</summary>
