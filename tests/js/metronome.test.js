@@ -314,10 +314,28 @@ describe('speed trainer', () => {
         expect(change).toBeGreaterThan(0);
         expect(g.slice(0, change).every(x => Math.abs(x - 0.5) < 1e-6)).toBe(true);
         expect(g.slice(change).every(x => Math.abs(x - 0.25) < 1e-6)).toBe(true);
-        // the click that starts the faster spacing is a bar's first, after the trainer's time
+        // the click that starts the faster spacing is a bar's first, once the start level's half of the time is up
         expect(audio.sounds[change].kind).toBe('accent');
-        expect(audio.sounds[change].time).toBeGreaterThanOrEqual(4.08);
+        expect(audio.sounds[change].time).toBeGreaterThanOrEqual(2.1);
+        expect(audio.sounds[change].time).toBeLessThan(4.1);
         expect(last('state').trainingProgress).toBe(1);
+    });
+
+    it('over time, plays the end level for its share of the time, not just as the time runs out', async () => {
+        // a plan step's trainer runs over the step's work time, which is when intervals end the run (#43)
+        const levels = [1, 1.1, 1.2, 1.3, 1.4, 1.5];
+        await configure({
+            training: { enabled: true, mode: 'time', durationSec: 60, startFactor: 1, endFactor: 1.5, levels },
+            interval: { enabled: true, workSec: 60, restSec: 0, rounds: 1, cues: false },
+        });
+        m.start();
+        advance(70);
+        expect(last('finished').reason).toBe('interval');
+        // 6 levels, 10 s each: the end level (180 bpm) starts at the first bar line after 50 s and plays to the end
+        const fastest = audio.sounds.findIndex((s, i) => i > 0 && Math.abs(s.time - audio.sounds[i - 1].time - 0.5 / 1.5) < 1e-6);
+        expect(fastest).toBeGreaterThan(0);
+        expect(audio.sounds[fastest].time).toBeGreaterThanOrEqual(50);
+        expect(audio.sounds[fastest].time).toBeLessThan(53);
     });
 
     it('reports how far it is to the next level', async () => {
