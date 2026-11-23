@@ -16,7 +16,22 @@
 
 <div class="page-head">
     <div>
-        @if (Metro.Piece is { } it && Metro.Source == MetronomeSource.Piece)
+        @if (PlanRest)
+        {
+            @* a plan's rest: what comes after it, not the piece the last step left loaded *@
+            if (Runner.NextStep is { } next)
+            {
+                <MudText Typo="Typo.overline" Class="muted">Rest · up next</MudText>
+                <h1 class="page-title" tabindex="-1">@Runner.Describe(next)</h1>
+                <MudText Typo="Typo.body2" Class="muted">@next.IntervalText@(next.Kind == PlanStepKind.Piece ? $" · {(next.Mode == StepMode.Timer ? "timer" : "metronome")}" : "")</MudText>
+            }
+            else
+            {
+                <h1 class="page-title" tabindex="-1">Rest</h1>
+                <MudText Typo="Typo.body2" Class="muted">Last step of @Runner.Plan?.Name</MudText>
+            }
+        }
+        else if (Metro.Piece is { } it && Metro.Source == MetronomeSource.Piece)
         {
             <MudText Typo="Typo.overline" Class="muted">@it.Type.Label()</MudText>
             <h1 class="page-title" tabindex="-1">@it.Name</h1>
@@ -121,6 +136,8 @@
     bool _dismissed;
 
     bool Rest => Metro.IsRunning && Metro.State.phase == "rest";
+    /// <summary>On a running plan's rest step.</summary>
+    bool PlanRest => Runner.Active && Runner.Current is { Kind: PlanStepKind.Rest };
     bool AfterRest => Metro.LastFinishReason == "rest";
     RenderFragment RestTitle => @<span>Rest's over.</span>;
     RenderFragment RestLead => @<MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.PlayArrow" OnClick="() => Metro.StartTimerAsync()">Start next block</MudButton>;
@@ -189,7 +206,13 @@
         if (!Metro.IsRunning) await Metro.SetSilentAsync(true);
     }
 
-    protected override void OnInitialized() => Metro.Changed += OnChanged;
+    protected override void OnInitialized()
+    {
+        Metro.Changed += OnChanged;
+        Runner.Changed += OnRunnerChanged;
+    }
+
+    void OnRunnerChanged() => InvokeAsync(StateHasChanged);
 
     void OnChanged()
     {
@@ -220,5 +243,9 @@
     Task ToggleCues() { Metro.Settings.Timer.VoiceCues = !Metro.Settings.Timer.VoiceCues; return Metro.ApplyAsync(); }
 
 
-    public void Dispose() => Metro.Changed -= OnChanged;
+    public void Dispose()
+    {
+        Metro.Changed -= OnChanged;
+        Runner.Changed -= OnRunnerChanged;
+    }
 }

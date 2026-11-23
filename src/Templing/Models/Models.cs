@@ -418,6 +418,8 @@ public class AppSettings
     public List<IntervalPreset>? TimerIntervalPresets { get; set; }
     /// <summary>Plans: save each step's log automatically when it finishes instead of asking.</summary>
     public bool AutoLogPlanSteps { get; set; }
+    /// <summary>Plans: start the next piece step as soon as the last step (or rest) is done, as rests always do.</summary>
+    public bool AutoStartPlanSteps { get; set; }
     /// <summary>Custom theme colours; null = the built-in ones. See <c>Layout.ThemeColours</c> for the keys.</summary>
     public CustomColours? Colours { get; set; }
 }

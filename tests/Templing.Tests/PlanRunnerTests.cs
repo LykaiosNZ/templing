@@ -125,4 +125,30 @@ public class PlanRunnerTests
         edited.Steps[0].StartTempo = 90;
         Assert.True(runner.ChangesCurrentStep(edited));
     }
+
+    [Theory]
+    [InlineData(false, StepState.Ready)]
+    [InlineData(true, StepState.Running)]
+    public async Task The_next_piece_step_starts_by_itself_only_with_the_setting_on(bool autoStart, StepState expected)
+    {
+        var (runner, store, _, nav) = await Init();
+        store.Settings.AutoStartPlanSteps = autoStart;
+        await runner.GoToAsync(1); // the rest, which starts by itself either way
+        Assert.Equal(StepState.Running, runner.State);
+
+        await runner.AdvanceAsync(); // the rest ran out
+
+        Assert.Equal("s3", runner.Current!.Id);
+        Assert.Equal(expected, runner.State);
+        Assert.Equal("http://localhost/metronome/piece/b", nav.Uri);
+    }
+
+    [Fact]
+    public async Task Skipping_to_a_piece_step_waits_for_start_even_with_auto_start_on()
+    {
+        var (runner, store, _, _) = await Init();
+        store.Settings.AutoStartPlanSteps = true;
+        await runner.GoToAsync(2);
+        Assert.Equal(StepState.Ready, runner.State);
+    }
 }

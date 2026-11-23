@@ -119,14 +119,14 @@ public class PlanRunner
         await SaveRunAsync();
     }
 
-    /// <summary>Called after the finished step was logged (or not): move to the next step, or end.</summary>
+    /// <summary>Called after the finished step was logged (or not): move to the next step, or end. With <see cref="AppSettings.AutoStartPlanSteps"/> on, a piece step starts straight away.</summary>
     public async Task AdvanceAsync()
     {
         if (Plan == null) return;
         if (Current != null) Completed.Add(Current.Id);
         if (IsLast) { await EndAsync(finished: true); return; }
         Index++;
-        await LoadStepAsync(navigate: true, autoStartRest: true);
+        await LoadStepAsync(navigate: true, autoStartRest: true, autoStartPiece: _store.Settings.AutoStartPlanSteps);
     }
 
     /// <summary>Would running <paramref name="edited"/> change (or remove) the current step? Then applying it restarts that step.</summary>
@@ -222,7 +222,8 @@ public class PlanRunner
     private Task SaveRunAsync() => Plan == null ? Task.CompletedTask
         : _store.PutSessionAsync(new RunState(RunKey, Plan.Id, Index, Completed.ToList(), Logs, LoggedSec, EditedForSession ? Plan : null));
 
-    private async Task LoadStepAsync(bool navigate, bool autoStartRest)
+    /// <summary>Load the current step. Rests start on their own unless restoring; a piece step only when the plan moved on by itself and the setting is on.</summary>
+    private async Task LoadStepAsync(bool navigate, bool autoStartRest, bool autoStartPiece = false)
     {
         var s = Current;
         if (s == null) { await EndAsync(true); return; }
@@ -250,6 +251,7 @@ public class PlanRunner
             await _metro.SetStepTempoAsync(s.StartTempo, s.TrainerSettings());
         if (navigate) _nav.NavigateTo(StepUrl(s));
         Changed?.Invoke();
+        if (autoStartPiece) await StartStepAsync();
     }
 
     private async void OnMetroFinished(string reason)
