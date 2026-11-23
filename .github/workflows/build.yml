@@ -1,4 +1,4 @@
-# Checks that the app builds on every push to main and on pull requests. Deploying is pages.yml, on a release.
+# Builds the app and runs the tests on every push to main and on pull requests. Deploying is pages.yml, on a release.
 name: Build
 
 on:
@@ -21,3 +21,18 @@ jobs:
 
       - name: Build
         run: dotnet build src/Templing/Templing.csproj -c Release
+
+      - name: Test (C#)
+        run: dotnet test --project tests/Templing.Tests -c Release
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/js/package-lock.json
+
+      - name: Test (JS)
+        working-directory: tests/js
+        run: |
+          npm ci
+          npm test

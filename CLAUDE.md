@@ -20,7 +20,17 @@ dotnet run --project src/Templing/Templing.csproj --launch-profile http   # http
 - **Deploy:** publishing a GitHub release (tag `v1.2.3`) builds and publishes to GitHub Pages (`.github/workflows/pages.yml`, https://lykaiosnz.github.io/templing/); pushes to `main` and pull requests only build (`build.yml`). The release tag is the deployed version (`-p:Version`), so `<Version>` in `Templing.csproj` is only the default for local builds and manual runs: raise it after a release to the next version. Redeploy a release by running the Pages workflow by hand on its tag. The `github-pages` environment must allow tags matching `v*` as well as `main`, or release deploys are refused. The app is served from `/templing/`, so the workflow rewrites `<base href>` and copies `index.html` to `404.html` (Pages has no SPA fallback). Keep URLs relative (`library`, not `/library`), or they escape the subpath.
 - **Update notice:** publishing writes `version.json` (the informational version, version + commit) beside the app (`WriteVersionFile` in `Templing.csproj`). `Services/UpdateCheck.cs` fetches it uncached 10 s after start and every 15 min, and offers a reload once it differs from the running build. The dev server has no `version.json`, so it never shows; to try it, publish, serve `wwwroot` statically and edit the file.
 - The dev server does **not** hot-reload: restart it after C# / Razor / JS / CSS changes (static files are served from a build manifest, so even CSS edits need a build + restart) (`.claude/launch.json` has the `templing` preview config).
-- There is no test project. Verify changes in the browser, and use clearly named throwaway fixtures (e.g. ids prefixed `zztest-`). Remove them afterwards and never touch the user's real data in the browser.
+- **Tests** (both run in CI, `build.yml`): C# in `tests/Templing.Tests` (xUnit v3 on Microsoft.Testing.Platform, opted into in `global.json`), JS in `tests/js` (Vitest + jsdom, importing the app's modules from `wwwroot/js` as they are):
+
+  ```bash
+  dotnet test --project tests/Templing.Tests
+  cd tests/js && npm install && npm test
+  ```
+
+  - `FakeJs` stands in for the browser on the C# side: `import("./js/db.js")` is an in-memory IndexedDB, so `DataStore`, `Backup` and `MetronomeService` run as they are. Seed it with `FakeJs.StoreAsync(db => db.Seed(...))`.
+  - `tests/js/fakeaudio.js` runs `metronome.js` on a hand-moved audio clock with Vitest's fake timers, recording each click's time and kind; `db.test.js` uses `fake-indexeddb`. jsdom has no layout or `isContentEditable`, so leave drawing details to the browser.
+  - `BackupTests.Every_list_in_the_store_is_backed_up` fails when a `DataStore` list has no `BackupFile` field of the same name (the checklist below).
+  - Unit tests don't replace a look in the browser for UI changes. There, use clearly named throwaway fixtures (e.g. ids prefixed `zztest-`), remove them afterwards and never touch the user's real data.
 
 ## Layout
 
@@ -39,6 +49,7 @@ dotnet run --project src/Templing/Templing.csproj --launch-profile http   # http
 | `wwwroot/js/shapes.js`, `wwwroot/js/countdown.js` | Shared SVG shapes (segments, countdown ring / bar) for the beat display and the Timer's ring, which `countdown.js` draws on each engine frame. Reuse these rather than drawing a near copy (DESIGN.md, Shared components) |
 | `Services/ClickSounds.cs` + `wwwroot/sounds` | Click sounds: hi/lo WAV pairs (CC0, `Credits.txt`), the catalog and display names, `Default`. Audio cues stay synthesised in `metronome.js` |
 | `wwwroot/js/db.js` | IndexedDB wrapper (JSON stores + binary `files` store) |
+| `tests/Templing.Tests`, `tests/js` | C# (xUnit) and JS (Vitest) unit tests; see Run / build |
 | `Components/Charts/*` + `wwwroot/js/charts.js` | Charts via Apache ECharts (Apache-2.0): a trimmed bundle in `wwwroot/lib/echarts`, built by `tools/echarts`; C# formats all text, JS draws |
 
 ## Persisted data: checklist (don't skip)

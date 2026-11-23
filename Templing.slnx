@@ -2,4 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/Templing/Templing.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Templing.Tests/Templing.Tests.csproj" />
+  </Folder>
 </Solution>

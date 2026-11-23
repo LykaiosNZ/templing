@@ -82,6 +82,15 @@ To try it on a phone or tablet on the same network, use the `lan` profile and op
 dotnet run --project src/Templing/Templing.csproj --launch-profile lan
 ```
 
+## Tests
+
+Unit tests for the C# (xUnit) and the JavaScript (Vitest, which needs [Node.js](https://nodejs.org) 18 or later):
+
+```bash
+dotnet test --project tests/Templing.Tests
+cd tests/js && npm install && npm test
+```
+
 ## Built with
 
 - [Blazor WebAssembly](https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor) and [MudBlazor](https://mudblazor.com)
