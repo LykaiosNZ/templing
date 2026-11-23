@@ -8,8 +8,8 @@
 // host data: style strip|ring|both · fill click|sweep · newbar clear|fade|empty · pulse, mark, subsShow, thin, paused 0|1
 //            beats, subs: the loaded section's meter (used until a click says otherwise)
 
-const NS = 'http://www.w3.org/2000/svg';
-const ROUND = 2.4; // corner rounding: every segment is stroked with its own colour this wide
+import { svgEl, shape, setD, sector, bar, RING, countdownRing, countdownBar } from './shapes.js';
+
 const WATCHED = ['data-style', 'data-fill', 'data-newbar', 'data-pulse', 'data-mark', 'data-subs-show', 'data-thin', 'data-beats', 'data-subs', 'data-paused'];
 
 let view = null;      // what's drawn: { host, observer, sig, segs, ... }
@@ -46,15 +46,7 @@ export function shift(d) {
 }
 
 // ------------------------------------------------------------------ drawing
-const svgEl = (tag, attrs, parent) => {
-    const e = document.createElementNS(NS, tag);
-    for (const k in attrs) e.setAttribute(k, attrs[k]);
-    if (parent) parent.appendChild(e);
-    return e;
-};
-const rad = d => d * Math.PI / 180;
 const clamp01 = x => Math.max(0, Math.min(1, x));
-const setD = (e, d) => { if (e && e._d !== d) { e._d = d; e.setAttribute('d', d); } };
 const setOp = (e, o) => { if (!e) return; const v = o.toFixed(3); if (e._o !== v) { e._o = v; e.setAttribute('opacity', v); } };
 const setText = (e, t) => { if (e && e.textContent !== t) e.textContent = t; };
 // m:ss / h:mm:ss, as Stats.Clock
@@ -63,26 +55,6 @@ const clockText = s => {
     const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, ss = String(s % 60).padStart(2, '0');
     return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
 };
-
-// annular sector from angle a0 to a1 (degrees, 0 = 3 o'clock), inset by half the rounding stroke
-function sector(a0, a1, R, r) {
-    const ri = r + ROUND / 2, Ro = R - ROUND / 2, inset = (ROUND / 2) / ((R + r) / 2) * 180 / Math.PI;
-    a0 += inset; a1 -= inset;
-    if (a1 - a0 < 0.05) return '';
-    const p = (rr, a) => (rr * Math.cos(rad(a))).toFixed(2) + ' ' + (rr * Math.sin(rad(a))).toFixed(2);
-    const large = a1 - a0 > 180 ? 1 : 0;
-    return `M${p(Ro, a0)}A${Ro} ${Ro} 0 ${large} 1 ${p(Ro, a1)}L${p(ri, a1)}A${ri} ${ri} 0 ${large} 0 ${p(ri, a0)}Z`;
-}
-
-// rounded bar from x0 to x1, inset the same way
-function bar(x0, x1, y, h) {
-    const w = x1 - x0 - ROUND;
-    if (w < 0.3) return '';
-    const x = x0 + ROUND / 2, top = y + ROUND / 2, hh = h - ROUND, r = Math.min(3, w / 2, hh / 2), f = n => n.toFixed(2);
-    return `M${f(x + r)} ${f(top)}H${f(x + w - r)}Q${f(x + w)} ${f(top)} ${f(x + w)} ${f(top + r)}V${f(top + hh - r)}`
-        + `Q${f(x + w)} ${f(top + hh)} ${f(x + w - r)} ${f(top + hh)}H${f(x + r)}Q${f(x)} ${f(top + hh)} ${f(x)} ${f(top + hh - r)}`
-        + `V${f(top + r)}Q${f(x)} ${f(top)} ${f(x + r)} ${f(top)}Z`;
-}
 
 function ensure() {
     const host = document.getElementById('metro-beats');
@@ -110,7 +82,7 @@ function build(v, beats, subs) {
     host.replaceChildren();
     Object.assign(v, { beats, subs, vs, segs: [], ring: null, strip: null, labels: [], center: null });
 
-    const attrs = cls => ({ class: cls, 'stroke-width': ROUND, 'stroke-linejoin': 'round' });
+    const attrs = shape;
     const layers = svg => ({
         track: svgEl('g', { class: 'bd-segs' }, svg), ghost: svgEl('g', { class: 'bd-segs bd-ghosts' }, svg),
         fill: svgEl('g', { class: 'bd-segs' }, svg), hit: svgEl('g', { class: 'bd-segs' }, svg),
@@ -125,7 +97,7 @@ function build(v, beats, subs) {
         const center = document.createElement('div');
         center.className = 'bd-center';
         wrap.appendChild(center);
-        const R = 96, rBeat = 77, rSub = thin ? 82 : 77;
+        const R = RING.R, rBeat = RING.r, rSub = thin ? 82 : RING.r;
         let gS = 2.6, gB = 8;
         const gaps = beats * gB + beats * (vs - 1) * gS;
         if (gaps > 130) { gS *= 130 / gaps; gB *= 130 / gaps; }
@@ -146,11 +118,10 @@ function build(v, beats, subs) {
         }
         const sonar = svgEl('g', { class: 'bd-segs' }, svg);
         const rest = svgEl('g', { class: 'bd-rest' }, svg);
-        svgEl('circle', { class: 'bd-rest-track', r: (R + rBeat) / 2, 'stroke-width': R - rBeat }, rest);
         v.ring = {
             R, rBeat, ghosts: L.ghost,
             sonar: [0, 1].map(() => svgEl('circle', { class: 'bd-sonar', r: R, opacity: 0 }, sonar)),
-            rest: svgEl('path', attrs('bd-rest-fill'), rest),
+            rest: countdownRing(rest, R, rBeat),
         };
         v.center = center;
     }
@@ -196,11 +167,10 @@ function build(v, beats, subs) {
         }
         const sonar = svgEl('g', { class: 'bd-segs' }, svg);
         const rest = svgEl('g', { class: 'bd-rest' }, svg);
-        svgEl('path', { ...attrs('bd-track'), d: bar(0, W, 0, H) }, rest);
         v.strip = {
             W, H, ghosts: L.ghost,
             sonar: [0, 1].map(() => svgEl('rect', { class: 'bd-sonar', opacity: 0 }, sonar)),
-            rest: svgEl('path', attrs('bd-rest-fill'), rest),
+            rest: countdownBar(rest, W, H),
         };
     }
     v.cb = undefined;
@@ -219,8 +189,8 @@ function draw() {
         const total = (s.restEnd ?? 0) - (s.restStart ?? 0);
         const left = Math.max(0, (s.restEnd ?? 0) - Math.max(now, s.restStart ?? now));
         const f = total > 0 ? clamp01(left / total) : 0;
-        if (v.ring) setD(v.ring.rest, f > .999 ? sector(-90, 269.95, v.ring.R, v.ring.rBeat) : sector(-90, -90 + 360 * f, v.ring.R, v.ring.rBeat));
-        if (v.strip) setD(v.strip.rest, bar(0, v.strip.W * f, 0, v.strip.H));
+        v.ring?.rest.set(f);
+        v.strip?.rest.set(f);
         setText(v.center, clockText(left));
         return;
     }

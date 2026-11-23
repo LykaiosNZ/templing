@@ -129,6 +129,12 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
 
 Reuse these instead of rebuilding them. When two screens show the same thing, they share one component.
 
+**Consistency comes from shared code, not from copying.** When something looks or behaves like something that already exists (a ring, a bar, a picker, a countdown), reuse that abstraction: a Razor component, a CSS class, or a JS module, and make it configurable where the two really differ. Don't re-draw a near copy; near copies drift (the Timer's ring once had round caps and a thinner stroke than the Metronome's rest ring). If the existing one can't be reused as it stands, pull the shared part out first, then use it in both places.
+
+| Shared drawing | Used for |
+| --- | --- |
+| `js/shapes.js` (`sector`, `bar`, `countdownRing`, `countdownBar`; CSS `.cd-track`, `.cd-fill`, colour from `--cd-on`) | Every segment, ring and bar in the practice displays: the Metronome's beat display and rest countdown, and the Timer's ring (`js/countdown.js`). A countdown drains clockwise from 12 o'clock, slightly rounded corners, no round caps |
+
 | Component | Used for |
 | --- | --- |
 | `ScoreImportDialog` (`ScoreImportDialog.Title`) | Guitar Pro / MusicXML import; every entry point uses `Title` for its label |

@@ -36,6 +36,7 @@ dotnet run --project src/Templing/Templing.csproj --launch-profile http   # http
 | `Services/Hotkeys.cs`, `Services/Shortcuts.cs`, `wwwroot/js/keys.js` | Keyboard shortcuts: the one catalog of keys, the handler registry, the key listener |
 | `wwwroot/js/metronome.js` | Audio engine (look-ahead scheduler, intervals, trainer, per-bar meters) |
 | `wwwroot/js/beatdisplay.js` | The Metronome page's beat display (strip / ring), fed each heard click by `metronome.js`; settings come from `#metro-beats` data attributes |
+| `wwwroot/js/shapes.js`, `wwwroot/js/countdown.js` | Shared SVG shapes (segments, countdown ring / bar) for the beat display and the Timer's ring, which `countdown.js` draws on each engine frame. Reuse these rather than drawing a near copy (DESIGN.md, Shared components) |
 | `Services/ClickSounds.cs` + `wwwroot/sounds` | Click sounds: hi/lo WAV pairs (CC0, `Credits.txt`), the catalog and display names, `Default`. Audio cues stay synthesised in `metronome.js` |
 | `wwwroot/js/db.js` | IndexedDB wrapper (JSON stores + binary `files` store) |
 | `Components/Charts/*` + `wwwroot/js/charts.js` | Charts via Apache ECharts (Apache-2.0): a trimmed bundle in `wwwroot/lib/echarts`, built by `tools/echarts`; C# formats all text, JS draws |

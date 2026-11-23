@@ -237,6 +237,10 @@ button.tempo-value:focus-visible { outline: 2px solid var(--ring); outline-offse
 @media (prefers-reduced-motion: reduce) { .pulse.flash, .pulse.flash-accent { animation-duration: 0s; } }
 .tempo-slider { width: 100%; max-width: 520px; }
 /* beat display (js/beatdisplay.js): strip and/or ring of segments, one per click */
+/* countdown ring / bar (shapes.js): the Metronome's rest and the Timer's ring */
+.cd-track { fill: none; stroke: var(--cd-track, color-mix(in srgb, var(--ink) 9%, transparent)); }
+.cd-track-bar { fill: var(--cd-track, color-mix(in srgb, var(--ink) 9%, transparent)); stroke: var(--cd-track, color-mix(in srgb, var(--ink) 9%, transparent)); }
+.cd-fill { fill: var(--cd-on); stroke: var(--cd-on); transition: fill .4s, stroke .4s; }
 .beat-display { --bd-on: var(--accent); --bd-track: color-mix(in srgb, var(--ink) 9%, transparent);
     display: flex; flex-direction: column; align-items: center; gap: 18px; width: 100%; }
 .beat-display[data-phase=countin] { --bd-on: var(--series); }
@@ -253,8 +257,7 @@ button.tempo-value:focus-visible { outline: 2px solid var(--ring); outline-offse
 .bd-rest { display: none; }
 .beat-display[data-phase=rest] .bd-rest { display: inline; }
 .beat-display[data-phase=rest] .bd-segs { display: none; }
-.bd-rest-track { fill: none; stroke: var(--bd-track); }
-.bd-rest-fill { fill: var(--rest); stroke: var(--rest); }
+.bd-rest { --cd-on: var(--rest); --cd-track: var(--bd-track); }
 .bd-center { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
     font-family: var(--mono); font-weight: 700; font-size: 5.5rem; letter-spacing: -.05em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--ink); }
 .beat-display[data-phase=countin] .bd-center { color: var(--series); }
@@ -561,11 +564,11 @@ html.boot-light .boot { --boot-accent: var(--boot-accent-light, #0361c3); --boot
 @media (prefers-reduced-motion: reduce) { .timer-flash { animation: none; } }
 .timer-ring { position: relative; width: min(340px, 78vw); aspect-ratio: 1; }
 .timer-ring svg { width: 100%; height: 100%; }
-.ring-track { fill: none; stroke: var(--card-2); stroke-width: 10; }
-.ring-fill { fill: none; stroke: var(--phase); stroke-width: 10; stroke-linecap: round; transition: stroke-dasharray .5s linear, stroke .4s; }
+.timer-ring .countdown { --cd-on: var(--phase); position: absolute; inset: 0; }
+.timer-ring .countdown svg { display: block; width: 100%; height: 100%; }
 .timer-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .timer-phase { font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: .85rem; color: var(--phase); }
-.timer-stage.paused .timer-clock, .timer-stage.paused .ring-fill { opacity: .55; }
+.timer-stage.paused .timer-clock, .timer-stage.paused .cd-fill { opacity: .55; }
 .timer-clock { font-family: var(--mono); font-size: clamp(3.2rem, 11vw, 5.4rem); font-weight: 700; letter-spacing: -.04em; line-height: 1.05; color: var(--ink); font-variant-numeric: tabular-nums; }
 .timer-sub { color: var(--ink-2); font-size: .9rem; }
 .session-line { font-size: .9rem; }
