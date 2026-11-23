@@ -31,27 +31,30 @@
     </div>
 </div>
 
-<section class="card">
-    @* key forces paging reset when filters change *@
-    <LogTable @key="_version" Logs="_logs" ShowPiece="true" PageSize="60">
-        <Empty>
-            @if (Filtered)
-            {
-                <div class="empty-state">
-                    <MudText Typo="Typo.h6">No matching entries</MudText>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ClearFilters">Clear filters</MudButton>
-                </div>
-            }
-            else
-            {
-                <div class="empty-state">
-                    <MudText Typo="Typo.h6">No entries yet</MudText>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.AddTask" OnClick="Add">Log practice</MudButton>
-                </div>
-            }
-        </Empty>
-    </LogTable>
-</section>
+@if (_logs.Count == 0)
+{
+    @if (Filtered)
+    {
+        <div class="empty-state">
+            <MudText Typo="Typo.h6">No matching entries</MudText>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ClearFilters">Clear filters</MudButton>
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <MudText Typo="Typo.h6">No entries yet</MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.AddTask" OnClick="Add">Log practice</MudButton>
+        </div>
+    }
+}
+else
+{
+    <section class="card">
+        @* key forces paging reset when filters change *@
+        <LogTable @key="_version" Logs="_logs" ShowPiece="true" PageSize="60" />
+    </section>
+}
 
 @code {
     string _piece = "";

@@ -22,12 +22,10 @@
 
 @if (Store.Logs.Count == 0)
 {
-    <section class="card">
-        <div class="empty-state">
-            <MudText Typo="Typo.h6">No stats yet</MudText>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.AddTask" OnClick="Add">Log practice</MudButton>
-        </div>
-    </section>
+    <div class="empty-state">
+        <MudText Typo="Typo.h6">No stats yet</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.AddTask" OnClick="Add">Log practice</MudButton>
+    </div>
     return;
 }
 
