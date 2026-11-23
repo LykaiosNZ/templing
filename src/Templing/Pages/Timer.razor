@@ -35,13 +35,8 @@
     <section class="timer-stage @PhaseClass" aria-label="Timer">
         <div class="timer-flash" @key="_flashKey" aria-hidden="true"></div>
         <div class="timer-ring">
-            <svg viewBox="0 0 200 200" aria-hidden="true">
-                <circle cx="100" cy="100" r="88" class="ring-track" />
-                @if (Dash is { } dash)
-                {
-                    <circle cx="100" cy="100" r="88" class="ring-fill" style="stroke-dasharray:@dash" transform="rotate(-90 100 100)" />
-                }
-            </svg>
+            @* drawn by countdown.js, with the same ring as the Metronome's rest *@
+            <div id="timer-ring" class="countdown" data-full="@(RingFull ? "1" : "0")"></div>
             <div class="timer-center" role="timer" aria-live="off">
                 <div class="timer-phase" aria-live="polite">@PhaseLabel</div>
                 <div class="timer-clock">@Clock</div>
@@ -171,24 +166,16 @@
         }
     }
 
-    // ring: fraction of the current block that's elapsed
-    string? Dash
+    // the ring with no countdown running: full before a timed block, empty once it's over (or counting up)
+    bool RingFull => Metro.IsRunning ? Metro.State.remaining is not null : !ShowEndPanel && Metro.EffectiveIntervals.WorkSec > 0;
+
+    bool _ringDrawn;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        get
-        {
-            const double c = 2 * Math.PI * 88;
-            double frac = 0;
-            if (Metro.IsRunning && Metro.State.remaining is { } rem)
-            {
-                var total = Rest ? _restTotal : Math.Max(1, (Metro.State.workElapsed ?? 0) + rem);
-                frac = 1 - rem / Math.Max(1, total);
-            }
-            var on = Math.Clamp(frac, 0, 1) * c;
-            if (on < 0.5) return null;
-            return $"{on.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)} {c.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)}";
-        }
+        if (firstRender) _ringDrawn = false;
+        if (!_ringDrawn && await Metro.RefreshDisplayAsync()) _ringDrawn = true;
     }
-    double _restTotal = 60;
+
 
     protected override async Task OnParametersSetAsync()
     {
@@ -209,7 +196,6 @@
         var phase = Metro.IsRunning ? Metro.State.phase : "stopped";
         if (phase != _lastPhase)
         {
-            if (phase == "rest") _restTotal = Math.Max(1, Metro.State.remaining ?? 60);
             if (_lastPhase != null) { _flashKey++; Vibrate(); }
             if (Metro.IsRunning) _dismissed = false;
             _lastPhase = phase;

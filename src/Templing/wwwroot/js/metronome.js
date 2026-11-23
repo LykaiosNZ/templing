@@ -16,6 +16,7 @@
 // }
 
 import * as display from './beatdisplay.js';
+import * as countdown from './countdown.js';
 
 const LOOKAHEAD_MS = 25;
 const SCHEDULE_AHEAD = 0.12;
@@ -238,7 +239,7 @@ function stopInternal(notify) {
     raf = null;
     queue.length = 0;
     if (st) { accumulateActive(); st.running = false; }
-    display.frame({ phase: 'stopped' });
+    frameDisplays({ phase: 'stopped' });
     window.dispatchEvent(new CustomEvent('templing-stop'));
     if (notify) emit('stopped');
 }
@@ -293,7 +294,7 @@ export function pause() {
     if (raf) cancelAnimationFrame(raf);
     raf = null;
     while (queue.length) consume(queue.shift(), false); // what's queued is as good as heard
-    display.frame(displayState());
+    frameDisplays(displayState());
     emit('state');
 }
 
@@ -566,7 +567,7 @@ function drawLoop() {
     const now = ctx.currentTime;
     let changed = false;
     while (queue.length && queue[0].time <= now) if (consume(queue.shift(), true)) changed = true;
-    display.frame(displayState());
+    frameDisplays(displayState());
     const ms = performance.now();
     if (changed || ms - lastEmit > 500) { emit('state'); lastEmit = ms; }
     if (st && ((st.running && !st.paused) || queue.length)) raf = requestAnimationFrame(drawLoop);
@@ -602,14 +603,20 @@ function flashBeat(beat) {
     pulse.classList.add(beat === 0 && opts.mark === '1' ? 'flash-accent' : 'flash');
 }
 
-// What the beat display needs from the run, on each frame
+// What the displays (the beat display, the Timer's ring) need from the run, on each frame
 function displayState() {
     if (!st || !ctx || !st.running) return { phase: 'stopped' };
-    return { phase: st.phase, now: clock(), restStart: st.restStart, restEnd: st.restEnd };
+    return { phase: st.phase, now: clock(), restStart: st.restStart, restEnd: st.restEnd,
+        workStart: st.workStart, phaseEnd: st.phaseEnd === Infinity ? null : st.phaseEnd };
 }
 
-// Draws the beat display as it stands (the Metronome page calls this once it has rendered)
-export function refreshDisplay() { display.frame(displayState()); }
+function frameDisplays(s) {
+    display.frame(s);
+    countdown.frame(s);
+}
+
+// Draws the displays as they stand (the Metronome and Timer pages call this once they have rendered)
+export function refreshDisplay() { frameDisplays(displayState()); }
 
 function snapshot() {
     if (!st) return { running: false, phase: 'stopped' };
