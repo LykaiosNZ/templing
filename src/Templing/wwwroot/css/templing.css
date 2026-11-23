@@ -655,6 +655,8 @@ html.boot-light .boot { --boot-accent: var(--boot-accent-light, #0361c3); --boot
 .edit-row { display: flex; flex-direction: column; border-radius: 10px; border: 1px solid var(--mud-palette-lines-default); }
 .edit-row.rest { border-style: dashed; }
 .edit-row.open { border-color: var(--mud-palette-lines-inputs); }
+.edit-row.now { border-left: 3px solid var(--accent); }
+.er-now { flex: none; align-self: center; font-size: .72rem; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: .04em; }
 .edit-row.missing .pl-name, .edit-row.missing .pl-icon { color: var(--mud-palette-warning); }
 .er-head { display: flex; align-items: center; gap: 4px; padding: 2px 4px 2px 0; }
 .er-drag { display: flex; align-items: center; padding: 8px 0 8px 6px; cursor: grab; color: var(--muted); }

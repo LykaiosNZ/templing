@@ -235,7 +235,7 @@ else
             <div class="fav-actions">
                 @if (Runner.Active && Runner.Plan?.Id == plan.Id)
                 {
-                    <span class="fav-running small">Running · step @(Runner.Index + 1) of @plan.Steps.Count</span>
+                    <span class="fav-running small">Running · step @(Runner.Index + 1) of @Runner.Plan.Steps.Count</span>
                 }
                 else
                 {

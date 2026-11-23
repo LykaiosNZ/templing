@@ -35,6 +35,9 @@
                     <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Rounded.SkipPrevious" Disabled="Runner.Index == 0" OnClick="() => JumpTo(Runner.Index - 1)">Back</MudButton>
                     <MudButton Size="Size.Small" Variant="Variant.Text" EndIcon="@Icons.Material.Rounded.SkipNext" OnClick="Skip">@(Runner.IsLast ? "Finish" : "Skip")</MudButton>
                 </span>
+                <MudTooltip Text="Edit plan">
+                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit {plan.Name}")" OnClick="EditPlan" />
+                </MudTooltip>
                 <MudButton Size="Size.Small" Variant="Variant.Text" Class="plan-end" OnClick="End">End plan</MudButton>
             </div>
         </div>
@@ -76,6 +79,7 @@ else if (Runner.Summary is { } sum)
         Runner.Changed += OnChanged;
         Metro.Changed += OnChanged;
         Runner.StepFinished += OnStepFinished;
+        Runner.EditRequested += OnEditRequested;
         Keys.Register(this, Hotkeys.PrevPlanStep, async () => { if (Runner.Active && Runner.Index > 0) await JumpTo(Runner.Index - 1); });
         Keys.Register(this, Hotkeys.NextPlanStep, async () => { if (Runner.Active) await Skip(); });
     }
@@ -83,6 +87,23 @@ else if (Runner.Summary is { } sum)
     void OnChanged() => InvokeAsync(StateHasChanged);
 
     async Task OnStepFinished(PlanStep step) => await InvokeAsync(() => LogAndAdvance(step));
+
+    Task OnEditRequested() => InvokeAsync(EditPlan);
+
+    /// <summary>Edit the running plan, for this session or saved to the plan.</summary>
+    async Task EditPlan()
+    {
+        if (Runner.Plan is not { } plan) return;
+        await PlanDialog.EditRunningAsync(Dialogs, plan, Runner.Current?.Id, ApplyEdit);
+    }
+
+    /// <summary>A changed current step starts again, so its practice time is logged or discarded first (backing out keeps the editor open).</summary>
+    async Task<bool> ApplyEdit(PracticePlan edited, bool toPlan)
+    {
+        if (Runner.ChangesCurrentStep(edited) && !await ConfirmLeave("Change this step")) return false;
+        await Runner.ApplyEditAsync(edited, toPlan);
+        return true;
+    }
 
     bool HasUnlogged => Metro.SessionActiveSec >= 1 && Runner.Current is { Kind: PlanStepKind.Piece };
 
@@ -186,6 +207,7 @@ else if (Runner.Summary is { } sum)
         Runner.Changed -= OnChanged;
         Metro.Changed -= OnChanged;
         Runner.StepFinished -= OnStepFinished;
+        Runner.EditRequested -= OnEditRequested;
         Keys.Unregister(this);
     }
 }

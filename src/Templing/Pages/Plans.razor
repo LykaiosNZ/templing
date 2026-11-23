@@ -30,17 +30,19 @@ else
             var open = IsOpen(plan, running);
             var bodyId = $"plan-steps-{plan.Id}";
             var p = plan;
+            // the run's own steps, which may have been changed for this session only
+            var shown = running ? Runner.Plan! : plan;
             <div class="plan-row @(open ? "open" : "") @(running ? "running" : "")" role="listitem">
                 <div class="plr-head">
                     <button type="button" class="plr-toggle" aria-expanded="@(open ? "true" : "false")" aria-controls="@bodyId" @onclick="() => Toggle(p, running)">
                         <MudIcon Icon="@Icons.Material.Rounded.ExpandMore" Size="Size.Small" Class="er-chevron" />
-                        <span class="plr-name">@plan.Name</span>
-                        <span class="plr-meta">@Meta(plan, running)</span>
+                        <span class="plr-name">@shown.Name</span>
+                        <span class="plr-meta">@Meta(shown, running)</span>
                     </button>
                     <div class="plr-actions">
                         <FavouriteToggle On="plan.Favourite" Name="@plan.Name" OnToggle="() => ToggleFavourite(p)" />
                         <MudTooltip Text="Edit">
-                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit {plan.Name}")" OnClick="() => Edit(p)" />
+                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit {plan.Name}")" OnClick="() => Edit(p, running)" />
                         </MudTooltip>
                         <MudTooltip Text="More">
                             <MudMenu Icon="@Icons.Material.Rounded.MoreVert" Size="Size.Small" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" AriaLabel="@($"More for {plan.Name}")">
@@ -61,9 +63,9 @@ else
                 @if (open)
                 {
                     <ol class="plan-list" id="@bodyId">
-                        @for (int i = 0; i < plan.Steps.Count; i++)
+                        @for (int i = 0; i < shown.Steps.Count; i++)
                         {
-                            var s = plan.Steps[i];
+                            var s = shown.Steps[i];
                             var idx = i;
                             var missing = PlanStepSummary.IsMissing(s, Store);
                             <li class="@(s.Kind == PlanStepKind.Rest ? "rest" : "") @(missing ? "missing" : "") @(running && Runner.Index == idx ? "on" : "")">
@@ -100,7 +102,7 @@ else
     {
         var n = p.Steps.Count;
         var parts = new List<string> { $"{n} step{(n == 1 ? "" : "s")}", StepDur(p.TotalMinutes) };
-        if (running) parts.Add($"Step {Runner.Index + 1} of {n}");
+        if (running) parts.Add($"Step {Runner.Index + 1} of {n}{(Runner.EditedForSession ? " · changed for this session" : "")}");
         else parts.Add(p.LastRun is null ? "Not run yet" : $"Last run {Stats.Ago(p.LastRun, DateTime.Today)}");
         return string.Join(" · ", parts);
     }
@@ -119,7 +121,12 @@ else
 
 
     async Task New() => await PlanDialog.ShowAsync(Dialogs);
-    async Task Edit(PracticePlan p) => await PlanDialog.ShowAsync(Dialogs, p);
+    // the running plan is edited through the plan bar, which can apply it to this session only
+    async Task Edit(PracticePlan p, bool running)
+    {
+        if (running) await Runner.RequestEditAsync();
+        else await PlanDialog.ShowAsync(Dialogs, p);
+    }
 
     async Task Delete(PracticePlan p)
     {
