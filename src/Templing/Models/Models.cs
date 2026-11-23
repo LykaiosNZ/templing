@@ -280,6 +280,17 @@ public class MetronomePreset
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum RampMode { OverTime, EveryNBars }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum BeatDisplayStyle { Strip, Ring, Both }
+
+/// <summary>How a segment fills: all at once on its click, or sweeping across until the next one.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum BeatFill { OnClick, Sweep }
+
+/// <summary>What the filled segments do when a bar starts: clear, fade out over the first beat, or (every other bar) empty as it plays.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum NewBarStyle { Clear, Fade, EmptyOut }
+
 public class TrainingSettings
 {
     public bool Enabled { get; set; }
@@ -348,8 +359,23 @@ public class MetronomeSettings
     /// <summary>The default click (a <c>ClickSounds</c> id); pieces and custom metronomes can pick their own. Unknown ids
     /// (the old synthesised "click", "wood", "beep") play <c>ClickSounds.Default</c>.</summary>
     public string Sound { get; set; } = "";
+    /// <summary>A higher click on the first beat of each bar. Sound only: the beat display has <see cref="MarkFirstBeat"/>.</summary>
     public bool AccentFirst { get; set; } = true;
+    /// <summary>The glow behind the tempo on each beat (stronger on beat 1 while <see cref="MarkFirstBeat"/> is on).</summary>
     public bool Flash { get; set; } = true;
+
+    // ---- beat display (Metronome page; js/beatdisplay.js)
+    public BeatDisplayStyle BeatDisplay { get; set; } = BeatDisplayStyle.Strip;
+    public BeatFill BeatFill { get; set; } = BeatFill.OnClick;
+    public NewBarStyle NewBar { get; set; } = NewBarStyle.Clear;
+    /// <summary>A ripple out from the strip or ring as each bar starts.</summary>
+    public bool BarPulse { get; set; } = true;
+    /// <summary>Beat 1's empty segments are tinted, so you can see where the bar starts.</summary>
+    public bool MarkFirstBeat { get; set; } = true;
+    /// <summary>A segment per click; off, a segment per beat.</summary>
+    public bool ShowSubdivisions { get; set; } = true;
+    /// <summary>Segments between beats are drawn thinner (only while <see cref="ShowSubdivisions"/>).</summary>
+    public bool ThinSubdivisions { get; set; }
     public TrainingSettings Training { get; set; } = new();
     public IntervalSettings Interval { get; set; } = new();
     /// <summary>The Timer page's countdown (always on; separate from the metronome's intervals).</summary>

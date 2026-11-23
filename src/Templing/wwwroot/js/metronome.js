@@ -15,6 +15,8 @@
 //   interval: { enabled, workSec, restSec, rounds, cues }
 // }
 
+import * as display from './beatdisplay.js';
+
 const LOOKAHEAD_MS = 25;
 const SCHEDULE_AHEAD = 0.12;
 
@@ -236,7 +238,7 @@ function stopInternal(notify) {
     raf = null;
     queue.length = 0;
     if (st) { accumulateActive(); st.running = false; }
-    clearVisual();
+    display.frame({ phase: 'stopped' });
     window.dispatchEvent(new CustomEvent('templing-stop'));
     if (notify) emit('stopped');
 }
@@ -248,6 +250,7 @@ export function restartSection() {
     resume();
     const t = ctx.currentTime + 0.05;
     queue.length = 0;
+    display.restart();
     st.bar = 0; st.beat = 0; st.sub = 0; st.meter = null; st.heardBeat = null;
     if (st.phase === 'rest') return;
     st.nextTime = t; st.lastPulse = null;
@@ -290,7 +293,7 @@ export function pause() {
     if (raf) cancelAnimationFrame(raf);
     raf = null;
     while (queue.length) consume(queue.shift(), false); // what's queued is as good as heard
-    clearVisual();
+    display.frame(displayState());
     emit('state');
 }
 
@@ -303,6 +306,7 @@ export function resume() {
     const d = r - st.pausedAt;
     for (const k of ['phaseEnd', 'workStart', 'restStart', 'restEnd', 'lastBarTime', 'activeUntil'])
         if (st[k] != null && Number.isFinite(st[k])) st[k] += d;
+    display.shift(d);
     st.nextTime = r;
     st.lastPulse = null; // nothing to retime from until the next click
     st.paused = false;
@@ -316,7 +320,7 @@ export function resume() {
 export function setStep(i) {
     if (!cfg) return;
     cfg.step = i;
-    if (st && st.running && st.phase !== 'rest') { jumpToStep(i); if (!st.paused) st.nextTime = Math.max(st.nextTime, ctx.currentTime + 0.03); st.lastPulse = null; queue.length = 0; }
+    if (st && st.running && st.phase !== 'rest') { jumpToStep(i); if (!st.paused) st.nextTime = Math.max(st.nextTime, ctx.currentTime + 0.03); st.lastPulse = null; queue.length = 0; display.restart(); }
     emit('state');
 }
 
@@ -457,6 +461,7 @@ function scheduler() {
             const beatIdx = (cfg.countIn.bars * m0.n - st.countInLeft) % m0.n;
             click(t, beatIdx === 0 ? 'accent' : 'count');
             queue.push({ time: t, kind: 'count', beat: beatIdx, beats: m0.n, unit: m0.d, scoreBar: m0.i, left: Math.ceil(st.countInLeft / m0.n), num: st.countInLeft });
+            queue.push({ time: t, kind: 'click', counting: true, beat: beatIdx, sub: 0, subs, beats: m0.n, dur: beatSeconds(bpm, m0.d) });
             st.countInLeft--;
             st.lastPulse = t;
             st.nextTime += beatSeconds(bpm, m0.d);
@@ -490,6 +495,7 @@ function scheduler() {
         const kind = st.sub > 0 ? 'sub' : accent ? 'accent' : 'beat';
         click(t, kind);
         if (st.sub === 0) queue.push({ time: t, kind: 'beat', beat: st.beat, beats: meter.n, unit: meter.d, scoreBar: meter.i, step: st.step, bar: st.bar });
+        queue.push({ time: t, kind: 'click', beat: st.beat, sub: st.sub, subs, beats: meter.n, dur: beatSeconds(s.bpm * st.factor, meter.d) / subs });
 
         // advance
         st.lastPulse = t;
@@ -560,6 +566,7 @@ function drawLoop() {
     const now = ctx.currentTime;
     let changed = false;
     while (queue.length && queue[0].time <= now) if (consume(queue.shift(), true)) changed = true;
+    display.frame(displayState());
     const ms = performance.now();
     if (changed || ms - lastEmit > 500) { emit('state'); lastEmit = ms; }
     if (st && ((st.running && !st.paused) || queue.length)) raf = requestAnimationFrame(drawLoop);
@@ -569,7 +576,7 @@ function drawLoop() {
 function consume(e, visual) {
     let changed = false;
     if (visual && (e.kind === 'beat' || e.kind === 'count')) {
-        flashBeat(e.beat, e.kind === 'count');
+        flashBeat(e.beat);
         window.dispatchEvent(new CustomEvent('templing-beat', { detail: {
             scoreBar: e.scoreBar, beat: e.beat, beats: e.beats, unit: e.unit, counting: e.kind === 'count', step: e.step, bar: e.bar } }));
         changed = true;
@@ -578,33 +585,31 @@ function consume(e, visual) {
     if (e.kind === 'beat') st.heardBeat = { beat: e.beat, beats: e.beats, unit: e.unit, step: e.step, bar: e.bar };
     if (e.kind === 'count') st.heardBeat = null; // a count-in (or a restart's) starts again from bar 1
     if (e.kind === 'bar') st.heardBar = { factor: e.factor, trainingBars: e.trainingBars };
-    if (e.kind === 'phase' && st.phase === 'rest') clearVisual();
+    if (visual && e.kind === 'click') display.click(e);
     if (e.kind === 'bar' || e.kind === 'phase' || e.kind === 'workstart' || e.kind === 'count') changed = true;
     if (e.kind === 'count') st.countDisplay = e.num; else if (e.kind !== 'beat') st.countDisplay = null;
     return changed;
 }
 
-function flashBeat(beat, counting) {
-    const host = document.getElementById('metro-beats');
-    if (host) {
-        const dots = host.querySelectorAll('.beat-dot');
-        dots.forEach((d, i) => {
-            d.classList.toggle('on', i === beat);
-            d.classList.toggle('count', counting && i === beat);
-        });
-    }
+// The glow behind the tempo (Settings > Metronome: Flash on each beat), stronger on beat 1 while Mark the first beat is on.
+// Read from the beat display's attributes, so it follows the settings without a reconfigure.
+function flashBeat(beat) {
+    const opts = document.getElementById('metro-beats')?.dataset;
     const pulse = document.getElementById('metro-pulse');
-    if (pulse && cfg.flash !== false) {
-        pulse.classList.remove('flash', 'flash-accent');
-        void pulse.offsetWidth;
-        pulse.classList.add(beat === 0 ? 'flash-accent' : 'flash');
-    }
+    if (!pulse || !opts || opts.flash !== '1') return;
+    pulse.classList.remove('flash', 'flash-accent');
+    void pulse.offsetWidth;
+    pulse.classList.add(beat === 0 && opts.mark === '1' ? 'flash-accent' : 'flash');
 }
 
-function clearVisual() {
-    const host = document.getElementById('metro-beats');
-    if (host) host.querySelectorAll('.beat-dot').forEach(d => d.classList.remove('on', 'count'));
+// What the beat display needs from the run, on each frame
+function displayState() {
+    if (!st || !ctx || !st.running) return { phase: 'stopped' };
+    return { phase: st.phase, now: clock(), restStart: st.restStart, restEnd: st.restEnd };
 }
+
+// Draws the beat display as it stands (the Metronome page calls this once it has rendered)
+export function refreshDisplay() { display.frame(displayState()); }
 
 function snapshot() {
     if (!st) return { running: false, phase: 'stopped' };

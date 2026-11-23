@@ -117,12 +117,15 @@
                        Color="Color.Primary" aria-label="Tempo" />
         </div>
 
-        <div id="metro-beats" class="beats" aria-hidden="true">
-            @for (int b = 0; b < (Metro.IsRunning ? Metro.State.beats : Metro.PlayingSection.BeatsPerBar); b++)
-            {
-                <span class="beat-dot @(b == 0 && Metro.Settings.AccentFirst ? "accent" : "")"></span>
-            }
-        </div>
+        @* drawn by js/beatdisplay.js from these settings; Blazor renders no children here *@
+        @{ var bd = Metro.Settings; }
+        <div id="metro-beats" class="beat-display" aria-hidden="true"
+             data-style="@(bd.BeatDisplay switch { BeatDisplayStyle.Ring => "ring", BeatDisplayStyle.Both => "both", _ => "strip" })"
+             data-fill="@(bd.BeatFill == BeatFill.Sweep ? "sweep" : "click")"
+             data-newbar="@(bd.NewBar switch { NewBarStyle.Fade => "fade", NewBarStyle.EmptyOut => "empty", _ => "clear" })"
+             data-pulse="@Flag(bd.BarPulse)" data-mark="@Flag(bd.MarkFirstBeat)" data-flash="@Flag(bd.Flash)"
+             data-subs-show="@Flag(bd.ShowSubdivisions)" data-thin="@Flag(bd.ThinSubdivisions)"
+             data-beats="@Metro.PlayingSection.BeatsPerBar" data-subs="@Metro.PlayingSection.Subdivision" data-paused="@Flag(Metro.IsPaused)"></div>
 
         <div class="status-line" role="status" aria-live="polite">
             @if (Metro.IsRunning)
@@ -320,7 +323,6 @@
             <ClickSoundPicker Value="@Metro.SourceSound" ValueChanged="Metro.SetSoundAsync" DefaultOption="true" Label="Click sound" />
             <VolumeControl />
             <MudSwitch T="bool" @bind-Value="s.AccentFirst" @bind-Value:after="Apply" Color="Color.Primary" Label="Accent the first beat" Class="rail-line-switch" />
-            <MudSwitch T="bool" @bind-Value="s.Flash" @bind-Value:after="Apply" Color="Color.Primary" Label="Flash on each beat" Class="rail-line-switch" />
         </RailSection>
     </ChildContent>
 </OptionsRail>
@@ -416,6 +418,15 @@
     }
     void OnChanged() => InvokeAsync(StateHasChanged);
     public void Dispose() => Metro.Changed -= OnChanged;
+
+    // the beat display draws itself once the engine is loaded (and redraws when its attributes change)
+    bool _displayDrawn;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) _displayDrawn = false;
+        if (!_displayDrawn && await Metro.RefreshDisplayAsync()) _displayDrawn = true;
+    }
+    static string Flag(bool on) => on ? "1" : "0";
 
     Task Apply() => Metro.ApplyAsync();
 
