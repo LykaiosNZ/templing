@@ -247,4 +247,28 @@ public class DataStoreTests
         Assert.Equal("new", js.Db.Row<PracticeLog>("logs", replaced.Id)!.Notes);
         Assert.Equal(2002, js.Db.Count("logs"));
     }
+
+    [Fact]
+    public async Task Piece_stats_are_kept_until_the_data_changes()
+    {
+        var piece = new Piece { Name = "P", Goal = 100 };
+        var (store, _) = await FakeJs.StoreAsync(db =>
+        {
+            db.Seed("pieces", piece);
+            db.Seed("logs", new PracticeLog { PieceId = piece.Id, Value = 80, Effort = 3, Date = new DateTime(2026, 3, 1) });
+        });
+        var p = store.GetPiece(piece.Id)!;
+        var first = store.StatsFor(p);
+        Assert.Same(first, store.StatsFor(p));
+        Assert.Equal(0.8, first.Progress);
+        Assert.Equal(3, store.LastRatedFor(p)!.Effort);
+
+        await store.SaveLogAsync(new PracticeLog { PieceId = piece.Id, Value = 90, Effort = 5, Date = new DateTime(2026, 3, 2) });
+        Assert.Equal(0.9, store.StatsFor(p).Progress);
+        Assert.Equal(5, store.LastRatedFor(p)!.Effort);
+
+        var editing = new Piece { Id = piece.Id, Name = "P", Goal = 200 }; // an unsaved copy with another goal
+        Assert.Equal(0.45, store.StatsFor(editing).Progress);
+        Assert.Equal(0.9, store.StatsFor(p).Progress);
+    }
 }
