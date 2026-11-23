@@ -225,9 +225,10 @@ else
     {
         get
         {
-            if (_piece!.HasParts())
+            var piece = _piece!;
+            if (piece.HasParts())
                 return $"{_parts.Count} sections" + (_weakest is { } w ? $" · weakest {w.Section.Name}" : "");
-            var s0 = _piece.Sections[0];
+            var s0 = piece.Sections[0];
             return $"{s0.Bpm:0} bpm · {s0.Meter}";
         }
     }
