@@ -81,6 +81,20 @@
                 <MudSwitch T="bool" @bind-Value="m.BarPulse" @bind-Value:after="Save" Color="Color.Primary" aria-label="Pulse on each new bar" Class="ma-0" />
             </div>
         </div>
+        @if (m.BarPulse)
+        {
+            <div class="setting-row setting-row-sub">
+                <div class="setting-text"><div class="setting-title">Pulse intensity</div></div>
+                <div class="setting-control">
+                    <MudSelect T="PulseIntensity" @bind-Value="m.BarPulseIntensity" @bind-Value:after="Save" aria-label="Pulse intensity"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="setting-select">
+                        <MudSelectItem T="PulseIntensity" Value="PulseIntensity.Subtle">Subtle</MudSelectItem>
+                        <MudSelectItem T="PulseIntensity" Value="PulseIntensity.Medium">Medium</MudSelectItem>
+                        <MudSelectItem T="PulseIntensity" Value="PulseIntensity.Strong">Strong</MudSelectItem>
+                    </MudSelect>
+                </div>
+            </div>
+        }
         <div class="setting-row">
             <div class="setting-text"><div class="setting-title">Flash on each beat</div></div>
             <div class="setting-control">

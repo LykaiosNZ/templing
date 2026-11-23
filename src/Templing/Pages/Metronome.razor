@@ -123,7 +123,7 @@
              data-style="@(bd.BeatDisplay switch { BeatDisplayStyle.Ring => "ring", BeatDisplayStyle.Both => "both", _ => "strip" })"
              data-fill="@(bd.BeatFill == BeatFill.Sweep ? "sweep" : "click")"
              data-newbar="@(bd.NewBar switch { NewBarStyle.Fade => "fade", NewBarStyle.EmptyOut => "empty", _ => "clear" })"
-             data-pulse="@Flag(bd.BarPulse)" data-mark="@Flag(bd.MarkFirstBeat)" data-flash="@Flag(bd.Flash)"
+             data-pulse="@(bd.BarPulse ? bd.BarPulseIntensity switch { PulseIntensity.Subtle => "subtle", PulseIntensity.Strong => "strong", _ => "medium" } : "0")" data-mark="@Flag(bd.MarkFirstBeat)" data-flash="@Flag(bd.Flash)"
              data-subs-show="@Flag(bd.ShowSubdivisions)" data-thin="@Flag(bd.ThinSubdivisions)"
              data-beats="@Metro.PlayingSection.BeatsPerBar" data-subs="@Metro.PlayingSection.Subdivision" data-paused="@Flag(Metro.IsPaused)"></div>
 
