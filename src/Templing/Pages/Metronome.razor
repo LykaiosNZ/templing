@@ -25,7 +25,7 @@
         <h1 class="page-title" tabindex="-1">@(Metro.Source == MetronomeSource.Free ? "Free metronome" : Metro.Title)</h1>
         @if (Metro.Piece is { } piece && Metro.Source == MetronomeSource.Piece)
         {
-            var st = Stats.ForPiece(piece, Store.LogsFor(piece.Id));
+            var st = Store.StatsFor(piece);
             <MudText Typo="Typo.body2" Class="muted">
                 Last @(st.Last?.ToString("0") ?? "—")@piece.Unit.Suffix() · Best @(st.Best?.ToString("0") ?? "—")@piece.Unit.Suffix()
                 @if (piece.Goal is { } g) { <span> · Goal @g.ToString("0")@piece.Unit.Suffix()</span> }

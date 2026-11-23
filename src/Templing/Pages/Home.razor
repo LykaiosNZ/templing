@@ -150,7 +150,7 @@ else
         _streak = Stats.Streaks(logs, today);
 
         var pieces = Store.Pieces.Where(p => !p.Archived).ToList();
-        var stats = pieces.ToDictionary(p => p.Id, p => Stats.ForPiece(p, Store.LogsFor(p.Id)));
+        var stats = pieces.ToDictionary(p => p.Id, Store.StatsFor);
         var latest = pieces.Where(p => Store.LogsFor(p.Id).Count > 0).ToDictionary(p => p.Id, p => Store.LogsFor(p.Id)[^1]); // oldest first
         var shown = new HashSet<string>(); // a piece or plan appears in one row only
 

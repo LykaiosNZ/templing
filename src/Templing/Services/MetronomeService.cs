@@ -259,7 +259,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     /// </summary>
     public double OpeningTempo(Piece piece)
     {
-        var st = Stats.ForPiece(piece, store.Logs);
+        var st = store.StatsFor(piece);
         return piece.StartTempo ?? st.LastMin ?? st.Last ?? (piece.Unit == TempoUnit.Percent ? 80 : RefSection.Bpm);
     }
 
@@ -269,7 +269,7 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
     /// </summary>
     double TrainerEnd(Piece piece, double start)
     {
-        var st = Stats.ForPiece(piece, store.Logs);
+        var st = store.StatsFor(piece);
         return new[] { piece.Goal, st.Last, st.Best }.FirstOrDefault(v => v > start) ?? start;
     }
 

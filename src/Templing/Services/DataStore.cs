@@ -26,8 +26,14 @@ public class DataStore(IJSRuntime js)
     // every log for every piece (pieces × logs) each time they refresh.
     private Dictionary<string, List<PracticeLog>>? _logsByPiece;
     private Dictionary<string, Piece>? _pieceById;
+    // each piece's stats, worked out when first asked for (often only for the cards on screen) and kept until the next change,
+    // so Home, Library, Stats and the Metronome share them, and opening a screen again costs nothing
+    // (keyed by id, and only for the same Piece object: stats depend on its goal and unit, and an unsaved copy may differ)
+    private readonly Dictionary<string, (Piece of, PieceStats stats)> _stats = new();
+    private readonly Dictionary<string, (Piece of, PracticeLog? log)> _lastRated = new();
+    private readonly Dictionary<string, (Piece of, List<SectionStats> parts)> _parts = new();
 
-    private void Invalidate() { _logsByPiece = null; _pieceById = null; }
+    private void Invalidate() { _logsByPiece = null; _pieceById = null; _stats.Clear(); _lastRated.Clear(); _parts.Clear(); }
     private void Notify() { Invalidate(); Changed?.Invoke(); }
 
     public Task EnsureLoadedAsync() => _loading ??= LoadAsync();
@@ -105,6 +111,18 @@ public class DataStore(IJSRuntime js)
         pieceId is null ? NoLogs
         : (_logsByPiece ??= Logs.Where(l => l.PieceId != null).OrderBy(l => l.Date).GroupBy(l => l.PieceId!).ToDictionary(g => g.Key, g => g.ToList()))
             .GetValueOrDefault(pieceId, NoLogs);
+
+    /// <summary>The piece's stats over all its logs (<see cref="Stats.ForPiece"/>), kept until the data changes.</summary>
+    public PieceStats StatsFor(Piece piece) =>
+        _stats.TryGetValue(piece.Id, out var c) && c.of == piece ? c.stats : (_stats[piece.Id] = (piece, Stats.ForPiece(piece, LogsFor(piece.Id)))).stats;
+
+    /// <summary>The piece's latest log with a feel rating (<see cref="Stats.LastRated"/>), kept until the data changes.</summary>
+    public PracticeLog? LastRatedFor(Piece piece) =>
+        _lastRated.TryGetValue(piece.Id, out var c) && c.of == piece ? c.log : (_lastRated[piece.Id] = (piece, Stats.LastRated(piece, LogsFor(piece.Id)))).log;
+
+    /// <summary>Per-section stats (<see cref="Stats.ForSections"/>), kept until the data changes.</summary>
+    public List<SectionStats> PartsFor(Piece piece) =>
+        _parts.TryGetValue(piece.Id, out var c) && c.of == piece ? c.parts : (_parts[piece.Id] = (piece, Stats.ForSections(piece, LogsFor(piece.Id)))).parts;
 
     public async Task SaveLogAsync(PracticeLog log)
     {

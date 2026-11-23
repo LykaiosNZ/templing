@@ -148,7 +148,7 @@
                 var gain = best - first;
                 if (gain > 0) _gains.Add(new HBars.Row(piece.Name, first > 0 ? gain / first : 0, $"{first:0} → {best:0}{piece.Unit.Suffix()} (+{(first > 0 ? gain / first : 0):P0})", $"library/{piece.Id}"));
             }
-            var st = Stats.ForPiece(piece, Store.LogsFor(piece.Id));
+            var st = Store.StatsFor(piece);
             if (!piece.Archived && st.Progress is { } p && st.LastDate >= from)
             {
                 if (p >= 1) _goalsReached++;
