@@ -6,7 +6,7 @@ The house rules for how screens look and read. Follow them when building or chan
 
 - **No instruction text.** The UI speaks for itself. No "press X to…", "toggle with the … icon", keyboard hints, or sentences that explain what a screen is for. Tooltips name a control; they don't teach.
 - **Information is fine:** summaries, totals, counts ("4 steps · 30 min · Not run yet").
-- **Empty states:** a heading and the primary action, no explanatory sentence ("No plans yet" + "Create a plan").
+- **Empty states:** a heading and the primary action, no explanatory sentence, not wrapped in a card ("No plans yet" + "Create a plan").
 - **Filtered to nothing:** "No matching entries" + a "Clear filters" button. Keep "No … yet" for when there's no data at all.
 - **Pluralise** counts ("1 step", "2 steps").
 - **"Piece", never "item".** A thing in the library is a *piece* in every bit of UI text ("Add piece", "All pieces", "Select a piece for step 2"). The code, routes and stored data say piece too (`Piece`, `PieceId`).
