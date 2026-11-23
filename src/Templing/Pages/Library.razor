@@ -64,6 +64,16 @@ else
                 <span class="pr-cols"><span></span><span>Piece</span><span>Tempo</span><span class="pr-wide">Progress</span><span class="pr-wide">Last practised</span><span class="pr-wide">Practice time</span></span>
                 <span></span>
             </div>
+            @if (_rows.Count > 0)
+            {
+                @* plain outlines until the first rows are drawn, a moment later (CSS hides them then); they cost nothing to draw *@
+                <div class="row-placeholders" aria-hidden="true">
+                    @for (var i = 0; i < Math.Min(_rows.Count, 15); i++)
+                    {
+                        <div class="row-placeholder"><span class="ph-line ph-icon"></span><span class="ph-line ph-name"></span><span class="ph-line ph-tempo"></span></div>
+                    }
+                </div>
+            }
             @* only the rows near the screen are drawn: a big library has hundreds, each with a dozen components *@
             @* @key: Virtualize reuses elements as you scroll, so without it a bar animated from the last piece's progress *@
             <Virtualize Items="_rows" Context="row" ItemSize="41" OverscanCount="5">
@@ -106,6 +116,16 @@ else
     {
     @* drawn a row of cards at a time, and only the rows near the screen (each card is about 20 components) *@
     <div class="piece-grid" role="list" @ref="_grid" style="--cols:@_columns">
+        @if (_rows.Count > 0)
+        {
+            @* plain card outlines until the first cards are drawn, a moment later (CSS hides them then); they cost nothing to draw *@
+            <div class="piece-grid-row card-placeholders" aria-hidden="true">
+                @for (var i = 0; i < Math.Min(_rows.Count, 12); i++)
+                {
+                    <div class="piece-card card-placeholder"><span class="ph-line ph-pill"></span><span class="ph-line ph-title"></span><span class="ph-line ph-big"></span><span class="ph-line ph-bar"></span></div>
+                }
+            </div>
+        }
         @if (_columns > 0)
         {
         <Virtualize Items="_cardRows" Context="cardRow" ItemSize="232" OverscanCount="2">
