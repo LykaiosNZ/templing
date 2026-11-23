@@ -112,10 +112,13 @@
             </div>
         </div>
 
-        <div class="tempo-slider">
-            <MudSlider T="double" Value="Metro.Value" ValueChanged="v => Metro.SetValueAsync(v)" Min="Metro.Min" Max="@(Metro.Unit == TempoUnit.Percent ? 150 : 300)" Step="1"
-                       Color="Color.Primary" aria-label="Tempo" />
-        </div>
+        @if (Metro.Settings.TempoSlider)
+        {
+            <div class="tempo-slider">
+                <MudSlider T="double" Value="Metro.Value" ValueChanged="v => Metro.SetValueAsync(v)" Min="Metro.Min" Max="Metro.Max" Step="1"
+                           Color="Color.Primary" aria-label="Tempo" />
+            </div>
+        }
 
         @* drawn by js/beatdisplay.js from these settings; Blazor renders no children here *@
         @{ var bd = Metro.Settings; }

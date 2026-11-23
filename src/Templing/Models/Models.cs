@@ -9,6 +9,16 @@ public enum PieceType { Exercise, RiffLick, Song, Other }
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum TempoUnit { Bpm, Percent }
 
+/// <summary>The tempo range, per unit: the one place it's set. Every tempo field, the slider, Set tempo and
+/// <c>MetronomeService.SetValueAsync</c> take their limits from here.</summary>
+public static class TempoLimits
+{
+    public const double MinBpm = 20, MaxBpm = 400;
+    public const double MinPercent = 10, MaxPercent = 200;
+    public static double Min(TempoUnit unit) => unit == TempoUnit.Percent ? MinPercent : MinBpm;
+    public static double Max(TempoUnit unit) => unit == TempoUnit.Percent ? MaxPercent : MaxBpm;
+}
+
 public static class PieceTypeExt
 {
     public static string Label(this PieceType t) => t switch
@@ -367,6 +377,8 @@ public class MetronomeSettings
     public bool AccentFirst { get; set; } = true;
     /// <summary>The glow behind the tempo on each beat (stronger on beat 1 while <see cref="MarkFirstBeat"/> is on).</summary>
     public bool Flash { get; set; } = true;
+    /// <summary>A slider under the tempo on the Metronome page (off: the buttons, Set tempo and the keys are enough).</summary>
+    public bool TempoSlider { get; set; }
 
     // ---- beat display (Metronome page; js/beatdisplay.js)
     public BeatDisplayStyle BeatDisplay { get; set; } = BeatDisplayStyle.Strip;

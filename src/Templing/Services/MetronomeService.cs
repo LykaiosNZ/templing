@@ -208,8 +208,8 @@ public class MetronomeService(IJSRuntime js, DataStore store) : IAsyncDisposable
 
     public double ToValue(double factor) => Unit == TempoUnit.Percent ? Math.Round(factor * 100, 1) : Math.Round(RefSection.Bpm * factor, 1);
     public double ToFactor(double value) => Unit == TempoUnit.Percent ? value / 100.0 : value / Math.Max(1, RefSection.Bpm);
-    public double Min => Unit == TempoUnit.Percent ? 10 : 20;
-    public double Max => Unit == TempoUnit.Percent ? 200 : 400;
+    public double Min => TempoLimits.Min(Unit);
+    public double Max => TempoLimits.Max(Unit);
 
     /// <summary>Draws the Metronome page's beat display as the run stands. False until the engine has loaded.</summary>
     public async Task<bool> RefreshDisplayAsync()

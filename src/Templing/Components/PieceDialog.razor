@@ -29,9 +29,9 @@
                         <MudToggleItem Value="TempoUnit.Percent" Text="% of full tempo" />
                     </MudToggleGroup>
                 </div>
-                <MudNumericField T="double?" @bind-Value="_m.StartTempo" Label="@($"Start at ({(_m.Unit == TempoUnit.Percent ? "%" : "bpm")})")" Min="1" Max="400" Style="max-width:160px"
+                <MudNumericField T="double?" @bind-Value="_m.StartTempo" Label="@($"Start at ({(_m.Unit == TempoUnit.Percent ? "%" : "bpm")})")" Min="TempoLimits.Min(_m.Unit)" Max="TempoLimits.Max(_m.Unit)" Style="max-width:160px"
                                  Placeholder="Last start" />
-                <MudNumericField T="double?" @bind-Value="_m.Goal" Label="@($"Goal ({(_m.Unit == TempoUnit.Percent ? "%" : "bpm")})")" Min="1" Max="400" Style="max-width:160px" />
+                <MudNumericField T="double?" @bind-Value="_m.Goal" Label="@($"Goal ({(_m.Unit == TempoUnit.Percent ? "%" : "bpm")})")" Min="TempoLimits.Min(_m.Unit)" Max="TempoLimits.Max(_m.Unit)" Style="max-width:160px" />
             </div>
             <SectionsEditor Sections="_m.Sections" BpmLabel="@(_m.Unit == TempoUnit.Percent ? "Full BPM" : "BPM")" ReplaceDefault="IsNew" OnChanged="StateHasChanged">
                 <HeaderContent>

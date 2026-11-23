@@ -88,7 +88,8 @@
                                     }
                                     @if (s.Mode == StepMode.Metronome)
                                     {
-                                        var u = piece?.Unit == TempoUnit.Percent ? "%" : "bpm";
+                                        var unit = piece?.Unit ?? TempoUnit.Bpm;
+                                        var u = unit == TempoUnit.Percent ? "%" : "bpm";
                                         <div class="ps-tempo">
                                             <MudTooltip Text="@($"Speed trainer: {(s.Trainer ? "on" : "off")}")">
                                                 <MudIconButton Icon="@Icons.Material.Rounded.TrendingUp" Size="Size.Small" Class="@(s.Trainer ? "opt-toggle on" : "opt-toggle")" aria-label="Speed trainer"
@@ -96,8 +97,8 @@
                                             </MudTooltip>
                                             @if (s.Trainer)
                                             {
-                                                <MudNumericField T="double" @bind-Value="s.TrainerStart" Label="@($"From ({u})")" Min="10" Max="400" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
-                                                <MudNumericField T="double" @bind-Value="s.TrainerEnd" Label="@($"To ({u})")" Min="10" Max="400" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
+                                                <MudNumericField T="double" @bind-Value="s.TrainerStart" Label="@($"From ({u})")" Min="TempoLimits.Min(unit)" Max="TempoLimits.Max(unit)" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
+                                                <MudNumericField T="double" @bind-Value="s.TrainerEnd" Label="@($"To ({u})")" Min="TempoLimits.Min(unit)" Max="TempoLimits.Max(unit)" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
                                                 var ts = s.TrainerSettings();
                                                 <MudNumericField T="int" Value="ts.StepCount" ValueChanged="v => s.TrainerSteps = v" Label="Increments" Min="1" Max="ts.MaxSteps"
                                                                  Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-num-field" />
@@ -112,7 +113,7 @@
                                             }
                                             else
                                             {
-                                                <MudNumericField T="double?" @bind-Value="s.StartTempo" Label="@($"Start tempo ({u})")" Min="10" Max="400" Clearable="true"
+                                                <MudNumericField T="double?" @bind-Value="s.StartTempo" Label="@($"Start tempo ({u})")" Min="TempoLimits.Min(unit)" Max="TempoLimits.Max(unit)" Clearable="true"
                                                                  Placeholder="piece's start" Variant="Variant.Outlined" Margin="Margin.Dense" Class="ps-start-field" />
                                             }
                                         </div>

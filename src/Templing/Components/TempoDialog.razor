@@ -2,7 +2,7 @@
    Enter sets it, and Set says why it's disabled (empty or out of range). *@
 <MudDialog>
     <DialogContent>
-        <MudNumericField @ref="_field" T="int?" @bind-Value="_value" Label="Tempo" Immediate="true" OnKeyDown="KeyDown"
+        <MudNumericField @ref="_field" T="int?" @bind-Value="_value" Label="Tempo" Immediate="true" OnKeyDown="KeyDown" OnKeyUp="KeyUp"
                          Adornment="Adornment.End" AdornmentText="@UnitText" HideSpinButtons="true" InputMode="InputMode.numeric" />
     </DialogContent>
     <DialogActions>
@@ -48,7 +48,12 @@
         Dialog.Close(DialogResult.Ok(_value!.Value));
     }
 
-    void KeyDown(KeyboardEventArgs e) { if (e.Key == "Enter") Ok(); }
+    // Enter acts on its keyup: closing on the keydown hands focus back to the button that opened the dialog, and the
+    // same key's keypress then clicks it, opening the dialog again. Only an Enter that went down here counts, so
+    // opening the dialog with Enter doesn't close it as the key comes up.
+    bool _enterDown;
+    void KeyDown(KeyboardEventArgs e) { if (e.Key == "Enter") _enterDown = true; }
+    void KeyUp(KeyboardEventArgs e) { if (e.Key == "Enter" && _enterDown) Ok(); }
 
     /// <summary>Asks for a tempo; null if cancelled.</summary>
     public static async Task<int?> ShowAsync(IDialogService d, double value, double min, double max, bool percent)
