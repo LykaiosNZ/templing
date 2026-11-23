@@ -82,6 +82,37 @@ public class BackupTests
     }
 
     [Fact]
+    public async Task A_compressed_backup_restores_the_same_as_a_plain_one()
+    {
+        var source = await Filled();
+        var now = DateTimeOffset.Now;
+        var gz = Backup.ExportGzip(source, now);
+        Assert.True(Backup.IsGzip(gz));
+        Assert.False(Backup.IsGzip(Backup.ExportUtf8(source, now)));
+
+        var (target, _) = await FakeJs.StoreAsync();
+        await Backup.RestoreAsync(target, Backup.Parse(gz), includeSettings: true);
+
+        Assert.Equal(Backup.Export(source, now), Backup.Export(target, now));
+    }
+
+    [Fact]
+    public void An_old_backup_restores_compressed_too()
+    {
+        var b = Backup.Parse(Backup.Gzip(File.ReadAllBytes(SamplePath(Backup.OldestSupported))));
+        Assert.NotEmpty(b.Pieces!);
+    }
+
+    [Fact]
+    public async Task A_damaged_compressed_backup_says_so()
+    {
+        var gz = Backup.ExportGzip(await Filled());
+        var cut = gz[..(gz.Length / 2)];
+        var e = Assert.Throws<FormatException>(() => Backup.Parse(cut));
+        Assert.Equal("That backup couldn't be read. The file may be damaged.", e.Message);
+    }
+
+    [Fact]
     public void A_damaged_backup_says_so()
     {
         var e = Assert.Throws<FormatException>(() => Backup.Parse($$"""{"Format":{{Backup.Format}},"Pieces":"oops"}"""));

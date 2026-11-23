@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -71,12 +72,47 @@ public static class Backup
 
     public static string Export(DataStore store, DateTimeOffset? now = null) => Encoding.UTF8.GetString(ExportUtf8(store, now));
 
+    /// <summary>
+    /// <see cref="ExportUtf8"/> gzipped: a tenth of the size or less, for moving a backup between devices.
+    /// <see cref="Parse(byte[])"/> recognises it by its header, whatever the file is called.
+    /// </summary>
+    public static byte[] ExportGzip(DataStore store, DateTimeOffset? now = null) => Gzip(ExportUtf8(store, now));
+
+    public static byte[] Gzip(byte[] data)
+    {
+        using var output = new MemoryStream();
+        using (var gz = new GZipStream(output, CompressionLevel.Optimal)) gz.Write(data);
+        return output.ToArray();
+    }
+
+    /// <summary>A gzip file starts with these two bytes; JSON never does.</summary>
+    public static bool IsGzip(byte[] data) => data.Length >= 2 && data[0] == 0x1f && data[1] == 0x8b;
+
+    static byte[] Gunzip(byte[] data)
+    {
+        if (data.Length < 18) throw Damaged();
+        try
+        {
+            using var gz = new GZipStream(new MemoryStream(data), CompressionMode.Decompress);
+            using var output = new MemoryStream(data.Length * 8);
+            gz.CopyTo(output);
+            // a file cut short decompresses without an error: its last 4 bytes are the full length (mod 2^32), so check them
+            if (BitConverter.ToUInt32(data, data.Length - 4) != (uint)output.Length) throw Damaged();
+            return output.ToArray();
+        }
+        catch (InvalidDataException)
+        {
+            throw Damaged();
+        }
+    }
+
     public static BackupFile Parse(string json) => Parse(Encoding.UTF8.GetBytes(json));
 
-    /// <summary>Reads and validates a backup file (UTF-8 JSON) without changing anything. Throws a <see cref="FormatException"/>
-    /// whose message can be shown to the user as it is.</summary>
+    /// <summary>Reads and validates a backup file (UTF-8 JSON, or that gzipped) without changing anything. Throws a
+    /// <see cref="FormatException"/> whose message can be shown to the user as it is.</summary>
     public static BackupFile Parse(byte[] utf8)
     {
+        if (IsGzip(utf8)) utf8 = Gunzip(utf8);
         try
         {
             // A current backup is read straight from the bytes. Only an older one is loaded as a JSON tree to migrate,

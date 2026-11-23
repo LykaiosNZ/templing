@@ -177,16 +177,25 @@
         <div class="setting-row">
             <div class="setting-text">
                 <div class="setting-title">Backup</div>
-                <div class="setting-desc">Score files aren't included.</div>
+                <div class="setting-desc">Score files aren't included. Restore takes plain or compressed backups.</div>
             </div>
             <div class="setting-control">
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Download" OnClick="ExportJson" Disabled="_busy != null">@(_busy == Busy.Export ? "Exporting…" : "Export")</MudButton>
-                <MudFileUpload T="IBrowserFile" @ref="_upload" FilesChanged="ImportJson" Accept=".json,application/json" Class="ma-0">
+                <MudFileUpload T="IBrowserFile" @ref="_upload" FilesChanged="ImportJson" Accept=".json,.gz,application/json,application/gzip,application/x-gzip" Class="ma-0">
                     <CustomContent>
                         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Restore" OnClick="@context.OpenFilePickerAsync" Disabled="_busy != null">@(_busy switch { Busy.Read => "Reading…", Busy.Restore => "Restoring…", _ => "Restore…" })</MudButton>
                     </CustomContent>
                     <SelectedTemplate />
                 </MudFileUpload>
+            </div>
+        </div>
+        <div class="setting-row">
+            <div class="setting-text">
+                <div class="setting-title">Compress backups</div>
+                <div class="setting-desc">Exports a .json.gz file, around a tenth of the size, handy for moving to another device.</div>
+            </div>
+            <div class="setting-control">
+                <MudSwitch T="bool" @bind-Value="Store.Settings.CompressBackups" @bind-Value:after="Save" Color="Color.Primary" aria-label="Compress backups" Class="ma-0" />
             </div>
         </div>
         <div class="setting-row">
@@ -274,8 +283,9 @@
         await ShowBusy(Busy.Export);
         try
         {
-            var json = Backup.ExportUtf8(Store);
-            await Store.DownloadAsync($"templing-backup-{DateTime.Today:yyyy-MM-dd}.json", json, "application/json");
+            var name = $"templing-backup-{DateTime.Today:yyyy-MM-dd}.json";
+            if (Store.Settings.CompressBackups) await Store.DownloadAsync(name + ".gz", Backup.ExportGzip(Store), "application/gzip");
+            else await Store.DownloadAsync(name, Backup.ExportUtf8(Store), "application/json");
         }
         finally { await ShowBusy(null); }
     }

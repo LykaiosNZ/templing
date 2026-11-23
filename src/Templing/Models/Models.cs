@@ -422,6 +422,8 @@ public class AppSettings
     public bool AutoStartPlanSteps { get; set; }
     /// <summary>Plans: start a piece step straight away when Skip or Back moves to it.</summary>
     public bool AutoStartPlanStepsOnSkip { get; set; }
+    /// <summary>Settings > Backup: export as gzip (.json.gz) instead of plain JSON. Restore reads either.</summary>
+    public bool CompressBackups { get; set; }
     /// <summary>Custom theme colours; null = the built-in ones. See <c>Layout.ThemeColours</c> for the keys.</summary>
     public CustomColours? Colours { get; set; }
 }
