@@ -31,6 +31,11 @@ describe('db.js', () => {
         expect(await all('logs')).toBe('[]');
     });
 
+    it('takes many rows as UTF-8 bytes too (a restore)', async () => {
+        await db.putMany('logs', new TextEncoder().encode(JSON.stringify([{ Id: '1', Notes: 'café' }, { Id: '2' }])));
+        expect(JSON.parse(await all('logs'))).toEqual([{ Id: '1', Notes: 'café' }, { Id: '2' }]);
+    });
+
     it('keeps score files as bytes, never through JSON', async () => {
         const bytes = new Uint8Array([1, 2, 3, 250]);
         await db.putFile('f1', 'song.gp', bytes);

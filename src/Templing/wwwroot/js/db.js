@@ -53,8 +53,9 @@ export function put(store, json) {
     return tx(store, 'readwrite', os => os.put(JSON.parse(json)));
 }
 
+// json: a string, or UTF-8 bytes for big writes (a restore), which cross from .NET without interop re-encoding them
 export function putMany(store, json) {
-    const rows = JSON.parse(json);
+    const rows = JSON.parse(typeof json === 'string' ? json : new TextDecoder().decode(json));
     return tx(store, 'readwrite', os => { for (const r of rows) os.put(r); return null; });
 }
 
@@ -66,8 +67,9 @@ export function clear(store) {
     return tx(store, 'readwrite', os => os.clear());
 }
 
-export function downloadText(filename, text, mime) {
-    const blob = new Blob([text], { type: mime || 'text/plain' });
+// data: a string, or UTF-8 bytes (a backup), which Blazor passes as they are
+export function download(filename, data, mime) {
+    const blob = new Blob([data], { type: mime || 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = filename;

@@ -53,7 +53,8 @@ public class DataStore(IJSRuntime js)
     }
 
     private Task Put<T>(string store, T value) => _db!.InvokeVoidAsync("put", store, JsonSerializer.Serialize(value, Json)).AsTask();
-    private Task PutMany<T>(string store, IEnumerable<T> values) => _db!.InvokeVoidAsync("putMany", store, JsonSerializer.Serialize(values, Json)).AsTask();
+    // UTF-8 bytes: a restore writes thousands of rows, and a string would be JSON-encoded again by interop
+    private Task PutMany<T>(string store, IEnumerable<T> values) => _db!.InvokeVoidAsync("putMany", store, JsonSerializer.SerializeToUtf8Bytes(values, Json)).AsTask();
     private Task Remove(string store, string id) => _db!.InvokeVoidAsync("remove", store, id).AsTask();
 
     // ---------- Pieces ----------
@@ -224,10 +225,7 @@ public class DataStore(IJSRuntime js)
         IEnumerable<MetronomePreset>? presets = null, IEnumerable<PracticePlan>? plans = null)
     {
         var il = pieces.ToList(); var ll = logs.ToList(); var pl = presets?.ToList() ?? new(); var pp = plans?.ToList() ?? new();
-        foreach (var i in il) { Pieces.RemoveAll(x => x.Id == i.Id); Pieces.Add(i); }
-        foreach (var l in ll) { Logs.RemoveAll(x => x.Id == l.Id); Logs.Add(l); }
-        foreach (var p in pl) { Presets.RemoveAll(x => x.Id == p.Id); Presets.Add(p); }
-        foreach (var p in pp) { Plans.RemoveAll(x => x.Id == p.Id); Plans.Add(p); }
+        Replace(Pieces, il, x => x.Id); Replace(Logs, ll, x => x.Id); Replace(Presets, pl, x => x.Id); Replace(Plans, pp, x => x.Id);
         Invalidate();
         Pieces.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
         if (il.Count > 0) await PutMany("pieces", il);
@@ -235,6 +233,15 @@ public class DataStore(IJSRuntime js)
         if (pl.Count > 0) await PutMany("presets", pl);
         if (pp.Count > 0) await PutMany("plans", pp);
         Notify();
+    }
+
+    /// <summary>Drops the rows <paramref name="incoming"/> replaces, then adds it: one pass, not one per row (a big restore took minutes).</summary>
+    private static void Replace<T>(List<T> list, List<T> incoming, Func<T, string> id)
+    {
+        if (incoming.Count == 0) return;
+        var ids = incoming.Select(id).ToHashSet();
+        list.RemoveAll(x => ids.Contains(id(x)));
+        list.AddRange(incoming);
     }
 
     public async Task ClearAllAsync()
@@ -246,5 +253,9 @@ public class DataStore(IJSRuntime js)
     }
 
     public ValueTask DownloadAsync(string filename, string text, string mime) =>
-        _db!.InvokeVoidAsync("downloadText", filename, text, mime);
+        _db!.InvokeVoidAsync("download", filename, text, mime);
+
+    /// <summary>Saves UTF-8 bytes as a file. Use it for big files: bytes cross to JS as they are, where a string is JSON-encoded again.</summary>
+    public ValueTask DownloadAsync(string filename, byte[] utf8, string mime) =>
+        _db!.InvokeVoidAsync("download", filename, utf8, mime);
 }
