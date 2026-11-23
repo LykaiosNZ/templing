@@ -8,6 +8,10 @@
         <div class="d-flex flex-column gap-3">
             <MudTextField T="string" Value="_m.Name" ValueChanged="v => { _m.Name = v; _nameTouched = true; }" Label="Name" Placeholder="My routine" AutoFocus="@IsNew" Immediate="true"
                           Error="@(_nameTouched && string.IsNullOrWhiteSpace(_m.Name))" ErrorText="Enter a name" />
+            @if (Running)
+            {
+                <MudText Typo="Typo.body2" Class="muted">This plan is running. Changing or removing the step you're on starts it over.</MudText>
+            }
             <div class="d-flex justify-space-between align-center flex-wrap gap-2">
                 <MudText Typo="Typo.subtitle2">Steps (@_m.Steps.Count) · @Stats.Duration((int)(_m.TotalMinutes * 60)) total</MudText>
                 <div class="d-flex gap-2">
@@ -25,7 +29,8 @@
                     var piece = Store.GetPiece(s.PieceId);
                     var open = _open.Contains(s.Id);
                     var missing = PlanStepSummary.IsMissing(s, Store);
-                    <div class="edit-row @(s.Kind == PlanStepKind.Rest ? "rest" : "") @(open ? "open" : "") @(missing ? "missing" : "") @(s.Id == _drag.DraggingId ? "dragging" : "")" role="listitem" @key="s.Id"
+                    var now = Running && s.Id == CurrentStepId;
+                    <div class="edit-row @(now ? "now" : "") @(s.Kind == PlanStepKind.Rest ? "rest" : "") @(open ? "open" : "") @(missing ? "missing" : "") @(s.Id == _drag.DraggingId ? "dragging" : "")" role="listitem" @key="s.Id"
                          data-drag-row @ondragover:preventDefault="true" @ondragenter="() => DragEnter(idx)" @ondrop="_drag.Drop" @ondrop:preventDefault="true">
                         <div class="er-head">
                             <span class="er-drag" draggable="true" data-drag-handle aria-hidden="true"
@@ -35,6 +40,7 @@
                             <button type="button" class="er-summary" aria-expanded="@(open ? "true" : "false")" aria-controls="@($"er-body-{s.Id}")" @onclick="() => Toggle(s)">
                                 <MudIcon Icon="@Icons.Material.Rounded.ExpandMore" Size="Size.Small" Class="er-chevron" />
                                 <PlanStepSummary Step="s" Index="idx" />
+                                @if (now) { <span class="er-now">Now</span> }
                             </button>
                             <span class="er-actions">
                                 <MudTooltip Text="Move up">
@@ -127,7 +133,15 @@
         }
         <MudSpacer />
         <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save" Disabled="@(SaveBlocker != null)">Save</MudButton>
+        @if (Running)
+        {
+            <MudButton Variant="Variant.Outlined" OnClick="() => Save(toPlan: false)" Disabled="@(SaveBlocker != null)">This session only</MudButton>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="() => Save(toPlan: true)" Disabled="@(SaveBlocker != null)">Save to plan</MudButton>
+        }
+        else
+        {
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="() => Save(toPlan: true)" Disabled="@(SaveBlocker != null)">Save</MudButton>
+        }
     </DialogActions>
 </MudDialog>
 
@@ -149,6 +163,14 @@
     [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
     [Parameter] public PracticePlan Plan { get; set; } = new();
     [Parameter] public bool IsNew { get; set; }
+    /// <summary>
+    /// Editing the running plan: Save offers "This session only" or "Save to plan", and hands the edited copy to this
+    /// (false = stay open, e.g. the user backed out of logging the current step) instead of saving it.
+    /// </summary>
+    [Parameter] public Func<PracticePlan, bool, Task<bool>>? Apply { get; set; }
+    /// <summary>The running plan's current step, marked "Now".</summary>
+    [Parameter] public string? CurrentStepId { get; set; }
+    bool Running => Apply != null;
     PracticePlan _m = new();
     bool _nameTouched;
     // steps whose fields are showing; the rest show as one-line summaries
@@ -196,6 +218,14 @@
         return res is { Canceled: false } ? res.Data as PracticePlan : null;
     }
 
+    /// <summary>Edit the running plan (a copy of the run's plan); <paramref name="apply"/> gets the result and whether to save it to the plan.</summary>
+    public static async Task EditRunningAsync(IDialogService dialogs, PracticePlan plan, string? currentStepId, Func<PracticePlan, bool, Task<bool>> apply)
+    {
+        var p = new DialogParameters<PlanDialog> { { x => x.Plan, plan }, { x => x.Apply, apply }, { x => x.CurrentStepId, currentStepId } };
+        var r = await dialogs.ShowAsync<PlanDialog>("Plan", p, new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true, Position = DialogPosition.TopCenter });
+        await r.Result;
+    }
+
     protected override void OnInitialized()
     {
         _m = System.Text.Json.JsonSerializer.Deserialize<PracticePlan>(System.Text.Json.JsonSerializer.Serialize(Plan, DataStore.Json), DataStore.Json)!;
@@ -236,10 +266,20 @@
         OpenOnly(copy);
     }
 
-    async Task Save()
+    bool _saving;
+
+    async Task Save(bool toPlan)
     {
-        if (SaveBlocker != null) return;
+        if (SaveBlocker != null || _saving) return;
         _m.Name = _m.Name.Trim();
+        if (Apply != null)
+        {
+            _saving = true;
+            try { if (!await Apply(_m, toPlan)) return; }
+            finally { _saving = false; }
+            Dialog.Close(DialogResult.Ok(_m));
+            return;
+        }
         await Store.SavePlanAsync(_m);
         Dialog.Close(DialogResult.Ok(_m));
     }

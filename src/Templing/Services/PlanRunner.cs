@@ -14,6 +14,7 @@ public record PlanSummary(string Name, int Steps, int Done, int Logs, int Logged
 /// (or the click-free timer) with the step's intervals pinned; rest steps run a rest countdown.
 /// When a step finishes, <see cref="StepFinished"/> fires so the UI can log it (ask or auto) and move on.
 /// The run (plan, step, progress) is saved in the "session" store so a page refresh resumes it.
+/// A running plan can be edited (<see cref="ApplyEditAsync"/>): the changes are saved to the plan, or kept for this run only.
 /// </summary>
 public class PlanRunner
 {
@@ -22,8 +23,8 @@ public class PlanRunner
     private readonly NavigationManager _nav;
     private const string RunKey = "planrun";
 
-    /// <summary>Persisted run state (transient: deliberately not part of backups).</summary>
-    private record RunState(string Id, string PlanId, int Index, List<string> Completed, int Logs, int LoggedSec);
+    /// <summary>Persisted run state (transient: deliberately not part of backups). <c>Edited</c>: the run's own copy of the plan, when it was changed for this run only.</summary>
+    private record RunState(string Id, string PlanId, int Index, List<string> Completed, int Logs, int LoggedSec, PracticePlan? Edited = null);
 
     public PlanRunner(MetronomeService metro, DataStore store, NavigationManager nav)
     {
@@ -32,7 +33,10 @@ public class PlanRunner
         _metro.Changed += OnMetroChanged;
     }
 
+    /// <summary>The plan being run: the saved plan, or this run's own copy once it was changed for this session only.</summary>
     public PracticePlan? Plan { get; private set; }
+    /// <summary>The run's steps were changed for this session only (the saved plan is as it was).</summary>
+    public bool EditedForSession { get; private set; }
     public int Index { get; private set; }
     public StepState State { get; private set; }
     public bool Active => Plan != null;
@@ -53,6 +57,10 @@ public class PlanRunner
     public event Action? Changed;
     /// <summary>An piece step finished on its own; the handler should log it and then call <see cref="AdvanceAsync"/>.</summary>
     public event Func<PlanStep, Task>? StepFinished;
+    /// <summary>Somewhere asked to edit the running plan; the plan bar handles it (it owns the "log this step first?" questions).</summary>
+    public event Func<Task>? EditRequested;
+
+    public Task RequestEditAsync() => EditRequested?.Invoke() ?? Task.CompletedTask;
 
     public string Describe(PlanStep? s)
     {
@@ -68,7 +76,7 @@ public class PlanRunner
     {
         if (plan.Steps.Count == 0) return;
         await _metro.StopAsync();
-        Plan = plan; Index = Math.Clamp(startIndex, 0, plan.Steps.Count - 1); Completed.Clear(); Logs = 0; LoggedSec = 0; Summary = null;
+        Plan = plan; EditedForSession = false; Index = Math.Clamp(startIndex, 0, plan.Steps.Count - 1); Completed.Clear(); Logs = 0; LoggedSec = 0; Summary = null;
         plan.LastRun = DateTime.Now;
         await _store.SavePlanAsync(plan);
         await LoadStepAsync(navigate: true, autoStartRest: true);
@@ -83,6 +91,8 @@ public class PlanRunner
         catch (JsonException) { run = null; }
         var plan = _store.GetPlan(run?.PlanId);
         if (run == null || plan == null || plan.Steps.Count == 0) { await _store.RemoveSessionAsync(RunKey); return; }
+        EditedForSession = run.Edited is { Steps.Count: > 0 };
+        if (EditedForSession) plan = run.Edited!;
         Plan = plan;
         Index = Math.Clamp(run.Index, 0, plan.Steps.Count - 1);
         Completed.Clear(); foreach (var id in run.Completed) Completed.Add(id);
@@ -119,6 +129,50 @@ public class PlanRunner
         await LoadStepAsync(navigate: true, autoStartRest: true);
     }
 
+    /// <summary>Would running <paramref name="edited"/> change (or remove) the current step? Then applying it restarts that step.</summary>
+    public bool ChangesCurrentStep(PracticePlan edited)
+    {
+        if (Current is not { } cur) return false;
+        var now = edited.Steps.FirstOrDefault(s => s.Id == cur.Id);
+        return now == null || JsonSerializer.Serialize(now, DataStore.Json) != JsonSerializer.Serialize(cur, DataStore.Json);
+    }
+
+    /// <summary>
+    /// Carry on the run with an edited copy of its plan, saved to the plan (<paramref name="savePlan"/>) or for this run only.
+    /// The run stays on the current step wherever it moved to; if it was removed, on the next step that's left. A changed
+    /// current step is loaded again, so ask about its practice time first (see <see cref="ChangesCurrentStep"/>);
+    /// changes to other steps leave whatever is playing alone.
+    /// </summary>
+    public async Task ApplyEditAsync(PracticePlan edited, bool savePlan)
+    {
+        if (Plan == null || edited.Steps.Count == 0) return;
+        var restart = ChangesCurrentStep(edited);
+        // on the old step's page: go to the new one (elsewhere, e.g. the Plans page, stay put)
+        var onStepPage = Current is { } cur && OnPage(StepUrl(cur));
+        var index = Plan.Steps.Skip(Index).Select(s => edited.Steps.FindIndex(e => e.Id == s.Id))
+            .FirstOrDefault(i => i >= 0, Math.Min(Index, edited.Steps.Count - 1));
+        if (savePlan)
+        {
+            // the dialog edits steps and name; anything changed on the plan meanwhile (star, last run) stays
+            if (_store.GetPlan(edited.Id) is { } saved) { edited.Favourite = saved.Favourite; edited.LastRun = saved.LastRun; edited.Created = saved.Created; }
+            await _store.SavePlanAsync(edited);
+        }
+        Plan = edited;
+        EditedForSession = !savePlan;
+        Index = index;
+        Completed.RemoveWhere(id => !edited.Steps.Any(s => s.Id == id));
+        if (restart)
+        {
+            await _metro.StopAsync();
+            await LoadStepAsync(navigate: onStepPage, autoStartRest: false);
+        }
+        else
+        {
+            await SaveRunAsync();
+            Changed?.Invoke();
+        }
+    }
+
     public bool FinishedAll => Summary != null;
 
     public async Task EndAsync(bool finished = false)
@@ -127,6 +181,7 @@ public class PlanRunner
         await _metro.ClearStepIntervalsAsync();
         Summary = finished && Plan != null ? new PlanSummary(Plan.Name, Plan.Steps.Count, Completed.Count, Logs, LoggedSec) : null;
         Plan = null;
+        EditedForSession = false;
         await _store.RemoveSessionAsync(RunKey);
         Changed?.Invoke();
     }
@@ -149,8 +204,7 @@ public class PlanRunner
         var s = Current;
         if (s == null) return;
         var url = StepUrl(s);
-        if (!string.Equals(_nav.ToBaseRelativePath(_nav.Uri).Split('?', '#')[0], url, StringComparison.OrdinalIgnoreCase))
-            _nav.NavigateTo(url);
+        if (!OnPage(url)) _nav.NavigateTo(url);
         if (s.Kind == PlanStepKind.Rest) await _metro.StartRestAsync(s.Minutes);
         else if (s.Mode == StepMode.Timer) await _metro.StartTimerAsync();
         else
@@ -162,8 +216,11 @@ public class PlanRunner
         Changed?.Invoke();
     }
 
+    private bool OnPage(string url) =>
+        string.Equals(_nav.ToBaseRelativePath(_nav.Uri).Split('?', '#')[0], url, StringComparison.OrdinalIgnoreCase);
+
     private Task SaveRunAsync() => Plan == null ? Task.CompletedTask
-        : _store.PutSessionAsync(new RunState(RunKey, Plan.Id, Index, Completed.ToList(), Logs, LoggedSec));
+        : _store.PutSessionAsync(new RunState(RunKey, Plan.Id, Index, Completed.ToList(), Logs, LoggedSec, EditedForSession ? Plan : null));
 
     private async Task LoadStepAsync(bool navigate, bool autoStartRest)
     {
