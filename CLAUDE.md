@@ -30,7 +30,7 @@ dotnet run --project src/Templing/Templing.csproj --launch-profile http   # http
   - `FakeJs` stands in for the browser on the C# side: `import("./js/db.js")` is an in-memory IndexedDB, so `DataStore`, `Backup` and `MetronomeService` run as they are. Seed it with `FakeJs.StoreAsync(db => db.Seed(...))`.
   - `tests/js/fakeaudio.js` runs `metronome.js` on a hand-moved audio clock with Vitest's fake timers, recording each click's time and kind; `db.test.js` uses `fake-indexeddb`. jsdom has no layout or `isContentEditable`, so leave drawing details to the browser.
   - `BackupTests.Every_list_in_the_store_is_backed_up` fails when a `DataStore` list has no `BackupFile` field of the same name (the checklist below).
-  - Unit tests don't replace a look in the browser for UI changes. There, use clearly named throwaway fixtures (e.g. ids prefixed `zztest-`), remove them afterwards and never touch the user's real data.
+  - Unit tests don't replace a look in the browser for UI changes. The preview pane (`.claude/launch.json`) is its own browser with its own IndexedDB, not the developer's, so its data is scratch: change settings, add pieces, run and log sessions, delete things as the check needs, and don't bother restoring them afterwards.
 
 ## Layout
 
