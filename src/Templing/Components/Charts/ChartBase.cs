@@ -39,8 +39,18 @@ public abstract class ChartBase : ComponentBase, IAsyncDisposable
         var json = JsonSerializer.Serialize(new { theme = Store.Settings.DarkMode, spec = _spec });
         if (json == _drawn) return;
         _drawn = json;
-        _mod ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/charts.js");
-        await _mod.InvokeVoidAsync(Kind, El, _spec);
+        // a chart that can't draw (charts.js says so in its box when the library won't load) must never stop the app:
+        // an exception here reached Blazor's error bar. Forget what was drawn, so the next render tries again.
+        try
+        {
+            _mod ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/charts.js");
+            await _mod.InvokeVoidAsync(Kind, El, _spec);
+        }
+        catch (JSException e)
+        {
+            _drawn = "";
+            Console.Error.WriteLine($"Chart ({Kind}) couldn't be drawn: {e.Message}");
+        }
     }
 
     public async ValueTask DisposeAsync()
