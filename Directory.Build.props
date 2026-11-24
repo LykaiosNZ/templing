@@ -1,0 +1,8 @@
+<Project>
+  <!-- The demo build: dotnet build/run/publish/test -p:Demo=true defines DEMO_MODE in every project (the app and its tests).
+       Demo-only code (Services/DemoData.cs, the seeding in DataStore) is inside #if DEMO_MODE, so the normal build
+       doesn't contain it. Pages publishes the demo build to /templing/demo/ (pages.yml). -->
+  <PropertyGroup Condition="'$(Demo)' == 'true'">
+    <DefineConstants>$(DefineConstants);DEMO_MODE</DefineConstants>
+  </PropertyGroup>
+</Project>

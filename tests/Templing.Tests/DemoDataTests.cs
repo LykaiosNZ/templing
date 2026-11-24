@@ -1,5 +1,7 @@
 namespace Templing.Tests;
 
+// The demo build's tests run with -p:Demo=true (build.yml runs the tests both ways); the normal build has no demo to test.
+#if DEMO_MODE
 public class DemoDataTests
 {
     static readonly DateTime Today = new(2026, 11, 24);
@@ -7,7 +9,7 @@ public class DemoDataTests
     [Fact]
     public async Task The_demo_keeps_to_memory_and_starts_with_the_sample_data()
     {
-        var (store, js) = await FakeJs.StoreAsync(demo: true);
+        var (store, js) = await FakeJs.StoreAsync();
 
         Assert.True(store.Demo);
         Assert.True(js.Db.UsedMemory);
@@ -17,17 +19,6 @@ public class DemoDataTests
         Assert.NotEmpty(store.Plans);
         Assert.NotEmpty(store.Presets);
         Assert.Equal(240, store.Settings.WeeklyGoalMin);
-    }
-
-    [Fact]
-    public async Task Outside_demo_mode_nothing_is_seeded()
-    {
-        var (store, js) = await FakeJs.StoreAsync();
-        Assert.False(store.Demo);
-        Assert.False(js.Db.UsedMemory);
-        Assert.False(AppInfo.Demo);   // the tests run the normal build
-        Assert.Empty(store.Pieces);
-        Assert.Empty(store.Logs);
     }
 
     [Fact]
@@ -68,7 +59,7 @@ public class DemoDataTests
     [Fact]
     public async Task The_sample_survives_a_backup_and_restore()
     {
-        var (demo, _) = await FakeJs.StoreAsync(demo: true);
+        var (demo, _) = await FakeJs.StoreAsync();
         var now = DateTimeOffset.Now;
         var json = Backup.Export(demo, now);
 
@@ -78,3 +69,18 @@ public class DemoDataTests
         Assert.Equal(json, Backup.Export(target, now));
     }
 }
+#else
+public class NoDemoTests
+{
+    [Fact]
+    public async Task The_normal_build_has_no_demo()
+    {
+        var (store, js) = await FakeJs.StoreAsync();
+        Assert.False(AppInfo.Demo);
+        Assert.False(store.Demo);
+        Assert.False(js.Db.UsedMemory);
+        Assert.Empty(store.Pieces);
+        Assert.Null(typeof(AppInfo).Assembly.GetType("Templing.Services.DemoData"));   // the sample data isn't built in
+    }
+}
+#endif

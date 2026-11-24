@@ -1,3 +1,5 @@
+// Only in the demo build (-p:Demo=true): the normal build leaves the sample data out (Directory.Build.props).
+#if DEMO_MODE
 using Templing.Models;
 
 namespace Templing.Services;
@@ -218,3 +220,4 @@ public static class DemoData
 
     static string Slug(string name) => new([.. name.ToLowerInvariant().Where(char.IsLetterOrDigit)]);
 }
+#endif

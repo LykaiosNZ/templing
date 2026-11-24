@@ -26,11 +26,11 @@ public sealed class FakeJs : IJSRuntime
     }
 
     /// <summary>A loaded test store: <paramref name="seed"/> written straight into the fake database first.</summary>
-    public static async Task<(DataStore store, FakeJs js)> StoreAsync(Action<FakeDb>? seed = null, bool demo = false)
+    public static async Task<(DataStore store, FakeJs js)> StoreAsync(Action<FakeDb>? seed = null)
     {
         var js = new FakeJs();
         seed?.Invoke(js.Db);
-        var store = new DataStore(js, demo);
+        var store = new DataStore(js);
         await store.EnsureLoadedAsync();
         return (store, js);
     }
