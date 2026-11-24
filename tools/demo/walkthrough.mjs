@@ -70,9 +70,31 @@ await page.evaluateOnNewDocument(pointerScript, opt['hide-demo-chip']);
 // ---------- helpers for the scenes
 
 const wait = ms => new Promise(r => setTimeout(r, ms / speed));
+// for the app's own timing (the search's debounce), which --speed doesn't change
+const realTime = ms => new Promise(r => setTimeout(r, ms));
 let mouse = { x: width / 2, y: height / 2 };
 
-/** Glides the pointer to the element's centre and clicks it. */
+/**
+ * Waits until the page has drawn: no placeholder cards or rows showing (the Library draws its cards a moment after
+ * the page, slower still on the dev server) and every chart drawn. Pauses only start after this, so each screen is
+ * shown finished for as long as the scene says. A page that never settles is shown as it is, after a warning.
+ */
+async function ready(timeout = 20000) {
+    try {
+        await page.waitForFunction(() => {
+            const shown = el => el.offsetParent !== null || getComputedStyle(el).position === 'fixed';
+            if ([...document.querySelectorAll('.card-placeholder, .row-placeholder')].some(shown)) return false;
+            // a chart box (.viz) without "No data yet" is drawn once ECharts has put its SVG in it
+            return [...document.querySelectorAll('.viz')].every(v => v.querySelector('.viz-empty, svg'));
+        }, { timeout, polling: 100 });
+        // and one more frame, for what was just drawn to be painted
+        await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+    } catch {
+        console.warn(`  (${new URL(page.url()).pathname} still drawing after ${timeout / 1000} s; carrying on)`);
+    }
+}
+
+/** Glides the pointer to the element's centre and clicks it, then waits for the page to draw (see ready). */
 async function click(selector, { pause = 600 } = {}) {
     const el = await page.waitForSelector(selector, { visible: true, timeout: 15000 });
     await el.scrollIntoView();
@@ -83,6 +105,7 @@ async function click(selector, { pause = 600 } = {}) {
     mouse = to;
     await wait(250);
     await page.mouse.click(to.x, to.y);
+    await ready();
     await wait(pause);
 }
 
@@ -114,12 +137,17 @@ const scenes = {
 
     async library() {
         await nav('library');
+        await page.waitForSelector('.piece-card-link, .piece-row', { visible: true });
         await wait(1500);
         await click('#library-search');
         await type('sweep');
+        await realTime(400);   // the search waits for typing to stop
+        await ready();
         await wait(1800);
         await page.keyboard.down('Control'); await page.keyboard.press('KeyA'); await page.keyboard.up('Control');
         await page.keyboard.press('Backspace');
+        await realTime(400);
+        await ready();
         await wait(1200);
     },
 
@@ -191,6 +219,7 @@ try {
     if (opt.record && opt.gif) throw new Error('--record or --gif, not both');
     await page.goto(base.href, { waitUntil: 'networkidle2' });
     await page.waitForSelector('.brand', { visible: true, timeout: 60000 });
+    await ready();
     // the scenes use the demo's sample pieces, and a normal build would be someone's real data
     if (!await page.$('.demo-chip')) throw new Error(`${base.href} isn't the demo build: run the app with --property:Demo=true (or use .../templing/demo/)`);
     if (opt.light) await click('[aria-label="Toggle dark mode"]', { pause: 500 });
