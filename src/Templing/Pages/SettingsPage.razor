@@ -16,9 +16,8 @@
 @if (Store.Demo)
 {
     <MudAlert Severity="Severity.Info" Class="mb-4">
-        This is the demo: sample data, kept in memory. Nothing here touches your own data in this browser, and every change
-        goes when you close the tab or reload.
-        <MudLink Typo="Typo.inherit" OnClick="@(() => Nav.NavigateTo("?demo=off", forceLoad: true))">Exit demo</MudLink>
+        This is the demo: sample data, kept in memory. It never touches the data you keep in this browser, and it starts
+        afresh when you reload.
     </MudAlert>
 }
 

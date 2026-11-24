@@ -5,7 +5,7 @@ using Templing.Models;
 namespace Templing.Services;
 
 /// <summary>In-memory cache over IndexedDB. Load once at startup; writes go through to the DB.</summary>
-public class DataStore(IJSRuntime js)
+public class DataStore(IJSRuntime js, bool demo = false)
 {
     public static readonly JsonSerializerOptions Json = new() { PropertyNamingPolicy = null };
 
@@ -19,10 +19,10 @@ public class DataStore(IJSRuntime js)
     public AppSettings Settings { get; private set; } = new();
     public bool Loaded { get; private set; }
     /// <summary>
-    /// Demo mode (<c>?demo</c>): db.js keeps everything in memory, seeded with <see cref="DemoData"/> at each start,
-    /// so the browser's real data is never read or written.
+    /// The demo build (<see cref="AppInfo.Demo"/>): db.js keeps everything in memory, seeded with <see cref="DemoData"/>
+    /// at each start, so the browser's real data is never read or written.
     /// </summary>
-    public bool Demo { get; private set; }
+    public bool Demo => demo;
 
     /// <summary>Raised after any write.</summary>
     public event Action? Changed;
@@ -46,8 +46,11 @@ public class DataStore(IJSRuntime js)
     private async Task LoadAsync()
     {
         _db = await js.InvokeAsync<IJSObjectReference>("import", "./js/db.js");
-        Demo = await _db.InvokeAsync<bool>("demo");
-        if (Demo) await SeedDemoAsync(DemoData.Create(DateTime.Today));
+        if (demo)
+        {
+            await _db.InvokeVoidAsync("useMemory");
+            await SeedDemoAsync(DemoData.Create(DateTime.Today));
+        }
         Pieces = await GetAll<Piece>("pieces");
         Logs = await GetAll<PracticeLog>("logs");
         Presets = await GetAll<MetronomePreset>("presets");

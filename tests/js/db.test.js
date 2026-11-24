@@ -50,16 +50,15 @@ describe('db.js', () => {
     });
 });
 
-// Demo mode: the boot script in index.html marks <html data-demo> before db.js loads; db.js then keeps the stores in memory.
-describe('db.js in demo mode', () => {
+// The demo build: DataStore calls useMemory() before anything else, and db.js then keeps the stores in memory.
+describe('db.js in memory (the demo build)', () => {
     it('keeps everything in memory and never touches IndexedDB', async () => {
         vi.resetModules();
-        document.documentElement.setAttribute('data-demo', '');
         const real = globalThis.indexedDB;
-        globalThis.indexedDB = { open() { throw new Error('IndexedDB opened in demo mode'); } };
+        globalThis.indexedDB = { open() { throw new Error('IndexedDB opened by the demo'); } };
         try {
             const demo = await import('../../src/Templing/wwwroot/js/db.js');
-            expect(demo.demo()).toBe(true);
+            demo.useMemory();
 
             const row = { Id: 'a', Name: 'Spain' };
             await demo.put('pieces', JSON.stringify(row));
@@ -76,12 +75,11 @@ describe('db.js in demo mode', () => {
             expect(new TextDecoder().decode(await demo.getAll('pieces'))).toBe('[]');
         } finally {
             globalThis.indexedDB = real;
-            document.documentElement.removeAttribute('data-demo');
             vi.resetModules();
         }
     });
 
-    it('is off without the mark', () => {
-        expect(db.demo()).toBe(false);
+    it('refuses to switch once IndexedDB is open', () => {
+        expect(() => db.useMemory()).toThrow();   // the tests above opened it
     });
 });

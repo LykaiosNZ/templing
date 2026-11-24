@@ -3,7 +3,7 @@ using Templing.Models;
 namespace Templing.Services;
 
 /// <summary>
-/// The sample library demo mode starts with (<c>?demo</c>; see <see cref="DataStore.Demo"/>): a guitarist's few months
+/// The sample library the demo build starts with (<c>-p:Demo=true</c>; see <see cref="DataStore.Demo"/>): a guitarist's few months
 /// of practice, ending today, so every screen has something to show. The same every time (a fixed random seed),
 /// so a scripted run-through (tools/demo) finds the same pieces and numbers; only the dates move with today.
 /// </summary>
