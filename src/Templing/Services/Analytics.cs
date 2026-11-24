@@ -8,14 +8,20 @@ namespace Templing.Services;
 /// A few Umami events (index.html loads the tracker, only on the deployed site): practice logged, piece added (and how),
 /// plan started / finished, and unhandled errors (the exception's type only). Nothing from the user's library is sent:
 /// no names, notes, tempos or ids. The demo build sends none, so its sample data doesn't count as practice.
+/// <see cref="AppSettings.Analytics"/> (Settings > Data) turns all of it off, page views too: the boot script in index.html
+/// only loads the tracker if the saved setting allows, and <see cref="Apply"/> keeps it in step after that.
 /// </summary>
 public class Analytics
 {
     private readonly IJSRuntime _js;
+    private readonly DataStore _store;
+    private bool? _applied;
 
     public Analytics(IJSRuntime js, DataStore store, PlanRunner runner)
     {
         _js = js;
+        _store = store;
+        store.Changed += () => { if (store.Loaded) Apply(); };
         store.LogAdded += _ => Track("practice-logged");
         store.PieceAdded += p => Track("piece-added", new { source = Source(p) });
         runner.RunStarted += () => Track("plan-started");
@@ -30,6 +36,19 @@ public class Analytics
         return ext.StartsWith("gp") ? "guitar-pro"
             : ext is "xml" or "musicxml" or "mxl" ? "musicxml"
             : "score";
+    }
+
+    /// <summary>
+    /// Tells index.html whether analytics is on (loading the tracker if it wasn't): once the store has loaded (MainLayout),
+    /// then whenever the setting changes (switched in Settings, or reset by "Delete all data").
+    /// </summary>
+    public void Apply()
+    {
+        var on = _store.Settings.Analytics;
+        if (_applied == on) return;
+        _applied = on;
+        try { _ = _js.InvokeVoidAsync("templingAnalytics", on).AsTask().ContinueWith(t => _ = t.Exception, TaskContinuationOptions.OnlyOnFaulted); }
+        catch { }
     }
 
     public void Track(string name, object? data = null) => Send(_js, name, data);

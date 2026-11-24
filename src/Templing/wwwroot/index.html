@@ -19,17 +19,31 @@
     <link rel="stylesheet" href="css/app#[.{fingerprint}].css" />
     <link rel="stylesheet" href="css/templing#[.{fingerprint}].css" />
     <script type="importmap"></script>
-    <!-- Umami: anonymous page views (no cookies), only on the deployed site (data-domains), so dev servers aren't counted.
+    <!-- Umami: anonymous page views and a few events (no cookies), only on the deployed site (data-domains), so dev servers
+         aren't counted. Settings > Data can turn it off (AppSettings.Analytics): the script below loads the tracker only
+         once the saved setting says it may, and Services/Analytics.cs turns it on or off as the setting changes.
          Ids in routes are folded (library/:id) so each screen is one page in the stats, and no ids leave the device. -->
     <script>
+        var templingAnalyticsOn = false;
         function templingUmami(type, payload) {
+            if (!templingAnalyticsOn) return false;   // switched off after the tracker loaded: send nothing
             if (payload && payload.url) payload.url = payload.url.split(/[?#]/)[0].replace(/\/(library|piece|preset)\/[^/]+(\/[^/]+)?$/, function (m, kind, sub) { return '/' + kind + '/:id' + (sub ? '/:section' : ''); });
             return payload;
         }
-        // custom events from Services/Analytics.cs; the tracker loads deferred and may be blocked, so this may be a no-op
-        function templingTrack(name, data) { if (window.umami) window.umami.track(name, data || undefined); }
+        // on: load the tracker (once), which counts the current page; off: it stays loaded but sends nothing
+        function templingAnalytics(on) {
+            templingAnalyticsOn = !!on;
+            if (!on || document.getElementById('umami')) return;
+            var t = document.createElement('script');
+            t.id = 'umami'; t.defer = true; t.src = 'https://cloud.umami.is/script.js';
+            t.setAttribute('data-website-id', 'a2236001-0146-4dd6-8898-cee6ad6a1baa');
+            t.setAttribute('data-domains', 'lykaiosnz.github.io');
+            t.setAttribute('data-before-send', 'templingUmami');
+            document.head.appendChild(t);
+        }
+        // custom events from Services/Analytics.cs; the tracker may not have loaded or be blocked, so this may be a no-op
+        function templingTrack(name, data) { if (templingAnalyticsOn && window.umami) window.umami.track(name, data || undefined); }
     </script>
-    <script defer src="https://cloud.umami.is/script.js" data-website-id="a2236001-0146-4dd6-8898-cee6ad6a1baa" data-domains="lykaiosnz.github.io" data-before-send="templingUmami"></script>
 </head>
 
 <body>
@@ -51,17 +65,23 @@
         // Light or dark (and a custom accent) from the saved settings, read straight from IndexedDB, so the loading screen matches the app.
         // Never creates the database: on a first visit the upgrade is aborted and the default (dark) stays.
         (function () {
+            // Also whether to load analytics (Settings > Data): on unless the saved setting says off, as on a first visit.
+            // If IndexedDB never answers, the app decides once it has loaded (Analytics.ApplyAsync).
+            var decided = false;
+            function analytics(on) { if (!decided) { decided = true; templingAnalytics(on); } }
             // the demo build (pages.yml marks its <html data-demo>) keeps its settings in memory, and the IndexedDB here is someone's real data
-            if (document.documentElement.hasAttribute('data-demo')) return;
+            if (document.documentElement.hasAttribute('data-demo')) { analytics(true); return; }
             try {
                 var q = indexedDB.open('templing');   // DB_NAME in js/db.js
                 q.onupgradeneeded = function (e) { e.target.transaction.abort(); };
+                q.onerror = function () { analytics(true); };
                 q.onsuccess = function () {
                     var db = q.result;
                     try {
                         var g = db.transaction('settings').objectStore('settings').get('app');
                         g.onsuccess = function () {
                             var s = g.result, root = document.documentElement;
+                            analytics(!(s && s.Analytics === false));
                             if (s && s.DarkMode === false) root.classList.add('boot-light');
                             // custom accent and good colour (Settings > Colours), so the loading screen isn't the built-in orange
                             var c = s && s.Colours;
@@ -71,10 +91,10 @@
                             if (c && c.Dark && c.Dark.good) root.style.setProperty('--boot-good-dark', c.Dark.good);
                             db.close();
                         };
-                        g.onerror = function () { db.close(); };
-                    } catch (e) { db.close(); }
+                        g.onerror = function () { analytics(true); db.close(); };
+                    } catch (e) { analytics(true); db.close(); }
                 };
-            } catch (e) { }
+            } catch (e) { analytics(true); }
         })();
     </script>
 
