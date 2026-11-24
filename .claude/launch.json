@@ -6,6 +6,12 @@
       "runtimeExecutable": "dotnet",
       "runtimeArgs": ["run", "--project", "src/Templing/Templing.csproj", "--launch-profile", "http"],
       "port": 5075
+    },
+    {
+      "name": "templing-demo",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/Templing/Templing.csproj", "--launch-profile", "http", "--property:Demo=true"],
+      "port": 5075
     }
   ]
 }

@@ -8,10 +8,14 @@ const DB_VERSION = 5; // 5: "items" store renamed "pieces"
 const STORES = ['pieces', 'logs', 'presets', 'settings', 'files', 'plans', 'session'];
 let dbPromise = null;
 
-// Demo mode (?demo, see the boot script in index.html): the same stores in memory, filled with sample data by DataStore,
-// so trying the app never reads or overwrites the IndexedDB data of someone who uses it. Gone when the page goes.
-const DEMO = typeof document !== 'undefined' && document.documentElement.hasAttribute('data-demo');
-export function demo() { return DEMO; }
+// The demo build (-p:Demo=true): DataStore calls useMemory() first, and the same stores then live in memory, filled with
+// sample data, so the demo never reads or overwrites the IndexedDB data of someone who uses the app on the same site
+// (Pages serves the demo beside the app, on the same origin). Gone when the page goes.
+let memoryOnly = false;
+export function useMemory() {
+    if (dbPromise) throw new Error('useMemory() after IndexedDB was opened');
+    memoryOnly = true;
+}
 
 const memory = new Map();   // store name -> Map(Id -> row)
 
@@ -46,7 +50,7 @@ function open() {
 }
 
 function tx(store, mode, fn) {
-    if (DEMO) return Promise.resolve().then(() => fn(memoryStore(store))?.result);
+    if (memoryOnly) return Promise.resolve().then(() => fn(memoryStore(store))?.result);
     return open().then(db => new Promise((resolve, reject) => {
         const t = db.transaction(store, mode);
         const os = t.objectStore(store);

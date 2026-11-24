@@ -1,19 +1,20 @@
-// A scripted run-through of Templing's demo mode (?demo: sample data in memory, the browser's own data untouched),
+// A scripted run-through of Templing's demo build (-p:Demo=true: sample data in memory, the browser's own data untouched),
 // for recording demo videos. Drives a real Chrome with Puppeteer, moving a visible pointer between clicks.
 //
+//   dotnet run --project src/Templing/Templing.csproj --launch-profile http --property:Demo=true   # the demo on :5075
 //   npm install
-//   node walkthrough.mjs                              # watch it in a Chrome window (the dev server on :5075)
-//   node walkthrough.mjs --record templing.webm       # and record it (needs ffmpeg on PATH)
+//   node walkthrough.mjs                              # watch it in a Chrome window
+//   node walkthrough.mjs --record templing.webm       # and record it (npm install brings ffmpeg: ffmpeg-static)
 //
 // Options:
-//   --url <address>     where the app is (default http://localhost:5075/; e.g. https://lykaiosnz.github.io/templing/)
-//   --record <file>     record a .webm of the page with Puppeteer's screencast (needs ffmpeg)
+//   --url <address>     where the demo is (default http://localhost:5075/; or https://lykaiosnz.github.io/templing/demo/)
+//   --record <file>     record a .webm of the page with Puppeteer's screencast
 //   --shots <dir>       also save a screenshot at the end of each scene, as <dir>/<n>-<scene>.png
 //   --headless          no window (handy with --record)
 //   --speed <n>         pauses × 1/n: 2 runs twice as fast (default 1)
 //   --size <w>x<h>      the page size (default 1280x800)
 //   --light             light mode instead of dark
-//   --show-demo-chip    keep the "Demo" chip in the app bar (hidden by default, as it means nothing in a video)
+//   --hide-demo-chip    hide the "Demo" chip in the app bar
 //   --channel <name>    the installed browser to use: chrome (default), chrome-beta, msedge…
 //   --browser <path>    or a browser executable
 //
@@ -21,6 +22,7 @@
 // Selectors use the app's aria-labels and hrefs, which DESIGN.md keeps stable.
 
 import puppeteer from 'puppeteer-core';
+import ffmpegPath from 'ffmpeg-static';   // a prebuilt ffmpeg for this platform, for recording
 import { parseArgs } from 'node:util';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -34,7 +36,7 @@ const { values: opt } = parseArgs({
         speed: { type: 'string', default: '1' },
         size: { type: 'string', default: '1280x800' },
         light: { type: 'boolean', default: false },
-        'show-demo-chip': { type: 'boolean', default: false },
+        'hide-demo-chip': { type: 'boolean', default: false },
         channel: { type: 'string', default: 'chrome' },
         browser: { type: 'string' },
     },
@@ -54,7 +56,7 @@ const browser = await puppeteer.launch({
 });
 const [page] = await browser.pages();
 await page.setViewport({ width, height });
-await page.evaluateOnNewDocument(pointerScript, opt['show-demo-chip']);
+await page.evaluateOnNewDocument(pointerScript, opt['hide-demo-chip']);
 
 // ---------- helpers for the scenes
 
@@ -172,13 +174,15 @@ const scenes = {
 
 let recorder;
 try {
-    await page.goto(new URL('?demo', base).href, { waitUntil: 'networkidle2' });
+    await page.goto(base.href, { waitUntil: 'networkidle2' });
     await page.waitForSelector('.brand', { visible: true, timeout: 60000 });
+    // the scenes use the demo's sample pieces, and a normal build would be someone's real data
+    if (!await page.$('.demo-chip')) throw new Error(`${base.href} isn't the demo build: run the app with --property:Demo=true (or use .../templing/demo/)`);
     if (opt.light) await click('[aria-label="Toggle dark mode"]', { pause: 500 });
     await page.mouse.move(mouse.x, mouse.y);
     if (opt.record) {
         if (!opt.record.endsWith('.webm')) throw new Error('--record needs a .webm file name');
-        recorder = await page.screencast({ path: opt.record });
+        recorder = await page.screencast({ path: opt.record, ffmpegPath });
     }
     if (opt.shots) mkdirSync(opt.shots, { recursive: true });
     let n = 0;
@@ -189,7 +193,7 @@ try {
     }
     console.log(opt.record ? `Recorded ${opt.record}` : 'Done');
 } catch (e) {
-    console.error(e.message.includes('ffmpeg') ? `${e.message}\nRecording needs ffmpeg on PATH (https://ffmpeg.org/download.html).` : e);
+    console.error(e.message.includes('ffmpeg') ? `${e.message}\nRecording uses ffmpeg from ffmpeg-static (${ffmpegPath}): run npm install again.` : e);
     process.exitCode = 1;
 } finally {
     await recorder?.stop();
@@ -197,8 +201,8 @@ try {
 }
 
 // Runs in the page (before the app): a pointer that follows the mouse and rings on clicks, since a recording shows none;
-// and, for a video, no "Demo" chip.
-function pointerScript(showChip) {
+// and, if asked, no "Demo" chip.
+function pointerScript(hideChip) {
     addEventListener('DOMContentLoaded', () => {
         const style = document.createElement('style');
         style.textContent = `
@@ -209,7 +213,7 @@ function pointerScript(showChip) {
             .demo-ring { position: fixed; z-index: 99999; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%;
                 border: 3px solid rgba(255,160,60,.9); pointer-events: none; animation: demo-ring .5s ease-out forwards; }
             @keyframes demo-ring { from { transform: scale(.3); opacity: 1; } to { transform: scale(1.3); opacity: 0; } }
-            ${showChip ? '' : '.demo-chip { display: none !important; }'}`;
+            ${hideChip ? '.demo-chip { display: none !important; }' : ''}`;
         document.head.appendChild(style);
         const dot = document.createElement('div');
         dot.id = 'demo-pointer';

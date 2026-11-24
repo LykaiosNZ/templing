@@ -76,15 +76,19 @@ dotnet run --project src/Templing/Templing.csproj --launch-profile http
 
 Then open <http://localhost:5075>.
 
-### Demo mode
+### Demo
 
-Add `?demo` to the address (<http://localhost:5075/?demo>, or <https://lykaiosnz.github.io/templing/?demo>) to try Templing with a few months of sample practice. The demo lives in memory: it never reads or changes the data you keep in that browser, and it starts afresh each time the app loads. It lasts for the tab until you close the **Demo** chip in the top bar (or open `?demo=off`).
+There's a demo build with a few months of sample practice: try it at <https://lykaiosnz.github.io/templing/demo/>. It keeps everything in memory, so it never reads or changes the data you keep in that browser, and it starts afresh each time it loads. A **Demo** label in the top bar says which one you're in. To run it locally:
 
-`tools/demo` drives the demo through the app's main screens with [Puppeteer](https://pptr.dev), for recording demo videos (`--record` needs [ffmpeg](https://ffmpeg.org)):
+```bash
+dotnet run --project src/Templing/Templing.csproj --launch-profile http --property:Demo=true
+```
+
+`tools/demo` drives the demo through the app's main screens with [Puppeteer](https://pptr.dev) (and your installed Chrome), for recording demo videos. `npm install` brings its own ffmpeg for `--record`:
 
 ```bash
 cd tools/demo && npm install
-node walkthrough.mjs                                   # watch it in Chrome, against the dev server
+node walkthrough.mjs                                   # watch it in Chrome, against the demo on :5075
 node walkthrough.mjs --headless --record templing.webm
 ```
 

@@ -26,11 +26,11 @@ public sealed class FakeJs : IJSRuntime
     }
 
     /// <summary>A loaded test store: <paramref name="seed"/> written straight into the fake database first.</summary>
-    public static async Task<(DataStore store, FakeJs js)> StoreAsync(Action<FakeDb>? seed = null)
+    public static async Task<(DataStore store, FakeJs js)> StoreAsync(Action<FakeDb>? seed = null, bool demo = false)
     {
         var js = new FakeJs();
         seed?.Invoke(js.Db);
-        var store = new DataStore(js);
+        var store = new DataStore(js, demo);
         await store.EnsureLoadedAsync();
         return (store, js);
     }
@@ -57,8 +57,8 @@ public class FakeModule : IJSObjectReference
 public sealed class FakeDb : FakeModule
 {
     public Dictionary<string, Dictionary<string, JsonObject>> Stores { get; } = new();
-    /// <summary>What db.js's <c>demo()</c> answers (demo mode: the page was opened with <c>?demo</c>).</summary>
-    public bool Demo { get; set; }
+    /// <summary>DataStore told db.js to keep to memory (the demo build).</summary>
+    public bool UsedMemory { get; private set; }
 
     Dictionary<string, JsonObject> Store(string name) => Stores.TryGetValue(name, out var s) ? s : Stores[name] = new();
 
@@ -95,7 +95,7 @@ public sealed class FakeDb : FakeModule
             case "removeFile": Store("files").Remove((string)a[0]!); break;
             case "clear": Store((string)a[0]!).Clear(); break;
             case "download": break;
-            case "demo": result = Demo; break;
+            case "useMemory": UsedMemory = true; break;
             default: throw new NotSupportedException($"db.js has no {identifier}");
         }
         return ValueTask.FromResult(result is null ? default(TValue)! : (TValue)result);

@@ -5,11 +5,13 @@ public class DemoDataTests
     static readonly DateTime Today = new(2026, 11, 24);
 
     [Fact]
-    public async Task Demo_mode_starts_with_the_sample_data_whatever_the_database_holds()
+    public async Task The_demo_keeps_to_memory_and_starts_with_the_sample_data()
     {
-        var (store, _) = await FakeJs.StoreAsync(db => { db.Demo = true; db.Seed("pieces", new Piece { Name = "Mine" }); });
+        var (store, js) = await FakeJs.StoreAsync(demo: true);
 
         Assert.True(store.Demo);
+        Assert.True(js.Db.UsedMemory);
+        Assert.Equal("useMemory", js.Db.Calls[0].fn);   // before anything is read
         Assert.Contains(store.Pieces, p => p.Name == "Spain");
         Assert.NotEmpty(store.Logs);
         Assert.NotEmpty(store.Plans);
@@ -20,8 +22,10 @@ public class DemoDataTests
     [Fact]
     public async Task Outside_demo_mode_nothing_is_seeded()
     {
-        var (store, _) = await FakeJs.StoreAsync();
+        var (store, js) = await FakeJs.StoreAsync();
         Assert.False(store.Demo);
+        Assert.False(js.Db.UsedMemory);
+        Assert.False(AppInfo.Demo);   // the tests run the normal build
         Assert.Empty(store.Pieces);
         Assert.Empty(store.Logs);
     }
@@ -64,7 +68,7 @@ public class DemoDataTests
     [Fact]
     public async Task The_sample_survives_a_backup_and_restore()
     {
-        var (demo, _) = await FakeJs.StoreAsync(db => db.Demo = true);
+        var (demo, _) = await FakeJs.StoreAsync(demo: true);
         var now = DateTimeOffset.Now;
         var json = Backup.Export(demo, now);
 

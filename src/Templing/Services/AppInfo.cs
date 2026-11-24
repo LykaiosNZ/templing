@@ -11,6 +11,13 @@ public static class AppInfo
     public static readonly string InformationalVersion =
         typeof(AppInfo).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0";
 
+    /// <summary>
+    /// The demo build (<c>-p:Demo=true</c>; Pages serves it at /templing/demo/): sample data in memory instead of the
+    /// browser's IndexedDB (<see cref="DataStore.Demo"/>). Set by Templing.csproj as assembly metadata.
+    /// </summary>
+    public static readonly bool Demo =
+        typeof(AppInfo).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>().Any(a => a.Key == "Demo" && a.Value == "true");
+
     /// <summary>For display: "0.1.0 (3f2a9c1)", or just "0.1.0" when the build had no commit.</summary>
     public static readonly string Version = Format(InformationalVersion);
 

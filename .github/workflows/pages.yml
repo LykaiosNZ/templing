@@ -1,4 +1,5 @@
-# Builds the app and publishes it to GitHub Pages (https://lykaiosnz.github.io/templing/) when a release is published.
+# Builds the app and publishes it to GitHub Pages (https://lykaiosnz.github.io/templing/) when a release is published,
+# with the demo build (sample data in memory, -p:Demo=true) beside it at https://lykaiosnz.github.io/templing/demo/.
 # Pages source must be set to "GitHub Actions" (Settings > Pages > Build and deployment), and the github-pages
 # environment must allow deployments from tags matching v* as well as main (Settings > Environments > github-pages).
 # Pushes to main only build (build.yml). Run it by hand ("Run workflow") on a tag to redeploy a release, or on main
@@ -50,16 +51,34 @@ jobs:
       - name: Publish
         run: dotnet publish src/Templing/Templing.csproj -c Release -o publish -p:SourceRevisionId=${{ github.sha }} ${{ steps.version.outputs.args }}
 
+      # the same app with sample data in memory (AppInfo.Demo)
+      - name: Publish the demo
+        run: dotnet publish src/Templing/Templing.csproj -c Release -o publish-demo -p:Demo=true -p:SourceRevisionId=${{ github.sha }} ${{ steps.version.outputs.args }}
+
       - name: Prepare site
         working-directory: publish/wwwroot
         run: |
           # served from /templing/, not the domain root
           sed -i 's|<base href="/" />|<base href="/templing/" />|' index.html
           grep -q '<base href="/templing/" />' index.html
-          # Pages has no SPA fallback: its 404 page is the app, which then routes the deep link itself
+          # Pages has no SPA fallback: its 404 page is the app, which then routes the deep link itself.
+          # Only this top-level 404.html is used, so a deep link into the demo goes to the demo's start instead.
           cp index.html 404.html
+          sed -i 's|<head>|<head><script>if (location.pathname.indexOf("/templing/demo/") === 0) location.replace("/templing/demo/");</script>|' 404.html
+          grep -q 'location.replace("/templing/demo/")' 404.html
           # Pages serves its own compression, so the precompressed copies are dead weight
           find . -type f \( -name '*.br' -o -name '*.gz' \) -delete
+
+      # the demo at /templing/demo/. Same origin as the app, so the same IndexedDB: the demo build never opens it,
+      # and data-demo keeps the loading screen from reading the real settings for its colours (index.html)
+      - name: Prepare the demo
+        working-directory: publish-demo/wwwroot
+        run: |
+          sed -i 's|<base href="/" />|<base href="/templing/demo/" />|; s|<html lang="en">|<html lang="en" data-demo>|' index.html
+          grep -q '<base href="/templing/demo/" />' index.html
+          grep -q '<html lang="en" data-demo>' index.html
+          find . -type f \( -name '*.br' -o -name '*.gz' \) -delete
+          cp -r . ../../publish/wwwroot/demo
 
       - uses: actions/upload-pages-artifact@v5
         with:

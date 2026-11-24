@@ -8,6 +8,7 @@
     "record": "node walkthrough.mjs --headless --record templing-demo.webm"
   },
   "devDependencies": {
+    "ffmpeg-static": "5.3.0",
     "puppeteer-core": "24.43.1"
   }
 }

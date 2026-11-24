@@ -37,25 +37,11 @@
     </div>
 
     <script>
-        // Demo mode: ?demo starts it and it lasts for this tab (a reload keeps it) until ?demo=off or Exit demo.
-        // js/db.js then keeps everything in memory, seeded with sample data, and never opens IndexedDB.
-        (function () {
-            var on = false;
-            try {
-                var q = new URLSearchParams(location.search).get('demo');
-                if (q !== null) {
-                    if (q === 'off' || q === '0' || q === 'false') sessionStorage.removeItem('templing-demo');
-                    else sessionStorage.setItem('templing-demo', '1');
-                }
-                on = sessionStorage.getItem('templing-demo') === '1';
-            } catch (e) { on = q != null && q !== 'off' && q !== '0' && q !== 'false'; }
-            if (on) document.documentElement.setAttribute('data-demo', '');
-        })();
-
         // Light or dark (and a custom accent) from the saved settings, read straight from IndexedDB, so the loading screen matches the app.
         // Never creates the database: on a first visit the upgrade is aborted and the default (dark) stays.
         (function () {
-            if (document.documentElement.hasAttribute('data-demo')) return;   // the demo's settings aren't in IndexedDB
+            // the demo build (pages.yml marks its <html data-demo>) keeps its settings in memory, and the IndexedDB here is someone's real data
+            if (document.documentElement.hasAttribute('data-demo')) return;
             try {
                 var q = indexedDB.open('templing');   // DB_NAME in js/db.js
                 q.onupgradeneeded = function (e) { e.target.transaction.abort(); };
