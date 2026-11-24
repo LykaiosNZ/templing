@@ -7,7 +7,7 @@
 **A practice tracker for any instrument.**
 A training metronome, a library of the pieces you're working on, and stats that show you getting faster.
 
-![The Templing metronome playing the verse of a song, with the speed trainer, intervals and count-in options alongside](docs/images/metronome.png)
+https://github.com/user-attachments/assets/2402078a-fd14-4ca7-ae90-da9d2ae0ec92
 
 </div>
 
@@ -76,30 +76,18 @@ dotnet run --project src/Templing/Templing.csproj --launch-profile http
 
 Then open <http://localhost:5075>.
 
+To try it on a phone or tablet on the same network, use the `lan` profile and open `https://<your computer's IP>:7212`, accepting the certificate warning. (The browser only allows the app's crypto APIs on HTTPS or localhost.)
+
+```bash
+dotnet run --project src/Templing/Templing.csproj --launch-profile lan
+```
+
 ### Demo
 
 There's a demo build with a few months of sample practice: try it at <https://lykaiosnz.github.io/templing/demo/>. It keeps everything in memory, so it never reads or changes the data you keep in that browser, and it starts afresh each time it loads. A **Demo** label in the top bar says which one you're in. To run it locally:
 
 ```bash
 dotnet run --project src/Templing/Templing.csproj --launch-profile http --property:Demo=true
-```
-
-`tools/demo` drives the demo through the app's main screens with [Puppeteer](https://pptr.dev) (and your installed Chrome), for recording demo videos. `npm install` brings its own ffmpeg for recording:
-
-```bash
-cd tools/demo && npm install
-node walkthrough.mjs                                   # watch it in Chrome, against the demo on :5075
-node walkthrough.mjs --headless --record templing.webm
-npm run record:mp4                                     # templing-demo.mp4, at four times the speed (--speed 4)
-npm run record:gif                                     # templing-demo.gif, the same as a GIF
-```
-
-An MP4 is far smaller than a GIF (about a tenth) at full size and colour, and GitHub plays one dropped into a README, issue or pull request. See the top of `walkthrough.mjs` for the options (another address, speed, size, light mode, screenshots, GIF and MP4 settings).
-
-To try it on a phone or tablet on the same network, use the `lan` profile and open `https://<your computer's IP>:7212`, accepting the certificate warning. (The browser only allows the app's crypto APIs on HTTPS or localhost.)
-
-```bash
-dotnet run --project src/Templing/Templing.csproj --launch-profile lan
 ```
 
 ## Tests
