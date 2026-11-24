@@ -19,6 +19,15 @@
     <link rel="stylesheet" href="css/app#[.{fingerprint}].css" />
     <link rel="stylesheet" href="css/templing#[.{fingerprint}].css" />
     <script type="importmap"></script>
+    <!-- Umami: anonymous page views (no cookies), only on the deployed site (data-domains), so dev servers aren't counted.
+         Ids in routes are folded (library/:id) so each screen is one page in the stats, and no ids leave the device. -->
+    <script>
+        function templingUmami(type, payload) {
+            if (payload && payload.url) payload.url = payload.url.split(/[?#]/)[0].replace(/\/(library|piece|preset)\/[^/]+(\/[^/]+)?$/, function (m, kind, sub) { return '/' + kind + '/:id' + (sub ? '/:section' : ''); });
+            return payload;
+        }
+    </script>
+    <script defer src="https://cloud.umami.is/script.js" data-website-id="a2236001-0146-4dd6-8898-cee6ad6a1baa" data-domains="lykaiosnz.github.io" data-before-send="templingUmami"></script>
 </head>
 
 <body>
