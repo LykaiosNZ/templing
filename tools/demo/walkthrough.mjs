@@ -13,8 +13,11 @@
 //                       use --speed to make it quicker, so the clicks and animations still look natural)
 //   --gif-width <px>    the GIF's width (default 960; the height follows)
 //   --gif-fps <n>       the GIF's frames per second (default 15)
+//   --mp4 <file>        record an .mp4 (H.264, full size and colour, far smaller than a GIF; GitHub plays one dropped
+//                       into a README, issue or PR). Goes with --gif too: one run, both files
+//   --mp4-crf <n>       the MP4's quality, 18 (sharper, bigger) to 28 (default 23)
 //   --shots <dir>       also save a screenshot at the end of each scene, as <dir>/<n>-<scene>.png
-//   --headless          no window (handy with --record and --gif)
+//   --headless          no window (handy with --record, --gif and --mp4)
 //   --speed <n>         pauses × 1/n: 2 runs twice as fast (default 1)
 //   --size <w>x<h>      the page size (default 1280x800)
 //   --light             light mode instead of dark
@@ -40,6 +43,8 @@ const { values: opt } = parseArgs({
         gif: { type: 'string' },
         'gif-width': { type: 'string', default: '960' },
         'gif-fps': { type: 'string', default: '15' },
+        mp4: { type: 'string' },
+        'mp4-crf': { type: 'string', default: '23' },
         shots: { type: 'string' },
         headless: { type: 'boolean', default: false },
         speed: { type: 'string', default: '1' },
@@ -123,9 +128,6 @@ async function scroll(y, pause = 1200) {
     await wait(pause);
 }
 
-/** Waits for a selector, if it shows up (e.g. a dialog after stopping). */
-const appears = (selector, timeout = 2500) => page.waitForSelector(selector, { visible: true, timeout }).then(() => true, () => false);
-
 // ---------- the scenes
 
 const scenes = {
@@ -164,26 +166,9 @@ const scenes = {
         await click('[aria-label="5 faster"]', { pause: 2500 });
         await click('[aria-label="5 faster"]', { pause: 4000 });
         await click('[aria-label="Stop"]', { pause: 1500 });
-        // the session panel offers to log what was played: log it (the History scene shows it at the top)
+        // the session panel offers to log what was played: log it
         await click('.session-end button::-p-text(Log)', { pause: 2500 });
         await click('.mud-dialog button::-p-text(Save)', { pause: 1500 });
-    },
-
-    async plans() {
-        await nav('plans');
-        await wait(1500);
-        await click('[aria-label="Run Daily warm-up"]', { pause: 2500 });
-        await click('button[aria-label="Start"]', { pause: 7000 });   // the step's speed trainer
-        await click('.plan-bar .plan-end', { pause: 1500 });
-        // the step has practice time that isn't logged: discard it
-        await click(await appears('.confirm-alt') ? '.confirm-alt' : '.confirm-ok', { pause: 1500 });
-    },
-
-    async timer() {
-        await nav('timer');
-        await click('button[aria-label="Start"]', { pause: 4000 });
-        await click('[aria-label="Stop"]', { pause: 1500 });
-        await click('.session-end button::-p-text(Discard)', { pause: 1000 });
     },
 
     async stats() {
@@ -192,31 +177,20 @@ const scenes = {
         for (let i = 0; i < 4; i++) await scroll(450, 2000);
         await scroll(-2000, 800);
     },
-
-    async history() {
-        await nav('history');
-        await wait(2500);
-        await scroll(500, 1500);
-        await scroll(-500, 800);
-    },
-
-    async theme() {
-        await nav('');
-        await click('[aria-label="Toggle dark mode"]', { pause: 2500 });
-        await click('[aria-label="Toggle dark mode"]', { pause: 1500 });
-    },
 };
 
 // ---------- run
 
-// a GIF is recorded as a .webm first, somewhere temporary, and converted at the end
-const tempDir = opt.gif ? mkdtempSync(join(tmpdir(), 'templing-demo-')) : null;
-const video = opt.gif ? join(tempDir, 'walkthrough.webm') : opt.record;
+// a GIF or MP4 is recorded as a .webm first, somewhere temporary, and converted at the end
+const converted = opt.gif || opt.mp4;
+const tempDir = converted ? mkdtempSync(join(tmpdir(), 'templing-demo-')) : null;
+const video = converted ? join(tempDir, 'walkthrough.webm') : opt.record;
 
 let recorder, ok = false;
 try {
     if (opt.gif && !opt.gif.endsWith('.gif')) throw new Error('--gif needs a .gif file name');
-    if (opt.record && opt.gif) throw new Error('--record or --gif, not both');
+    if (opt.mp4 && !opt.mp4.endsWith('.mp4')) throw new Error('--mp4 needs a .mp4 file name');
+    if (opt.record && converted) throw new Error('--record, or --gif and --mp4: not both');
     await page.goto(base.href, { waitUntil: 'networkidle2' });
     await page.waitForSelector('.brand', { visible: true, timeout: 60000 });
     await ready();
@@ -243,10 +217,13 @@ try {
     await recorder?.stop();
     await browser.close();
 }
-if (ok && opt.gif) {
-    console.log('· converting to GIF');
-    try { toGif(video, opt.gif); console.log(`Recorded ${opt.gif}`); }
-    catch (e) { console.error(`Couldn't make the GIF: ${e.message}`); process.exitCode = 1; }
+if (ok && converted) {
+    for (const [file, kind, convert] of [[opt.gif, 'GIF', toGif], [opt.mp4, 'MP4', toMp4]]) {
+        if (!file) continue;
+        console.log(`· converting to ${kind}`);
+        try { convert(video, file); console.log(`Recorded ${file}`); }
+        catch (e) { console.error(`Couldn't make the ${kind}: ${e.message}`); process.exitCode = 1; }
+    }
 }
 else if (ok) console.log(opt.record ? `Recorded ${opt.record}` : 'Done');
 if (tempDir) rmSync(tempDir, { recursive: true, force: true });
@@ -257,6 +234,14 @@ function toGif(from, to) {
     const fps = Number(opt['gif-fps']) || 15, w = Number(opt['gif-width']) || 960;
     const filter = `fps=${fps},scale=${w}:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4`;
     execFileSync(ffmpegPath, ['-v', 'error', '-y', '-i', from, '-vf', filter, to], { stdio: 'inherit' });
+}
+
+// A .webm as an H.264 MP4 at the same size and speed. yuv420p, as the screencast's RGB frames won't play in most players
+// as H.264; even dimensions, which yuv420p needs; faststart, so a browser plays it before it has all downloaded.
+function toMp4(from, to) {
+    const crf = String(Number(opt['mp4-crf']) || 23);
+    execFileSync(ffmpegPath, ['-v', 'error', '-y', '-i', from, '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',
+        '-c:v', 'libx264', '-preset', 'slow', '-crf', crf, '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-an', to], { stdio: 'inherit' });
 }
 
 // Runs in the page (before the app): a pointer that follows the mouse and rings on clicks, since a recording shows none;
