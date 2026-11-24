@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net11.0</TargetFramework>
     <!-- the app's version, shown in Settings > About (AppInfo); the build adds the commit (+sha) to the informational version -->
-    <Version>0.1.0</Version>
+    <Version>0.5.1</Version>
     <Nullable>enable</Nullable>
     <NoWarn>$(NoWarn);BL0016</NoWarn>
     <ImplicitUsings>enable</ImplicitUsings>
