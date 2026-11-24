@@ -40,12 +40,16 @@ kbd {
 /* app chrome */
 .nav-heading { padding: 14px 12px 4px; font-size: .68rem; }
 .app-bar { backdrop-filter: blur(10px); border-bottom: 1px solid var(--mud-palette-lines-default); }
-.mud-layout a.brand { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; margin-left: 6px; }
-.brand-mark {
-    width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 18px; font-weight: 800;
-    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 80%, #fff), var(--accent) 60%, color-mix(in srgb, var(--accent) 70%, #000)); color: #fff; box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 35%, transparent);
-}
-.brand-mark svg { width: 22px; height: 22px; }
+.mud-layout a.brand { display: flex; align-items: center; align-self: stretch; gap: 8px; color: inherit; text-decoration: none; margin-left: 4px; }
+/* the mark grows out of the app bar's bottom border: the link fills the bar's height, and the mark (cut off at the foot of
+   the stem, <LogoMark Rooted>) is pinned to the bottom so the stem stops on the border line, without covering it. It sits slightly behind the
+   menu button and the name, which are drawn over it. */
+.brand-mark { align-self: flex-end; height: 60px; margin: 0 -12px 0 -14px; position: relative; z-index: 0; }
+.brand-mark svg { display: block; height: 100%; width: auto; }
+.app-menu, .brand-name { position: relative; z-index: 1; }
+/* the logo's two colours: the sprout in the success green, the notes in the accent (as in the loading screen's tagline) */
+.logo-grow { fill: var(--logo-grow, var(--good)); }
+.logo-note { fill: var(--logo-note, var(--accent)); }
 .brand-name { font-weight: 800; font-size: 1.15rem; letter-spacing: -.02em; }
 .app-drawer { border-right: 1px solid var(--mud-palette-lines-default) !important; }
 
@@ -470,10 +474,8 @@ code { font-family: var(--mono); font-size: .85em; background: var(--card-2); pa
     background: var(--boot-bg); color: var(--boot-ink); font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 html.boot-light .boot { --boot-accent: var(--boot-accent-light, #0361c3); --boot-good: var(--boot-good-light, #0a8a0a); --boot-bg: #f7f6f2; --boot-ink: #0b0b0b; --boot-muted: #77756f; --boot-track: #e1e0d9; }
 .boot-card { display: flex; flex-direction: column; align-items: center; animation: boot-in .4s ease-out both; }
-.boot-mark { width: 64px; height: 64px; border-radius: 18px; display: grid; place-items: center; font-size: 36px; font-weight: 800; color: #fff;
-    background: linear-gradient(135deg, color-mix(in srgb, var(--boot-accent) 80%, #fff), var(--boot-accent) 60%, color-mix(in srgb, var(--boot-accent) 70%, #000));
-    box-shadow: 0 10px 30px color-mix(in srgb, var(--boot-accent) 35%, transparent); }
-.boot-mark svg { width: 44px; height: 44px; }
+.boot-mark { width: 64px; height: 64px; --logo-grow: var(--boot-good); --logo-note: var(--boot-accent); }
+.boot-mark svg { width: 64px; height: 64px; display: block; }
 .boot-name { margin-top: 18px; font-size: 1.9rem; font-weight: 800; letter-spacing: -.03em; }
 .boot-tag { margin-top: 2px; color: var(--boot-muted); font-size: .92rem; }
 .boot-bar { margin-top: 28px; width: 200px; height: 4px; border-radius: 2px; background: var(--boot-track); overflow: hidden; }
@@ -490,7 +492,7 @@ html.boot-light .boot { --boot-accent: var(--boot-accent-light, #0361c3); --boot
 @keyframes boot-slide { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
 @media (prefers-reduced-motion: reduce) { .boot-card { animation: none; } .boot-bar.indeterminate .boot-bar-fill { animation: none; width: 100%; opacity: .5; } }
 
-@media (max-width: 520px) { .brand-mark svg { width: 22px; height: 22px; }
+@media (max-width: 520px) { .brand-mark { height: 52px; }
 .brand-name { display: none; } .stage { padding: 18px 12px; } }
 
 /* effort / feel scale */
