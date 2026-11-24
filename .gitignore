@@ -8,3 +8,4 @@ tools/echarts/node_modules/
 tests/js/node_modules/
 tools/demo/node_modules/
 tools/demo/*.webm
+tools/demo/*.gif

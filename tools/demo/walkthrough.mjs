@@ -9,8 +9,12 @@
 // Options:
 //   --url <address>     where the demo is (default http://localhost:5075/; or https://lykaiosnz.github.io/templing/demo/)
 //   --record <file>     record a .webm of the page with Puppeteer's screencast
+//   --gif <file>        record a .gif instead (a .webm converted with ffmpeg, kept at the speed it was recorded:
+//                       use --speed to make it quicker, so the clicks and animations still look natural)
+//   --gif-width <px>    the GIF's width (default 960; the height follows)
+//   --gif-fps <n>       the GIF's frames per second (default 15)
 //   --shots <dir>       also save a screenshot at the end of each scene, as <dir>/<n>-<scene>.png
-//   --headless          no window (handy with --record)
+//   --headless          no window (handy with --record and --gif)
 //   --speed <n>         pauses × 1/n: 2 runs twice as fast (default 1)
 //   --size <w>x<h>      the page size (default 1280x800)
 //   --light             light mode instead of dark
@@ -24,13 +28,18 @@
 import puppeteer from 'puppeteer-core';
 import ffmpegPath from 'ffmpeg-static';   // a prebuilt ffmpeg for this platform, for recording
 import { parseArgs } from 'node:util';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 
 const { values: opt } = parseArgs({
     options: {
         url: { type: 'string', default: 'http://localhost:5075/' },
         record: { type: 'string' },
+        gif: { type: 'string' },
+        'gif-width': { type: 'string', default: '960' },
+        'gif-fps': { type: 'string', default: '15' },
         shots: { type: 'string' },
         headless: { type: 'boolean', default: false },
         speed: { type: 'string', default: '1' },
@@ -172,17 +181,23 @@ const scenes = {
 
 // ---------- run
 
-let recorder;
+// a GIF is recorded as a .webm first, somewhere temporary, and converted at the end
+const tempDir = opt.gif ? mkdtempSync(join(tmpdir(), 'templing-demo-')) : null;
+const video = opt.gif ? join(tempDir, 'walkthrough.webm') : opt.record;
+
+let recorder, ok = false;
 try {
+    if (opt.gif && !opt.gif.endsWith('.gif')) throw new Error('--gif needs a .gif file name');
+    if (opt.record && opt.gif) throw new Error('--record or --gif, not both');
     await page.goto(base.href, { waitUntil: 'networkidle2' });
     await page.waitForSelector('.brand', { visible: true, timeout: 60000 });
     // the scenes use the demo's sample pieces, and a normal build would be someone's real data
     if (!await page.$('.demo-chip')) throw new Error(`${base.href} isn't the demo build: run the app with --property:Demo=true (or use .../templing/demo/)`);
     if (opt.light) await click('[aria-label="Toggle dark mode"]', { pause: 500 });
     await page.mouse.move(mouse.x, mouse.y);
-    if (opt.record) {
-        if (!opt.record.endsWith('.webm')) throw new Error('--record needs a .webm file name');
-        recorder = await page.screencast({ path: opt.record, ffmpegPath });
+    if (video) {
+        if (!video.endsWith('.webm')) throw new Error('--record needs a .webm file name');
+        recorder = await page.screencast({ path: video, ffmpegPath });
     }
     if (opt.shots) mkdirSync(opt.shots, { recursive: true });
     let n = 0;
@@ -191,13 +206,28 @@ try {
         await scene();
         if (opt.shots) await page.screenshot({ path: join(opt.shots, `${String(++n).padStart(2, '0')}-${name}.png`) });
     }
-    console.log(opt.record ? `Recorded ${opt.record}` : 'Done');
+    ok = true;
 } catch (e) {
     console.error(e.message.includes('ffmpeg') ? `${e.message}\nRecording uses ffmpeg from ffmpeg-static (${ffmpegPath}): run npm install again.` : e);
     process.exitCode = 1;
 } finally {
     await recorder?.stop();
     await browser.close();
+}
+if (ok && opt.gif) {
+    console.log('· converting to GIF');
+    try { toGif(video, opt.gif); console.log(`Recorded ${opt.gif}`); }
+    catch (e) { console.error(`Couldn't make the GIF: ${e.message}`); process.exitCode = 1; }
+}
+else if (ok) console.log(opt.record ? `Recorded ${opt.record}` : 'Done');
+if (tempDir) rmSync(tempDir, { recursive: true, force: true });
+
+// A .webm as a GIF at the same speed: fewer frames and a smaller size, and a palette made from this video
+// (palettegen/paletteuse), as GIF's 256 colours otherwise band the app's dark gradients.
+function toGif(from, to) {
+    const fps = Number(opt['gif-fps']) || 15, w = Number(opt['gif-width']) || 960;
+    const filter = `fps=${fps},scale=${w}:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4`;
+    execFileSync(ffmpegPath, ['-v', 'error', '-y', '-i', from, '-vf', filter, to], { stdio: 'inherit' });
 }
 
 // Runs in the page (before the app): a pointer that follows the mouse and rings on clicks, since a recording shows none;

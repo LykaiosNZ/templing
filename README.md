@@ -90,6 +90,7 @@ dotnet run --project src/Templing/Templing.csproj --launch-profile http --proper
 cd tools/demo && npm install
 node walkthrough.mjs                                   # watch it in Chrome, against the demo on :5075
 node walkthrough.mjs --headless --record templing.webm
+npm run record:gif                                     # templing-demo.gif, at twice the speed (--speed 2)
 ```
 
 See the top of `walkthrough.mjs` for its options (another address, speed, size, light mode, screenshots).
