@@ -7,7 +7,7 @@
 **A practice tracker for any instrument.**
 A training metronome, a library of the pieces you're working on, and stats that show you getting faster.
 
-https://github.com/user-attachments/assets/2402078a-fd14-4ca7-ae90-da9d2ae0ec92
+https://github.com/user-attachments/assets/d3212d45-5bc7-496d-9d7e-51e5f81c88f6
 
 </div>
 
