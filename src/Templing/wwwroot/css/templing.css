@@ -465,10 +465,10 @@ code { font-family: var(--mono); font-size: .85em; background: var(--card-2); pa
 
 /* Loading screen (wwwroot/index.html while downloading, BootScreen while the library loads). Plain colours, not
    theme tokens: the theme isn't applied yet. html.boot-light comes from the saved setting (script in index.html). */
-.boot { --boot-accent: var(--boot-accent-dark, #0361c3); --boot-bg: #0f0f0e; --boot-ink: #f0efec; --boot-muted: #8f8d87; --boot-track: #2c2c2a;
+.boot { --boot-accent: var(--boot-accent-dark, #0361c3); --boot-good: var(--boot-good-dark, #0ca30c); --boot-bg: #0f0f0e; --boot-ink: #f0efec; --boot-muted: #8f8d87; --boot-track: #2c2c2a;
     position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
     background: var(--boot-bg); color: var(--boot-ink); font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-html.boot-light .boot { --boot-accent: var(--boot-accent-light, #0361c3); --boot-bg: #f7f6f2; --boot-ink: #0b0b0b; --boot-muted: #77756f; --boot-track: #e1e0d9; }
+html.boot-light .boot { --boot-accent: var(--boot-accent-light, #0361c3); --boot-good: var(--boot-good-light, #0a8a0a); --boot-bg: #f7f6f2; --boot-ink: #0b0b0b; --boot-muted: #77756f; --boot-track: #e1e0d9; }
 .boot-card { display: flex; flex-direction: column; align-items: center; animation: boot-in .4s ease-out both; }
 .boot-mark { width: 64px; height: 64px; border-radius: 18px; display: grid; place-items: center; font-size: 36px; font-weight: 800; color: #fff;
     background: linear-gradient(135deg, color-mix(in srgb, var(--boot-accent) 80%, #fff), var(--boot-accent) 60%, color-mix(in srgb, var(--boot-accent) 70%, #000));
@@ -481,7 +481,11 @@ html.boot-light .boot { --boot-accent: var(--boot-accent-light, #0361c3); --boot
 .boot-bar.indeterminate .boot-bar-fill { width: 35%; animation: boot-slide 1.1s ease-in-out infinite; }
 .boot-status { margin-top: 10px; min-height: 1.2em; color: var(--boot-muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
 .boot-pct::after { content: "Loading " var(--blazor-load-percentage-text, ""); }
-.boot-foot { position: absolute; bottom: 28px; color: var(--boot-muted); font-size: .75rem; }
+.boot-foot { position: absolute; bottom: 28px; display: flex; align-items: center; gap: .3em; color: var(--boot-muted); font-size: .75rem; }
+/* the tagline's icons: a sprout in the success green, a sixteenth note in the accent (Success / Primary in AppTheme, or the custom colours) */
+.boot-foot svg { width: 1.35em; height: 1.35em; fill: currentColor; }
+.boot-grow { color: var(--boot-good); }
+.boot-note { color: var(--boot-accent); }
 @keyframes boot-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes boot-slide { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
 @media (prefers-reduced-motion: reduce) { .boot-card { animation: none; } .boot-bar.indeterminate .boot-bar-fill { animation: none; width: 100%; opacity: .5; } }
