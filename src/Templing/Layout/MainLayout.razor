@@ -31,11 +31,11 @@ else
     <MudLayout Class="@(_dark ? "theme-dark" : "theme-light")">
         <MudAppBar Elevation="0" Dense="false" Class="app-bar">
             <MudTooltip Text="Menu">
-                <MudIconButton Icon="@Icons.Material.Rounded.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                <MudIconButton Icon="@Icons.Material.Rounded.Menu" Color="Color.Inherit" Edge="Edge.Start" Class="app-menu"
                                aria-label="Toggle navigation" OnClick="@(() => _drawer = !_drawer)" />
             </MudTooltip>
             <a href="" class="brand" aria-label="Templing home">
-                <span class="brand-mark" aria-hidden="true"><LogoMark /></span>
+                <span class="brand-mark" aria-hidden="true"><LogoMark Rooted /></span>
                 <span class="brand-name">Templing</span>
             </a>
             @DemoChip
