@@ -26,6 +26,10 @@ public class DataStore(IJSRuntime js)
 
     /// <summary>Raised after any write.</summary>
     public event Action? Changed;
+    /// <summary>Raised after a new piece is saved (not an edit, an import or a restore). For <see cref="Analytics"/>.</summary>
+    public event Action<Piece>? PieceAdded;
+    /// <summary>Raised after a new log is saved (not an edit, an import or a restore). For <see cref="Analytics"/>.</summary>
+    public event Action<PracticeLog>? LogAdded;
 
     // Lookups built from the lists on first use and dropped on every change, so screens don't scan
     // every log for every piece (pieces × logs) each time they refresh.
@@ -103,6 +107,7 @@ public class DataStore(IJSRuntime js)
         await Put("pieces", piece);
         if (renamed.Count > 0) await PutMany("logs", renamed);
         Notify();
+        if (idx < 0) PieceAdded?.Invoke(piece);
     }
 
     public async Task DeletePieceAsync(Piece piece, bool deleteLogs)
@@ -153,6 +158,7 @@ public class DataStore(IJSRuntime js)
         Invalidate();
         await Put("logs", log);
         Notify();
+        if (idx < 0) LogAdded?.Invoke(log);
     }
 
     public async Task DeleteLogAsync(PracticeLog log)

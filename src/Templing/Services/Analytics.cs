@@ -1,0 +1,69 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
+using Templing.Models;
+
+namespace Templing.Services;
+
+/// <summary>
+/// A few Umami events (index.html loads the tracker, only on the deployed site): practice logged, piece added (and how),
+/// plan started / finished, and unhandled errors (the exception's type only). Nothing from the user's library is sent:
+/// no names, notes, tempos or ids. The demo build sends none, so its sample data doesn't count as practice.
+/// </summary>
+public class Analytics
+{
+    private readonly IJSRuntime _js;
+
+    public Analytics(IJSRuntime js, DataStore store, PlanRunner runner)
+    {
+        _js = js;
+        store.LogAdded += _ => Track("practice-logged");
+        store.PieceAdded += p => Track("piece-added", new { source = Source(p) });
+        runner.RunStarted += () => Track("plan-started");
+        runner.RunFinished += () => Track("plan-finished");
+    }
+
+    /// <summary>How a new piece came in: typed in, or from a score file (by its extension).</summary>
+    public static string Source(Piece p)
+    {
+        if (p.ScoreFileId == null) return "manual";
+        var ext = Path.GetExtension(p.ScoreFileName ?? "").TrimStart('.').ToLowerInvariant();
+        return ext.StartsWith("gp") ? "guitar-pro"
+            : ext is "xml" or "musicxml" or "mxl" ? "musicxml"
+            : "score";
+    }
+
+    public void Track(string name, object? data = null) => Send(_js, name, data);
+
+    // fire and forget: analytics must never get in the way, and the tracker may not have loaded (or be blocked)
+    internal static void Send(IJSRuntime js, string name, object? data)
+    {
+#if DEMO_MODE
+        return;
+#else
+        try { _ = js.InvokeVoidAsync("templingTrack", name, data).AsTask().ContinueWith(t => _ = t.Exception, TaskContinuationOptions.OnlyOnFaulted); }
+        catch { }
+#endif
+    }
+}
+
+/// <summary>
+/// Reports unhandled exceptions (the ones Blazor logs as Critical and shows the "An unhandled error has occurred" bar for)
+/// as an Umami "error" event with the exception's type, once per type per page load. No message or stack: they can hold user data.
+/// </summary>
+public sealed class ErrorReporter(IJSRuntime js) : ILoggerProvider, ILogger
+{
+    private readonly HashSet<string> _sent = new();
+
+    public ILogger CreateLogger(string categoryName) => this;
+    public void Dispose() { }
+    public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+    public bool IsEnabled(LogLevel logLevel) => logLevel == LogLevel.Critical;
+
+    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+    {
+        if (logLevel != LogLevel.Critical || exception == null) return;
+        var type = (exception is AggregateException { InnerException: { } inner } ? inner : exception).GetType().Name;
+        lock (_sent) if (!_sent.Add(type)) return;
+        Analytics.Send(js, "error", new { type });
+    }
+}
