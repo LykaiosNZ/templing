@@ -58,7 +58,7 @@ describe('db.js in memory (the demo build)', () => {
         globalThis.indexedDB = { open() { throw new Error('IndexedDB opened by the demo'); } };
         try {
             const demo = await import('../../src/Templing/wwwroot/js/db.js');
-            demo.useMemory();
+            await demo.useMemory();
 
             const row = { Id: 'a', Name: 'Spain' };
             await demo.put('pieces', JSON.stringify(row));
@@ -79,7 +79,7 @@ describe('db.js in memory (the demo build)', () => {
         }
     });
 
-    it('refuses to switch once IndexedDB is open', () => {
-        expect(() => db.useMemory()).toThrow();   // the tests above opened it
+    it('refuses to switch once IndexedDB is open', async () => {
+        await expect(db.useMemory()).rejects.toThrow();   // the tests above opened it
     });
 });

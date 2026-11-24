@@ -5,7 +5,7 @@ using Templing.Models;
 namespace Templing.Services;
 
 /// <summary>In-memory cache over IndexedDB. Load once at startup; writes go through to the DB.</summary>
-public class DataStore(IJSRuntime js, bool demo = false)
+public class DataStore(IJSRuntime js)
 {
     public static readonly JsonSerializerOptions Json = new() { PropertyNamingPolicy = null };
 
@@ -19,10 +19,10 @@ public class DataStore(IJSRuntime js, bool demo = false)
     public AppSettings Settings { get; private set; } = new();
     public bool Loaded { get; private set; }
     /// <summary>
-    /// The demo build (<see cref="AppInfo.Demo"/>): db.js keeps everything in memory, seeded with <see cref="DemoData"/>
-    /// at each start, so the browser's real data is never read or written.
+    /// The demo build (<see cref="AppInfo.Demo"/>): db.js keeps everything in memory, seeded with sample data
+    /// (DemoData, only in that build) at each start, so the browser's real data is never read or written.
     /// </summary>
-    public bool Demo => demo;
+    public bool Demo => AppInfo.Demo;
 
     /// <summary>Raised after any write.</summary>
     public event Action? Changed;
@@ -46,11 +46,10 @@ public class DataStore(IJSRuntime js, bool demo = false)
     private async Task LoadAsync()
     {
         _db = await js.InvokeAsync<IJSObjectReference>("import", "./js/db.js");
-        if (demo)
-        {
-            await _db.InvokeVoidAsync("useMemory");
-            await SeedDemoAsync(DemoData.Create(DateTime.Today));
-        }
+#if DEMO_MODE
+        await _db.InvokeVoidAsync("useMemory");   // loads js/memorydb.js
+        await SeedDemoAsync(DemoData.Create(DateTime.Today));
+#endif
         Pieces = await GetAll<Piece>("pieces");
         Logs = await GetAll<PracticeLog>("logs");
         Presets = await GetAll<MetronomePreset>("presets");
@@ -62,6 +61,7 @@ public class DataStore(IJSRuntime js, bool demo = false)
         Notify();
     }
 
+#if DEMO_MODE
     // written to the (in-memory) stores and then loaded as any other start would load them
     private async Task SeedDemoAsync(DemoData.Set d)
     {
@@ -71,6 +71,7 @@ public class DataStore(IJSRuntime js, bool demo = false)
         await PutMany("plans", d.Plans);
         await Put("settings", d.Settings);
     }
+#endif
 
     private async Task<List<T>> GetAll<T>(string store)
     {

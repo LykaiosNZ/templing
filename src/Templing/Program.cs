@@ -15,7 +15,7 @@ builder.Services.AddMudServices(c =>
     c.SnackbarConfiguration.ShowTransitionDuration = 150;
     c.SnackbarConfiguration.VisibleStateDuration = 4000;
 });
-builder.Services.AddSingleton(sp => new DataStore(sp.GetRequiredService<Microsoft.JSInterop.IJSRuntime>(), AppInfo.Demo));
+builder.Services.AddSingleton<DataStore>();
 builder.Services.AddSingleton<MetronomeService>();
 builder.Services.AddSingleton<Shortcuts>();
 builder.Services.AddSingleton<ScoreImport>();

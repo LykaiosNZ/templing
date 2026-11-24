@@ -37,12 +37,7 @@ else
                 <span class="brand-mark" aria-hidden="true"><LogoMark /></span>
                 <span class="brand-name">Templing</span>
             </a>
-            @if (Store.Demo)
-            {
-                <MudTooltip Text="Sample data, kept in memory: changes go when you reload">
-                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" Class="demo-chip">Demo</MudChip>
-                </MudTooltip>
-            }
+            @DemoChip
             <MudSpacer />
             <MudTooltip Text="Log practice">
                 <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Rounded.AddTask" Color="Color.Inherit"
@@ -84,6 +79,16 @@ else
 }
 
 @code {
+    // the demo build's label (DEMO_MODE; #if in markup isn't a directive, so it's here): the normal build doesn't contain it
+#if DEMO_MODE
+    private static readonly RenderFragment DemoChip =
+        @<MudTooltip Text="Sample data, kept in memory: changes go when you reload">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" Class="demo-chip">Demo</MudChip>
+        </MudTooltip>;
+#else
+    private static readonly RenderFragment? DemoChip = null;
+#endif
+
     private bool _drawer = true;
     private bool _dark = true;
     private bool _ready;

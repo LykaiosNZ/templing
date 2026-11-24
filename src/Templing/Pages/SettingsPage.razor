@@ -13,13 +13,7 @@
     <h1 class="page-title" tabindex="-1">Settings &amp; data</h1>
 </div>
 
-@if (Store.Demo)
-{
-    <MudAlert Severity="Severity.Info" Class="mb-4">
-        This is the demo: sample data, kept in memory. It never touches the data you keep in this browser, and it starts
-        afresh when you reload.
-    </MudAlert>
-}
+@DemoNotice
 
 <div class="settings-list">
     <section aria-labelledby="set-practice">
@@ -250,6 +244,17 @@
 </div>
 
 @code {
+    // the demo build's note (DEMO_MODE; #if in markup isn't a directive, so it's here): the normal build doesn't contain it
+#if DEMO_MODE
+    private static readonly RenderFragment DemoNotice =
+        @<MudAlert Severity="Severity.Info" Class="mb-4">
+            This is the demo: sample data, kept in memory. It never touches the data you keep in this browser, and it starts
+            afresh when you reload.
+        </MudAlert>;
+#else
+    private static readonly RenderFragment? DemoNotice = null;
+#endif
+
     [SupplyParameterFromQuery(Name = "restored")] public int? Restored { get; set; }
 
     protected override void OnInitialized()

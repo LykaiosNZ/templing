@@ -25,6 +25,10 @@ jobs:
       - name: Test (C#)
         run: dotnet test --project tests/Templing.Tests -c Release
 
+      # the demo build (DEMO_MODE): its own tests; the others expect an empty store, which the demo's isn't
+      - name: Test (C#, demo build)
+        run: dotnet test --project tests/Templing.Tests -c Release -p:Demo=true -- --filter-class Templing.Tests.DemoDataTests
+
       - uses: actions/setup-node@v5
         with:
           node-version: 22
