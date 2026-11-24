@@ -11,7 +11,7 @@ https://github.com/user-attachments/assets/2402078a-fd14-4ca7-ae90-da9d2ae0ec92
 
 </div>
 
-Templing runs entirely in your browser. There's no account and no server: your pieces, practice log and settings stay on your device, and you can back them up to a file whenever you like. The live site counts anonymous page views with [Umami](https://umami.is) (no cookies, nothing from your library), to see how much it's used.
+Templing runs entirely in your browser. There's no account and no server: your pieces, practice log and settings stay on your device, and you can back them up to a file whenever you like. The live site counts anonymous page views with [Umami](https://umami.is) (no cookies, nothing from your library), to see how much it's used. You can turn that off in *Settings & data*.
 
 ## What it does
 

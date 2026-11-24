@@ -207,6 +207,15 @@
             </div>
         </div>
         <div class="setting-row">
+            <div class="setting-text">
+                <div class="setting-title">Share anonymous usage stats</div>
+                <div class="setting-desc">Counts which screens are opened, and when practice is logged, a piece added or a plan run, with <a href="https://umami.is" target="_blank" rel="noopener">Umami</a>. No cookies, and nothing from your library.</div>
+            </div>
+            <div class="setting-control">
+                <MudSwitch T="bool" @bind-Value="Store.Settings.Analytics" @bind-Value:after="Save" Color="Color.Primary" aria-label="Share anonymous usage stats" Class="ma-0" />
+            </div>
+        </div>
+        <div class="setting-row">
             <div class="setting-text"><div class="setting-title">Delete all data</div></div>
             <div class="setting-control">
                 <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Rounded.DeleteForever" OnClick="ClearAll">Delete…</MudButton>

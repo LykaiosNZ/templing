@@ -8,6 +8,7 @@
 @inject ISnackbar Snackbar
 @inject PlanRunner Runner
 @inject UpdateCheck Updates
+@inject Analytics Analytics
 
 <MudThemeProvider Theme="@_theme" IsDarkMode="@_dark" />
 @if (_css.Length > 0)
@@ -100,6 +101,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         await Store.EnsureLoadedAsync();
+        Analytics.Apply();   // the boot script usually decided already; this covers an IndexedDB that didn't answer it
         _dark = Store.Settings.DarkMode;
         ApplyColours();
         Store.Changed += OnStoreChanged;

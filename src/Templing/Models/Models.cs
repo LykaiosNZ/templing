@@ -426,6 +426,8 @@ public class AppSettings
     public bool CompressBackups { get; set; }
     /// <summary>Custom theme colours; null = the built-in ones. See <c>Layout.ThemeColours</c> for the keys.</summary>
     public CustomColours? Colours { get; set; }
+    /// <summary>Settings > Data: send anonymous usage stats (Umami page views and a few events, see <c>Services.Analytics</c>).</summary>
+    public bool Analytics { get; set; } = true;
 }
 
 /// <summary>Colours the user picked, per mode: slot key (ThemeColours.Slots) → "#rrggbb". Slots not listed use the built-in colour.</summary>
