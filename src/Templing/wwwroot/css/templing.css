@@ -112,8 +112,11 @@ kbd {
 .piece-grid { --card-min: 260px; --card-gap: 14px; }
 .piece-grid-row { display: grid; grid-template-columns: repeat(var(--cols, 1), minmax(0, 1fr)); gap: var(--card-gap); padding-bottom: var(--card-gap); }
 /* Library placeholders: plain outlines shown in the first frame, hidden once a real card or row is drawn (see DESIGN.md, Slow actions).
-   They fill as many columns as fit by themselves, since the column count isn't known yet. */
+   They fill as many columns as fit by themselves, since the column count isn't known yet.
+   They take no room (height 0, drawn overflowing over the space below): <Virtualize> draws only the rows its spacers show
+   on screen, and placeholders taller than the window pushed the spacers out of view, so no real card was ever drawn. */
 .card-placeholders { grid-template-columns: repeat(auto-fill, minmax(var(--card-min), 1fr)); }
+.card-placeholders, .row-placeholders { height: 0; min-height: 0; padding-bottom: 0; overflow: visible; }
 .piece-card.card-placeholder { min-height: 218px; padding: 16px 18px; gap: 12px; pointer-events: none; }
 .row-placeholder { height: 41px; display: flex; align-items: center; gap: 12px; padding: 0 8px; border-bottom: 1px solid var(--grid); }
 .ph-line { display: block; height: 12px; border-radius: 6px; background: color-mix(in srgb, var(--ink) 7%, transparent); }
