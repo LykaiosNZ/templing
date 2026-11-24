@@ -52,6 +52,8 @@ kbd {
 .show-phone { display: none !important; }
 @media (max-width: 700px) { .hide-phone { display: none !important; } .show-phone { display: inline-flex !important; } }
 .appbar-log { margin: 0 6px; border-color: var(--mud-palette-lines-inputs) !important; }
+/* demo mode (?demo): next to the brand, with a close button to leave it */
+.demo-chip { margin-left: 10px; }
 
 /* page structure */
 .page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }

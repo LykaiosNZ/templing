@@ -6,3 +6,5 @@ obj/
 tools/icons/node_modules/
 tools/echarts/node_modules/
 tests/js/node_modules/
+tools/demo/node_modules/
+tools/demo/*.webm

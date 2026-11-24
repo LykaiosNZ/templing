@@ -57,6 +57,8 @@ public class FakeModule : IJSObjectReference
 public sealed class FakeDb : FakeModule
 {
     public Dictionary<string, Dictionary<string, JsonObject>> Stores { get; } = new();
+    /// <summary>What db.js's <c>demo()</c> answers (demo mode: the page was opened with <c>?demo</c>).</summary>
+    public bool Demo { get; set; }
 
     Dictionary<string, JsonObject> Store(string name) => Stores.TryGetValue(name, out var s) ? s : Stores[name] = new();
 
@@ -93,6 +95,7 @@ public sealed class FakeDb : FakeModule
             case "removeFile": Store("files").Remove((string)a[0]!); break;
             case "clear": Store((string)a[0]!).Clear(); break;
             case "download": break;
+            case "demo": result = Demo; break;
             default: throw new NotSupportedException($"db.js has no {identifier}");
         }
         return ValueTask.FromResult(result is null ? default(TValue)! : (TValue)result);

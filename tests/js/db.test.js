@@ -1,6 +1,6 @@
 // The IndexedDB wrapper, on an in-memory IndexedDB. DataStore.cs writes JSON strings and reads getAll as UTF-8 JSON bytes.
 import 'fake-indexeddb/auto';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as db from '../../src/Templing/wwwroot/js/db.js';
 
 const STORES = ['pieces', 'logs', 'presets', 'settings', 'files', 'plans', 'session'];
@@ -47,5 +47,41 @@ describe('db.js', () => {
     it('opens the database the app has always used', async () => {
         const names = (await indexedDB.databases()).map(d => d.name);
         expect(names).toContain('templing');
+    });
+});
+
+// Demo mode: the boot script in index.html marks <html data-demo> before db.js loads; db.js then keeps the stores in memory.
+describe('db.js in demo mode', () => {
+    it('keeps everything in memory and never touches IndexedDB', async () => {
+        vi.resetModules();
+        document.documentElement.setAttribute('data-demo', '');
+        const real = globalThis.indexedDB;
+        globalThis.indexedDB = { open() { throw new Error('IndexedDB opened in demo mode'); } };
+        try {
+            const demo = await import('../../src/Templing/wwwroot/js/db.js');
+            expect(demo.demo()).toBe(true);
+
+            const row = { Id: 'a', Name: 'Spain' };
+            await demo.put('pieces', JSON.stringify(row));
+            await demo.putMany('logs', new TextEncoder().encode(JSON.stringify([{ Id: '1' }, { Id: '2' }])));
+            await demo.remove('logs', '1');
+            expect(JSON.parse(new TextDecoder().decode(await demo.getAll('pieces')))).toEqual([row]);
+            expect(JSON.parse(await demo.get('pieces', 'a'))).toEqual(row);
+            expect(await demo.get('pieces', 'missing')).toBeNull();
+            expect(JSON.parse(new TextDecoder().decode(await demo.getAll('logs')))).toEqual([{ Id: '2' }]);
+
+            await demo.putFile('f1', 'song.gp', new Uint8Array([1, 2, 3]));
+            expect(Array.from(await demo.getFile('f1'))).toEqual([1, 2, 3]);
+            await demo.clear('pieces');
+            expect(new TextDecoder().decode(await demo.getAll('pieces'))).toBe('[]');
+        } finally {
+            globalThis.indexedDB = real;
+            document.documentElement.removeAttribute('data-demo');
+            vi.resetModules();
+        }
+    });
+
+    it('is off without the mark', () => {
+        expect(db.demo()).toBe(false);
     });
 });
