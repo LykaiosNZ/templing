@@ -9,20 +9,43 @@ const charts = new WeakMap(); // element → { chart, observer, relayout? }
 
 // Published builds fingerprint the file (echarts.min.<hash>.js) and list it in the import map; import.meta.resolve
 // applies that map, so a new release never runs with a cached old copy. In dev there's no mapping and the URL is unchanged.
-const resolveAsset = path => import.meta.resolve(new URL(path, document.baseURI).href);
+// (Without import.meta.resolve, as in the unit tests' runner, the plain URL.)
+const resolveAsset = path => {
+    const url = new URL(path, document.baseURI).href;
+    return typeof import.meta.resolve === 'function' ? import.meta.resolve(url) : url;
+};
+
+// A failed download is tried again after these waits (ms): GitHub Pages answers 503 now and then, often just after a
+// deploy, and it usually clears within seconds. Exported for the tests.
+export const RETRY_MS = [1000, 3000];
+
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = () => resolve();
+        s.onerror = () => { s.remove(); reject(new Error(`Could not load ${src}`)); };
+        document.head.appendChild(s);
+    });
+}
 
 function loadECharts() {
     if (window.echarts) return Promise.resolve(window.echarts);
     if (loading) return loading;
-    loading = new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = resolveAsset(LIB);
-        s.onload = () => resolve(window.echarts);
-        s.onerror = () => { loading = null; reject(new Error('Could not load the chart library.')); };
-        document.head.appendChild(s);
-    });
+    loading = (async () => {
+        const src = resolveAsset(LIB);
+        for (let attempt = 0; ; attempt++) {
+            try { await loadScript(src); return window.echarts; }
+            catch (e) {
+                if (attempt >= RETRY_MS.length) { loading = null; throw new Error('Could not load the chart library.'); }
+                await new Promise(r => setTimeout(r, RETRY_MS[attempt]));
+            }
+        }
+    })();
     return loading;
 }
+
+const FAILED = 'This chart couldn’t load. Reload the page to try again.';
 
 function tokens(el) {
     const cs = getComputedStyle(el);
@@ -34,10 +57,18 @@ function tokens(el) {
     };
 }
 
+// The element's chart, made on first use. Null when the library couldn't be loaded even after retrying: the element says
+// so (in the app's "No data yet" style) instead of the error reaching Blazor, where it stopped the whole app.
 async function chartFor(el) {
-    const echarts = await loadECharts();
+    let echarts;
+    try { echarts = await loadECharts(); }
+    catch {
+        el.innerHTML = `<div class="viz-empty">${FAILED}</div>`;
+        return null;
+    }
     let entry = charts.get(el);
     if (!entry) {
+        el.querySelector(':scope > .viz-empty')?.remove();   // an earlier "couldn't load", now it has
         const chart = echarts.init(el, null, { renderer: 'svg' });
         entry = { chart, relayout: null };
         entry.observer = new ResizeObserver(() => { entry.relayout?.(); chart.resize(); });
@@ -91,7 +122,9 @@ function goalLine(t, goal) {
  *         goal?, highlightLast?, labelEvery? }
  */
 export async function bar(el, spec) {
-    const { chart } = await chartFor(el);
+    const entry = await chartFor(el);
+    if (!entry) return;
+    const { chart } = entry;
     const t = tokens(el);
     const last = spec.values.length - 1;
     chart.setOption({
@@ -132,7 +165,9 @@ export async function bar(el, spec) {
  * spec: { points: [{ date: 'yyyy-MM-dd', value, min?, color?, tip, sub, note? }], yMin, yMax, yStep, yLabels, goal? }
  */
 export async function tempo(el, spec) {
-    const { chart } = await chartFor(el);
+    const entry = await chartFor(el);
+    if (!entry) return;
+    const { chart } = entry;
     const t = tokens(el);
     const pts = spec.points;
     const many = pts.length > 40;
@@ -199,6 +234,7 @@ export async function tempo(el, spec) {
  */
 export async function calendar(el, spec) {
     const entry = await chartFor(el);
+    if (!entry) return;
     const t = tokens(el);
     const label = 34, top = 20, gap = 3;
     const cellFor = () => Math.max(8, Math.min(28, Math.floor((el.clientWidth - label - 4) / spec.weeks)));
