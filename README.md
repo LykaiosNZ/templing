@@ -76,6 +76,20 @@ dotnet run --project src/Templing/Templing.csproj --launch-profile http
 
 Then open <http://localhost:5075>.
 
+### Demo mode
+
+Add `?demo` to the address (<http://localhost:5075/?demo>, or <https://lykaiosnz.github.io/templing/?demo>) to try Templing with a few months of sample practice. The demo lives in memory: it never reads or changes the data you keep in that browser, and it starts afresh each time the app loads. It lasts for the tab until you close the **Demo** chip in the top bar (or open `?demo=off`).
+
+`tools/demo` drives the demo through the app's main screens with [Puppeteer](https://pptr.dev), for recording demo videos (`--record` needs [ffmpeg](https://ffmpeg.org)):
+
+```bash
+cd tools/demo && npm install
+node walkthrough.mjs                                   # watch it in Chrome, against the dev server
+node walkthrough.mjs --headless --record templing.webm
+```
+
+See the top of `walkthrough.mjs` for its options (another address, speed, size, light mode, screenshots).
+
 To try it on a phone or tablet on the same network, use the `lan` profile and open `https://<your computer's IP>:7212`, accepting the certificate warning. (The browser only allows the app's crypto APIs on HTTPS or localhost.)
 
 ```bash

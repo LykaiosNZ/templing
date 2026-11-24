@@ -13,6 +13,15 @@
     <h1 class="page-title" tabindex="-1">Settings &amp; data</h1>
 </div>
 
+@if (Store.Demo)
+{
+    <MudAlert Severity="Severity.Info" Class="mb-4">
+        This is the demo: sample data, kept in memory. Nothing here touches your own data in this browser, and every change
+        goes when you close the tab or reload.
+        <MudLink Typo="Typo.inherit" OnClick="@(() => Nav.NavigateTo("?demo=off", forceLoad: true))">Exit demo</MudLink>
+    </MudAlert>
+}
+
 <div class="settings-list">
     <section aria-labelledby="set-practice">
         <h2 class="settings-heading" id="set-practice">Practice</h2>

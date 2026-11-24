@@ -37,6 +37,13 @@ else
                 <span class="brand-mark" aria-hidden="true"><LogoMark /></span>
                 <span class="brand-name">Templing</span>
             </a>
+            @if (Store.Demo)
+            {
+                <MudTooltip Text="Sample data, kept in memory: changes go when you close the tab or reload. ✕ goes back to your own data">
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" Class="demo-chip"
+                             OnClose="ExitDemo" CloseIcon="@Icons.Material.Rounded.Close" aria-label="Demo mode: sample data, close to exit">Demo</MudChip>
+                </MudTooltip>
+            }
             <MudSpacer />
             <MudTooltip Text="Log practice">
                 <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Rounded.AddTask" Color="Color.Inherit"
@@ -135,6 +142,9 @@ else
         if (Metro.Source == MetronomeSource.Piece && Metro.Piece != null) { log = Metro.BuildSessionLog(); }
         if (await LogDialog.ShowAsync(Dialogs, log, isNew: true)) Snackbar.Add("Practice logged", Severity.Success);
     }
+
+    // back to this browser's own data (the demo lasts for the tab until then: see index.html)
+    private void ExitDemo() => Nav.NavigateTo("?demo=off", forceLoad: true);
 
     private async Task ShowShortcuts() =>
         await Dialogs.ShowAsync<ShortcutsDialog>("Keyboard shortcuts", new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });

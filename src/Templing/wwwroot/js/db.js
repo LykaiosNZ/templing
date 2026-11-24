@@ -8,6 +8,27 @@ const DB_VERSION = 5; // 5: "items" store renamed "pieces"
 const STORES = ['pieces', 'logs', 'presets', 'settings', 'files', 'plans', 'session'];
 let dbPromise = null;
 
+// Demo mode (?demo, see the boot script in index.html): the same stores in memory, filled with sample data by DataStore,
+// so trying the app never reads or overwrites the IndexedDB data of someone who uses it. Gone when the page goes.
+const DEMO = typeof document !== 'undefined' && document.documentElement.hasAttribute('data-demo');
+export function demo() { return DEMO; }
+
+const memory = new Map();   // store name -> Map(Id -> row)
+
+// An object store's requests, answered at once: rows are copied in and out, as IndexedDB's structured clone does
+function memoryStore(name) {
+    if (!memory.has(name)) memory.set(name, new Map());
+    const rows = memory.get(name);
+    const done = result => ({ result });
+    return {
+        getAll: () => done([...rows.values()].map(r => structuredClone(r))),
+        get: id => done(rows.has(id) ? structuredClone(rows.get(id)) : undefined),
+        put: row => { rows.set(row.Id, structuredClone(row)); return done(row.Id); },
+        delete: id => { rows.delete(id); return done(undefined); },
+        clear: () => { rows.clear(); return done(undefined); },
+    };
+}
+
 function open() {
     if (dbPromise) return dbPromise;
     dbPromise = new Promise((resolve, reject) => {
@@ -25,6 +46,7 @@ function open() {
 }
 
 function tx(store, mode, fn) {
+    if (DEMO) return Promise.resolve().then(() => fn(memoryStore(store))?.result);
     return open().then(db => new Promise((resolve, reject) => {
         const t = db.transaction(store, mode);
         const os = t.objectStore(store);

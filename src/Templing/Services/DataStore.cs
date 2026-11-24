@@ -18,6 +18,11 @@ public class DataStore(IJSRuntime js)
     public List<PracticePlan> Plans { get; private set; } = new();
     public AppSettings Settings { get; private set; } = new();
     public bool Loaded { get; private set; }
+    /// <summary>
+    /// Demo mode (<c>?demo</c>): db.js keeps everything in memory, seeded with <see cref="DemoData"/> at each start,
+    /// so the browser's real data is never read or written.
+    /// </summary>
+    public bool Demo { get; private set; }
 
     /// <summary>Raised after any write.</summary>
     public event Action? Changed;
@@ -41,6 +46,8 @@ public class DataStore(IJSRuntime js)
     private async Task LoadAsync()
     {
         _db = await js.InvokeAsync<IJSObjectReference>("import", "./js/db.js");
+        Demo = await _db.InvokeAsync<bool>("demo");
+        if (Demo) await SeedDemoAsync(DemoData.Create(DateTime.Today));
         Pieces = await GetAll<Piece>("pieces");
         Logs = await GetAll<PracticeLog>("logs");
         Presets = await GetAll<MetronomePreset>("presets");
@@ -50,6 +57,16 @@ public class DataStore(IJSRuntime js)
         Pieces.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
         Loaded = true;
         Notify();
+    }
+
+    // written to the (in-memory) stores and then loaded as any other start would load them
+    private async Task SeedDemoAsync(DemoData.Set d)
+    {
+        await PutMany("pieces", d.Pieces);
+        await PutMany("logs", d.Logs);
+        await PutMany("presets", d.Presets);
+        await PutMany("plans", d.Plans);
+        await Put("settings", d.Settings);
     }
 
     private async Task<List<T>> GetAll<T>(string store)

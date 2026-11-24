@@ -1,0 +1,13 @@
+{
+  "name": "templing-demo",
+  "private": true,
+  "description": "A scripted run-through of Templing's demo mode (?demo) with Puppeteer, for recording demo videos. See walkthrough.mjs.",
+  "type": "module",
+  "scripts": {
+    "walkthrough": "node walkthrough.mjs",
+    "record": "node walkthrough.mjs --headless --record templing-demo.webm"
+  },
+  "devDependencies": {
+    "puppeteer-core": "24.43.1"
+  }
+}
