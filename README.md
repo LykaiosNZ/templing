@@ -84,16 +84,17 @@ There's a demo build with a few months of sample practice: try it at <https://ly
 dotnet run --project src/Templing/Templing.csproj --launch-profile http --property:Demo=true
 ```
 
-`tools/demo` drives the demo through the app's main screens with [Puppeteer](https://pptr.dev) (and your installed Chrome), for recording demo videos. `npm install` brings its own ffmpeg for `--record`:
+`tools/demo` drives the demo through the app's main screens with [Puppeteer](https://pptr.dev) (and your installed Chrome), for recording demo videos. `npm install` brings its own ffmpeg for recording:
 
 ```bash
 cd tools/demo && npm install
 node walkthrough.mjs                                   # watch it in Chrome, against the demo on :5075
 node walkthrough.mjs --headless --record templing.webm
-npm run record:gif                                     # templing-demo.gif, at twice the speed (--speed 2)
+npm run record:mp4                                     # templing-demo.mp4, at four times the speed (--speed 4)
+npm run record:gif                                     # templing-demo.gif, the same as a GIF
 ```
 
-See the top of `walkthrough.mjs` for its options (another address, speed, size, light mode, screenshots).
+An MP4 is far smaller than a GIF (about a tenth) at full size and colour, and GitHub plays one dropped into a README, issue or pull request. See the top of `walkthrough.mjs` for the options (another address, speed, size, light mode, screenshots, GIF and MP4 settings).
 
 To try it on a phone or tablet on the same network, use the `lan` profile and open `https://<your computer's IP>:7212`, accepting the certificate warning. (The browser only allows the app's crypto APIs on HTTPS or localhost.)
 
