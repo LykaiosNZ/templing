@@ -104,6 +104,7 @@ cd tests/js && npm install && npm test
 - [Blazor WebAssembly](https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor) and [MudBlazor](https://mudblazor.com)
 - [alphaTab](https://alphatab.net) for reading and rendering Guitar Pro / MusicXML
 - [Apache ECharts](https://echarts.apache.org) for the charts
+- [Material Design Icons](https://pictogrammers.com/library/mdi/) by Pictogrammers for extra icons and the logo (built from their sprout and music-note icons, arranged and recoloured)
 - Metronome click sounds recorded by Ludwig Peter Müller (CC0)
 - The Web Audio API for the metronome engine
 
@@ -111,4 +112,4 @@ Contributors: [CLAUDE.md](CLAUDE.md) covers the code layout and the rules for pe
 
 ## License
 
-[MIT](LICENSE). The vendored libraries keep their own licenses: alphaTab (MPL-2.0, [`src/Templing/wwwroot/lib/alphatab/LICENSE`](src/Templing/wwwroot/lib/alphatab/LICENSE)) and Apache ECharts (Apache-2.0, [`src/Templing/wwwroot/lib/echarts/LICENSE`](src/Templing/wwwroot/lib/echarts/LICENSE)).
+[MIT](LICENSE). The vendored libraries keep their own licenses: alphaTab (MPL-2.0, [`src/Templing/wwwroot/lib/alphatab/LICENSE`](src/Templing/wwwroot/lib/alphatab/LICENSE)) and Apache ECharts (Apache-2.0, [`src/Templing/wwwroot/lib/echarts/LICENSE`](src/Templing/wwwroot/lib/echarts/LICENSE)). Icons from Material Design Icons (the generated `Components/Mdi.g.cs` and the logo, a modified combination of them) are under the [Pictogrammers Free License](https://pictogrammers.com/docs/general/license/) (Apache-2.0).
