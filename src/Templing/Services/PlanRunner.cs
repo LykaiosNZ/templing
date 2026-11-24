@@ -59,6 +59,10 @@ public class PlanRunner
     public event Func<PlanStep, Task>? StepFinished;
     /// <summary>Somewhere asked to edit the running plan; the plan bar handles it (it owns the "log this step first?" questions).</summary>
     public event Func<Task>? EditRequested;
+    /// <summary>A run started (not one restored after a refresh). For <see cref="Analytics"/>.</summary>
+    public event Action? RunStarted;
+    /// <summary>A run reached the end of its plan (<see cref="Summary"/> is set). For <see cref="Analytics"/>.</summary>
+    public event Action? RunFinished;
 
     public Task RequestEditAsync() => EditRequested?.Invoke() ?? Task.CompletedTask;
 
@@ -80,6 +84,7 @@ public class PlanRunner
         plan.LastRun = DateTime.Now;
         await _store.SavePlanAsync(plan);
         await LoadStepAsync(navigate: true, autoStartRest: true);
+        RunStarted?.Invoke();
     }
 
     /// <summary>Resume a run saved before a refresh. Stays on the current page; rests wait for Start.</summary>
@@ -187,6 +192,7 @@ public class PlanRunner
         EditedForSession = false;
         await _store.RemoveSessionAsync(RunKey);
         Changed?.Invoke();
+        if (Summary != null) RunFinished?.Invoke();
     }
 
     public void DismissSummary() { Summary = null; Changed?.Invoke(); }

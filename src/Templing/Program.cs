@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.Extensions.Logging;
 using MudBlazor;
 using MudBlazor.Services;
 using Templing;
@@ -22,5 +23,10 @@ builder.Services.AddSingleton<ScoreImport>();
 builder.Services.AddSingleton<PlanRunner>();
 builder.Services.AddSingleton(new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 builder.Services.AddSingleton<UpdateCheck>();
+builder.Services.AddSingleton<Analytics>();
+// unhandled errors as an Umami event (Analytics)
+builder.Services.AddSingleton<ILoggerProvider, ErrorReporter>();
 
-await builder.Build().RunAsync();
+var host = builder.Build();
+host.Services.GetRequiredService<Analytics>();   // subscribes to the store and the plan runner
+await host.RunAsync();
