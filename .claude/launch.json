@@ -12,6 +12,18 @@
       "runtimeExecutable": "dotnet",
       "runtimeArgs": ["run", "--project", "src/Templing/Templing.csproj", "--launch-profile", "http", "--property:Demo=true"],
       "port": 5075
+    },
+    {
+      "name": "templing-local-relay",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/Templing/Templing.csproj", "--launch-profile", "http", "--property:RelayUrl=ws://localhost:8787"],
+      "port": 5075
+    },
+    {
+      "name": "relay",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "relay", "run", "dev", "--", "--port", "8787"],
+      "port": 8787
     }
   ]
 }

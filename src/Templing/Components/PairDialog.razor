@@ -1,0 +1,138 @@
+@* Pairing a device: shows a QR code of the pairing link and waits for the other device, or (Join) joins the pairing a
+   scanned link belongs to. Closes with the paired device once both sides have proved they hold the same key. *@
+@inject Devices Devices
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@implements IAsyncDisposable
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(Join == null ? "Pair a device" : "Pairing")</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_failed != null)
+        {
+            <MudAlert Severity="Severity.Warning" Dense="true">@_failed</MudAlert>
+        }
+        else if (Join == null)
+        {
+            @if (_qr != null)
+            {
+                @* QR codes stay black on white in both themes: phone cameras read dark modules on a light ground *@
+                <div class="pair-qr">
+                    <svg viewBox="-4 -4 @(_qr.Size + 8) @(_qr.Size + 8)" role="img" aria-label="QR code of the pairing link" shape-rendering="crispEdges">
+                        <rect x="-4" y="-4" width="@(_qr.Size + 8)" height="@(_qr.Size + 8)" fill="#fff" />
+                        <path d="@_qr.D" fill="#000" />
+                    </svg>
+                </div>
+            }
+            <div class="pair-status">
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                <span>Waiting for the other device…</span>
+            </div>
+            <MudText Typo="Typo.caption" Class="muted d-block mt-2">The code works for 10 minutes.</MudText>
+        }
+        else
+        {
+            <div class="pair-status">
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                <span>Connecting to the other device…</span>
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (Join == null && _failed == null && _link != null)
+        {
+            <MudButton StartIcon="@Icons.Material.Rounded.ContentCopy" OnClick="Copy">Copy link</MudButton>
+        }
+        @if (Join == null && _failed != null)
+        {
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.QrCode2" OnClick="StartAsync">New code</MudButton>
+        }
+        <MudButton OnClick="Cancel">@(_failed != null ? "Close" : "Cancel")</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
+    /// <summary>The secret from a scanned link, to join that pairing; null to show a new code.</summary>
+    [Parameter] public string? Join { get; set; }
+
+    sealed record Qr(int Size, string D);
+    Qr? _qr;
+    string? _link;
+    string? _failed;
+    bool _done;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Devices.Paired += OnPaired;
+        Devices.PairFailed += OnFailed;
+        if (Join != null)
+        {
+            if (!await Devices.PairJoinAsync(Join)) _failed = "That pairing link isn't complete. Scan the code again.";
+        }
+        else await StartAsync();
+    }
+
+    async Task StartAsync()
+    {
+        _failed = null;
+        _qr = null;
+        var secret = await Devices.PairStartAsync();
+        _link = Nav.BaseUri + "pair#" + secret;
+        var qr = System.Text.Json.JsonDocument.Parse(await QrPath(_link)).RootElement;
+        _qr = new Qr(qr.GetProperty("size").GetInt32(), qr.GetProperty("d").GetString() ?? "");
+    }
+
+    async Task<string> QrPath(string text)
+    {
+        await using var qr = await JS.InvokeAsync<IJSObjectReference>("import", "./js/qr.js");
+        return await qr.InvokeAsync<string>("path", text);
+    }
+
+    void OnPaired(PairedDevice d) => InvokeAsync(() =>
+    {
+        _done = true;
+        Dialog.Close(DialogResult.Ok(d));
+    });
+
+    void OnFailed(string reason) => InvokeAsync(() =>
+    {
+        _failed = reason switch
+        {
+            "proof" => "The other device couldn't be verified, so they weren't paired.",
+            "self" => "That's this device's own code. Scan it with your other device.",
+            _ when Join == null => "Pairing didn't finish. The code may have run out, or the other device lost its connection.",
+            _ => "Pairing didn't finish. The code may have run out: make a new one on the other device and scan it again.",
+        };
+        StateHasChanged();
+    });
+
+    async Task Copy()
+    {
+        if (_link == null) return;
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", _link);
+        Snackbar.Add("Pairing link copied", Severity.Info);
+    }
+
+    void Cancel() => Dialog.Cancel();
+
+    public async ValueTask DisposeAsync()
+    {
+        Devices.Paired -= OnPaired;
+        Devices.PairFailed -= OnFailed;
+        if (!_done) await Devices.PairCancelAsync();
+    }
+
+    /// <summary>Shows the code (or joins <paramref name="join"/>). The paired device, or null if it didn't happen.</summary>
+    public static async Task<PairedDevice?> ShowAsync(IDialogService dialogs, string? join = null)
+    {
+        var p = new DialogParameters<PairDialog> { { x => x.Join, join } };
+        var r = await dialogs.ShowAsync<PairDialog>(join == null ? "Pair a device" : "Pairing", p,
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = true });
+        var res = await r.Result;
+        return res is { Canceled: false, Data: PairedDevice d } ? d : null;
+    }
+}

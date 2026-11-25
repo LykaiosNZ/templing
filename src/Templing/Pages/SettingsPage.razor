@@ -5,6 +5,7 @@
 @inject MetronomeService Metro
 @inject NavigationManager Nav
 @inject UpdateCheck Updates
+@inject Devices Devices
 @implements IDisposable
 
 <PageTitle>Settings · Templing</PageTitle>
@@ -223,6 +224,8 @@
         </div>
     </section>
 
+    @DevicesPart
+
     <section aria-labelledby="set-about">
         <h2 class="settings-heading" id="set-about">About</h2>
         <div class="setting-row">
@@ -262,6 +265,13 @@
         </MudAlert>;
 #else
     private static readonly RenderFragment? DemoNotice = null;
+#endif
+
+    // Settings > Devices (pairing, sending data between devices): not in the demo, whose data is only in memory
+#if DEMO_MODE
+    private RenderFragment? DevicesPart => null;
+#else
+    private RenderFragment DevicesPart => @<DevicesSection Restore="RestoreFileAsync" />;
 #endif
 
     [SupplyParameterFromQuery(Name = "restored")] public int? Restored { get; set; }
@@ -329,18 +339,7 @@
             await using (var stream = picked.OpenReadStream(MaxBackupBytes)) await stream.CopyToAsync(bytes, 1 << 20);
             var file = Backup.Parse(bytes.ToArray());
             await ShowBusy(null);
-            var includeSettings = await RestoreDialog.ShowAsync(Dialogs, file, picked.Name);
-            if (includeSettings == null) return;
-            if (includeSettings == true) await Metro.StopAsync();
-            await ShowBusy(Busy.Restore);
-            var summary = await Backup.RestoreAsync(Store, file, includeSettings.Value);
-            if (includeSettings == true)
-            {
-                // services hold references into the old settings; reload so everything picks up the restored ones
-                Nav.NavigateTo("settings?restored=1", forceLoad: true);
-                return;
-            }
-            Snackbar.Add(summary, Severity.Success);
+            await RestoreFileAsync(file, picked.Name);
         }
         catch (FormatException ex)
         {
@@ -358,13 +357,35 @@
         }
     }
 
+    /// <summary>Asks what to restore from a backup (read from a file, or sent by a paired device), then restores it.</summary>
+    async Task RestoreFileAsync(Backup.BackupFile file, string name)
+    {
+        try
+        {
+            var includeSettings = await RestoreDialog.ShowAsync(Dialogs, file, name);
+            if (includeSettings == null) return;
+            if (includeSettings == true) await Metro.StopAsync();
+            await ShowBusy(Busy.Restore);
+            var summary = await Backup.RestoreAsync(Store, file, includeSettings.Value);
+            if (includeSettings == true)
+            {
+                // services hold references into the old settings; reload so everything picks up the restored ones
+                Nav.NavigateTo("settings?restored=1", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(summary, Severity.Success);
+        }
+        finally { await ShowBusy(null); }
+    }
+
     async Task ClearAll()
     {
         var ok = await ConfirmDialog.ShowAsync(Dialogs, "Delete all data?",
-            "Every piece, log entry, plan and custom metronome in this browser will be deleted. Export a backup first if you might want it back. This can't be undone.",
+            "Every piece, log entry, plan, custom metronome and paired device in this browser will be deleted. Export a backup first if you might want it back. This can't be undone.",
             "Delete everything", destructive: true);
         if (ok != true) return;
         await Store.ClearAllAsync();
+        if (!AppInfo.Demo) await Devices.ResetAsync();
         Snackbar.Add("All data deleted", Severity.Info);
     }
 }

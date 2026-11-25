@@ -1,0 +1,16 @@
+@page "/pair"
+@* A pairing link (…/pair#<secret>, the QR code another device shows): hands the secret to Settings > Devices, which
+   joins that pairing. Replacing this history entry drops the secret from the back button. *@
+@inject Devices Devices
+@inject NavigationManager Nav
+
+<PageTitle>Pairing · Templing</PageTitle>
+
+@code {
+    protected override void OnInitialized()
+    {
+        var secret = new Uri(Nav.Uri).Fragment.TrimStart('#');
+        Devices.PendingJoin = AppInfo.Demo || secret.Length == 0 ? null : secret;
+        Nav.NavigateTo("settings", replace: true);
+    }
+}

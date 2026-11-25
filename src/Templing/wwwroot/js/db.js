@@ -1,11 +1,13 @@
 // Minimal IndexedDB wrapper. Values are passed as JSON strings so .NET controls serialization.
 const DB_NAME = 'templing';   // also opened by the boot script in index.html: keep the two in step
-const DB_VERSION = 5; // 5: "items" store renamed "pieces"
+const DB_VERSION = 6; // 5: "items" store renamed "pieces"; 6: "devices"
 // Adding a store? Bump DB_VERSION and follow the "Persisted data" checklist in CLAUDE.md
 // (DataStore load/import/clear, Backup.cs export/restore).
 // 'files' holds raw score files (Guitar Pro etc.) as {Id, Name, Data: Uint8Array}
 // 'session' holds transient UI state (e.g. the running plan) that survives a refresh; never backed up
-const STORES = ['pieces', 'logs', 'presets', 'settings', 'files', 'plans', 'session'];
+// 'devices' holds this device's identity and its paired devices, with their keys as non-extractable CryptoKeys
+//   (link.js, which reads and writes it with getRows/putRow); never backed up, since a key belongs to one device
+const STORES = ['pieces', 'logs', 'presets', 'settings', 'files', 'plans', 'session', 'devices'];
 let dbPromise = null;
 
 // The demo build (-p:Demo=true): DataStore calls useMemory() before anything else, and the stores then live in memory
@@ -84,6 +86,19 @@ export function download(filename, data, mime) {
     a.href = url; a.download = filename;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ---- rows kept as they are (structured clone, not JSON): link.js's 'devices', whose keys are CryptoKeys
+export async function getRows(store) {
+    return (await tx(store, 'readonly', os => os.getAll())) || [];
+}
+
+export function putRow(store, row) {
+    return tx(store, 'readwrite', os => os.put(row));
+}
+
+export function removeRow(store, id) {
+    return tx(store, 'readwrite', os => os.delete(id));
 }
 
 // ---- binary score files (kept in JS; never serialised through .NET)

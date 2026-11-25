@@ -452,6 +452,12 @@ button.tempo-value:focus-visible { outline: 2px solid var(--ring); outline-offse
 .setting-value { color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .setting-control { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; flex: none; }
 .setting-control .mud-input-control { margin: 0; }
+
+/* Settings > Devices and the pairing dialog */
+.device-progress { margin-top: 8px; max-width: 260px; }
+.pair-qr { width: min(240px, 100%); margin: 0 auto 16px; }
+.pair-qr svg { display: block; width: 100%; height: auto; border-radius: 8px; }
+.pair-status { display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--ink-2); }
 @media (max-width: 600px) { .setting-row { flex-wrap: wrap; } .setting-control { justify-content: flex-start; } }
 /* Settings > Colours: a swatch beside each picker */
 .mode-toggle.mud-toggle-group { width: 140px; }

@@ -7,6 +7,11 @@ public static class AppInfo
 {
     public const string RepositoryUrl = "https://github.com/lykaiosnz/templing";
 
+    /// <summary>The relay paired devices meet through (relay/ in the repo): the RelayUrl build property.</summary>
+    public static readonly string RelayUrl =
+        typeof(AppInfo).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>().FirstOrDefault(a => a.Key == "RelayUrl")?.Value
+        ?? "wss://templing-relay.lykaiosnz.workers.dev";
+
     /// <summary>The full informational version, e.g. "0.1.0+3f2a9c1…" (the build appends the commit).</summary>
     public static readonly string InformationalVersion =
         typeof(AppInfo).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0";
