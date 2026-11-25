@@ -7,15 +7,19 @@
 // devices, never through here.
 //
 // Messages:
-//   { t: "pair",  fp: hex64, mac: hex64 }                      a new device's certificate fingerprint, with a MAC
-//                                                               keyed by the one-time secret from the pairing QR
-//   { t: "offer" | "answer", ufrag, pwd, setup, cands: [cand] } the parts of an SDP the other side rebuilds
+//   { t: "offer" | "answer", ufrag, pwd, setup, fp, cands: [cand] }
+//                                                               the parts of an SDP the other side rebuilds; fp is
+//                                                               the sender's DTLS certificate fingerprint (SHA-256)
 //   { t: "ice", cand }                                          a candidate found after the offer/answer
 //   { t: "bye" }                                                done; the other side can close
 // cand = { addr: IPv4 | IPv6 | <uuid>.local, port: 1-65535, type: "host" | "srflx" | "prflx" }
 //
+// Devices make a new certificate for every connection, and once connected each proves to the other, over the
+// encrypted data channel, that it holds their shared pairing key and saw the same two fingerprints. So a relay that
+// swapped a fingerprint would be caught, and the relay never needs anything that identifies a device.
+//
 // Every field still carries some bits the sender picks (a fingerprint is 32 arbitrary bytes, an address is an
-// address), so the room also limits how many of each message a connection may send (BUDGET): about 500 bytes of
+// address), so the room also limits how many of each message a connection may send (BUDGET): about 450 bytes of
 // handshake per connection, with joins capped per room and per IP (room.js, index.js).
 //
 // The relay itself sends { t: "joined" } and { t: "left" } when the other device comes and goes.
@@ -37,8 +41,8 @@ const IPV4 = new RegExp(`^${OCTET}(\\.${OCTET}){3}$`);
 const IPV6_CHARS = /^[0-9A-Fa-f:.]{2,45}$/;
 
 /** How many of each kind of message one connection may send. Anything more closes it. */
-export const BUDGET = { pair: 1, sdp: 1, ice: 8, bye: 1 };
-const KIND = { pair: "pair", offer: "sdp", answer: "sdp", ice: "ice", bye: "bye" };
+export const BUDGET = { sdp: 1, ice: 8, bye: 1 };
+const KIND = { offer: "sdp", answer: "sdp", ice: "ice", bye: "bye" };
 /** The budget a checked message counts against. */
 export const kindOf = (t) => KIND[t];
 
@@ -81,20 +85,17 @@ export function validate(text) {
     if (!m || typeof m !== "object" || Array.isArray(m)) return null;
 
     switch (m.t) {
-        case "pair":
-            if (!hasExactly(m, ["t", "fp", "mac"]) || !HEX64.test(m.fp) || !HEX64.test(m.mac)) return null;
-            return JSON.stringify({ t: "pair", fp: m.fp, mac: m.mac });
-
         case "offer":
         case "answer": {
-            if (!hasExactly(m, ["t", "ufrag", "pwd", "setup", "cands"])) return null;
+            if (!hasExactly(m, ["t", "ufrag", "pwd", "setup", "fp", "cands"])) return null;
             if (typeof m.ufrag !== "string" || !UFRAG.test(m.ufrag)) return null;
             if (typeof m.pwd !== "string" || !PWD.test(m.pwd)) return null;
             if (!SETUP.has(m.setup)) return null;
+            if (typeof m.fp !== "string" || !HEX64.test(m.fp)) return null;
             if (!Array.isArray(m.cands) || m.cands.length > MAX_CANDIDATES) return null;
             const cands = m.cands.map(candidate);
             if (cands.includes(null)) return null;
-            return JSON.stringify({ t: m.t, ufrag: m.ufrag, pwd: m.pwd, setup: m.setup, cands });
+            return JSON.stringify({ t: m.t, ufrag: m.ufrag, pwd: m.pwd, setup: m.setup, fp: m.fp, cands });
         }
 
         case "ice": {
