@@ -14,20 +14,33 @@
 //   { t: "bye" }                                                done; the other side can close
 // cand = { addr: IPv4 | IPv6 | <uuid>.local, port: 1-65535, type: "host" | "srflx" | "prflx" }
 //
+// Every field still carries some bits the sender picks (a fingerprint is 32 arbitrary bytes, an address is an
+// address), so the room also limits how many of each message a connection may send (BUDGET): about 500 bytes of
+// handshake per connection, with joins capped per room and per IP (room.js, index.js).
+//
 // The relay itself sends { t: "joined" } and { t: "left" } when the other device comes and goes.
 
 export const MAX_MESSAGE = 1024;   // characters; a full offer with 8 candidates is under 700
 export const MAX_CANDIDATES = 8;
 
 const HEX64 = /^[0-9a-f]{64}$/;
-const UFRAG = /^[A-Za-z0-9+/]{4,32}$/;     // ICE ufrag / pwd are ice-chars (RFC 8839)
-const PWD = /^[A-Za-z0-9+/]{22,64}$/;
+// ICE ufrag / pwd are ice-chars (RFC 8839). Browsers send ufrag 4 (Chrome, Safari) or 8 (Firefox) characters and
+// pwd 22-24 or 32, so allow just those ranges.
+const UFRAG = /^[A-Za-z0-9+/]{4,8}$/;
+const PWD = /^[A-Za-z0-9+/]{22,32}$/;
 const SETUP = new Set(["actpass", "active", "passive"]);
 const TYPES = new Set(["host", "srflx", "prflx"]);
-const MDNS = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.local$/;
+// browsers hide host addresses behind a random (version 4) UUID
+const MDNS = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.local$/;
 const OCTET = "(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)";
 const IPV4 = new RegExp(`^${OCTET}(\\.${OCTET}){3}$`);
-const IPV6 = /^[0-9a-f:]{2,39}$/;
+const IPV6_CHARS = /^[0-9A-Fa-f:.]{2,45}$/;
+
+/** How many of each kind of message one connection may send. Anything more closes it. */
+export const BUDGET = { pair: 1, sdp: 1, ice: 8, bye: 1 };
+const KIND = { pair: "pair", offer: "sdp", answer: "sdp", ice: "ice", bye: "bye" };
+/** The budget a checked message counts against. */
+export const kindOf = (t) => KIND[t];
 
 /** A room id: 64 lowercase hex characters (a SHA-256 the devices work out; the relay never sees the secret). */
 export const isRoomId = (id) => HEX64.test(id);
@@ -37,15 +50,27 @@ const hasExactly = (o, keys) => {
     return own.length === keys.length && keys.every((k) => Object.hasOwn(o, k));
 };
 
-const isIPv6 = (s) => IPV6.test(s) && s.includes(":") && s.split(":").length <= 8 && !s.includes(":::");
+/** An IPv6 address in its one canonical spelling (RFC 5952, as URL writes it), or null. Forwarding the canonical
+ * form means the way an address is written (leading zeros, where :: goes) can't carry anything. */
+export function canonicalIPv6(s) {
+    if (typeof s !== "string" || !IPV6_CHARS.test(s) || !s.includes(":")) return null;
+    try {
+        const host = new URL(`http://[${s}]`).hostname;
+        return host.slice(1, -1);
+    } catch {
+        return null;
+    }
+}
 
 function candidate(c) {
     if (!c || typeof c !== "object" || Array.isArray(c) || !hasExactly(c, ["addr", "port", "type"])) return null;
     const { addr, port, type } = c;
-    if (typeof addr !== "string" || !(IPV4.test(addr) || isIPv6(addr) || MDNS.test(addr))) return null;
+    if (typeof addr !== "string") return null;
+    const clean = IPV4.test(addr) || MDNS.test(addr) ? addr : canonicalIPv6(addr);
+    if (clean === null) return null;
     if (!Number.isInteger(port) || port < 1 || port > 65535) return null;
     if (!TYPES.has(type)) return null;
-    return { addr, port, type };
+    return { addr: clean, port, type };
 }
 
 /** Checks one message from a device. Returns the copy to forward, or null if it isn't an allowed message. */
