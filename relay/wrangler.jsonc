@@ -1,0 +1,27 @@
+// Cloudflare Worker + Durable Object for the relay. Deploy: see README.md.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "templing-relay",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+  },
+  // SQLite-backed, which is what the Workers Free plan allows. The class keeps nothing in storage but its alarm.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
+
+  // Room joins per IP address: 20 a minute is plenty for a person pairing or syncing a few devices.
+  "ratelimits": [
+    { "name": "JOIN_LIMIT", "namespace_id": "1001", "simple": { "limit": 20, "period": 60 } }
+  ],
+
+  "vars": {
+    // comma-separated; localhost on any port is always allowed (schema.js)
+    "ALLOWED_ORIGINS": "https://lykaiosnz.github.io"
+  },
+
+  // no request or message logs
+  "observability": { "enabled": false }
+}
