@@ -41,15 +41,22 @@ describe("worker", () => {
         expect(res.status).toBe(200);
         expect(e.calls.keys).toEqual(["2001:db8:1:2::/64"]);
         expect(e.calls.rooms).toEqual([room]);
-        expect((await get(`/room/${room}`, origin, env({ allow: false }))).status).toBe(429);
-        expect((await get(`/room/${room}`, origin, env({ limiter: false }))).status).toBe(503);
+        const withIp = { ...origin, "CF-Connecting-IP": "203.0.113.7" };
+        expect((await get(`/room/${room}`, withIp, env({ allow: false }))).status).toBe(429);
+        expect((await get(`/room/${room}`, withIp, env({ limiter: false }))).status).toBe(503);
+        expect((await get(`/room/${room}`, origin)).status).toBe(400);   // no address: no shared fallback key
     });
 });
 
 describe("limitKey", () => {
     it("keeps IPv4 as it is", () => {
         expect(limitKey("203.0.113.7")).toBe("203.0.113.7");
-        expect(limitKey(null)).toBe("unknown");
+        expect(limitKey(null)).toBeNull();
+        expect(limitKey("")).toBeNull();
+    });
+    it("treats an IPv4-mapped IPv6 address as its IPv4 address", () => {
+        expect(limitKey("::ffff:203.0.113.7")).toBe("203.0.113.7");
+        expect(limitKey("::FFFF:203.0.113.7")).toBe("203.0.113.7");
     });
     it("groups IPv6 by its /64, however it's written", () => {
         const key = "2001:db8:0:1::/64";

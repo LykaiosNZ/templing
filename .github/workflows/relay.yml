@@ -6,7 +6,8 @@ name: Deploy relay
 on:
   push:
     branches: [main]
-    paths: [relay/**, .github/workflows/relay.yml]
+    # what's deployed: not the README or the tests
+    paths: [relay/src/**, relay/wrangler.jsonc, relay/package.json, relay/package-lock.json, .github/workflows/relay.yml]
   workflow_dispatch:
 
 permissions:
