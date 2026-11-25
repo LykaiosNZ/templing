@@ -112,10 +112,18 @@
 
     async Task Pair() => await PairDialog.ShowAsync(Dialogs);
 
+    // a pairing code is ten characters; spaces and dashes don't count (link.js normalizeCode has the full rules)
+    static string? CodeProblem(string text)
+    {
+        var n = text.Count(char.IsLetterOrDigit);
+        return n < 10 ? $"Type all 10 characters ({n} so far)" : n > 10 ? "That's more than 10 characters" : null;
+    }
+
     // for a device without a camera: the pairing code Pair… shows on the other device, typed in
     async Task EnterCode()
     {
-        var code = await PromptDialog.ShowAsync(Dialogs, "Enter a pairing code", "Pairing code", ok: "Pair", placeholder: "K7Q2M-9XDAB");
+        var code = await PromptDialog.ShowAsync(Dialogs, "Enter a pairing code", "Pairing code", ok: "Pair", placeholder: "K7Q2M-9XDAB",
+            empty: "Type the code from the other device", check: CodeProblem);
         if (string.IsNullOrWhiteSpace(code)) return;
         await PairDialog.ShowAsync(Dialogs, code.Trim());
     }

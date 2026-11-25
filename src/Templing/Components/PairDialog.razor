@@ -20,7 +20,7 @@
         else if (_check != null)
         {
             <MudText Typo="Typo.body2" Class="mb-3">
-                @(_check.Confirming ? $"Check that “{_check.Name}” shows the same number." : "The same number is on the other device.")
+                @(_check.Confirming ? $"Check that “{_check.Name}” shows the same number." : $"Check that “{_check.Name}” shows this number, then choose Pair on it.")
             </MudText>
             <div class="pair-number" aria-label="@($"Number {_check.Code}")">@(_check.Code[..3]) @(_check.Code[3..])</div>
             @if (_check.Again)
