@@ -30,7 +30,10 @@ Node 22.12 or newer (Wrangler needs it).
 ```bash
 cd relay
 npm install
-npm test          # schema, room and worker logic (Vitest, fake Durable Object state)
+npm test          # both layers (vitest.config.js):
+                  #   unit:    schema, room and worker logic against fake Durable Object state (fast)
+                  #   runtime: the Worker and Room in workerd via @cloudflare/vitest-plugin, with real
+                  #            WebSockets, storage, alarms, eviction and the rate limiter
 npm run dev       # wrangler dev: ws://localhost:8787/room/<64 hex>
 ```
 
