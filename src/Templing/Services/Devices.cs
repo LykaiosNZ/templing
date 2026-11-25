@@ -132,9 +132,10 @@ public sealed class Devices(IJSRuntime js) : IAsyncDisposable
         Changed?.Invoke();
     }
 
-    /// <summary>Sends a backup to a connected device: "received", "declined", "closed" or "offline".</summary>
+    /// <summary>Sends a backup to a connected device: "received", "declined", "closed", "busy" (one is under way) or "offline".</summary>
     public async Task<string> SendAsync(string id, byte[] backup)
     {
+        if (Transfer != null) return "busy";   // and the one under way keeps its progress
         try
         {
             Transfer = new Transfer(id, false, 0, backup.Length);

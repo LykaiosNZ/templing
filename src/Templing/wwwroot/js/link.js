@@ -414,6 +414,12 @@ export function next(peer, kinds, ms) {
     });
 }
 
+/** The next pairing message of this kind; the other device cancelling at any step ends the pairing ('declined'). */
+const step = (peer, kind) => next(peer, [kind, 'pair-cancel'], 15_000).then((m) => {
+    if (m.t === 'pair-cancel') throw 'declined';
+    return m;
+});
+
 const sha256 = async (text) => toHex(await crypto.subtle.digest('SHA-256', te.encode(text)));
 
 /**
@@ -427,7 +433,7 @@ export async function pairExchange(peer, secret, showing, me, { ask, onCheck }) 
     const valid = (m) => isHex(m.id, 8);
     let other, theirNonce;
     if (showing) {
-        const reply = next(peer, ['pair'], 15_000);
+        const reply = step(peer, 'pair');
         peer.send({ t: 'pair', id: me.id, name: me.name, commit: await sha256(nonce) });
         other = await reply;
         if (other.id === me.id) throw 'self';
@@ -435,10 +441,10 @@ export async function pairExchange(peer, secret, showing, me, { ask, onCheck }) 
         theirNonce = other.nonce;
         peer.send({ t: 'pair-reveal', nonce });   // only now: their nonce is fixed
     } else {
-        other = await next(peer, ['pair'], 15_000);
+        other = await step(peer, 'pair');
         if (other.id === me.id) throw 'self';
         if (!valid(other) || !isHex(other.commit, 32)) throw 'proof';
-        const reveal = next(peer, ['pair-reveal'], 15_000);
+        const reveal = step(peer, 'pair-reveal');
         peer.send({ t: 'pair', id: me.id, name: me.name, nonce });
         theirNonce = (await reveal).nonce;
         if (!isHex(theirNonce, 32) || !sameText(await sha256(theirNonce), other.commit)) throw 'proof';
@@ -469,6 +475,10 @@ let online = false;
 const peers = new Map();       // device id -> Peer
 const loops = new Map();       // device id -> { cancel } for the presence loop's current attempt
 let pairing = null;            // { cancel, peer, confirm } while pairing
+let transport = {};            // the WebSocket and RTCPeerConnection to use: the browser's, or the tests' fakes
+
+/** Tests only: fakes for the relay socket and WebRTC (connect's WebSocketImpl / PeerImpl). */
+export function useTransport(t) { transport = t ?? {}; }
 
 const emit = (type, data) => dotnet?.invokeMethodAsync('OnLinkEvent', type, JSON.stringify(data ?? {}));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -516,17 +526,24 @@ export async function renameSelf(name) {
 
 async function pair(secret, showing) {
     pairCancel();
-    const attempt = connect({
-        relay, room: await pairRoom(secret), key: await pairAuth(secret), offerer: showing,
-        onopen: () => emit('pair-ready'),   // the code can be used now
-    });
-    const state = { cancel: attempt.cancel, peer: null, confirm: null };
+    // claimed before anything is awaited, so a second New code or a closed dialog in the meantime cancels this one
+    const state = { cancel: () => { state.cancelled = true; }, peer: null, confirm: null, cancelled: false };
     pairing = state;
+    const room = await pairRoom(secret), key = await pairAuth(secret);
+    if (state.cancelled || pairing !== state) return;
+    const attempt = connect({
+        ...transport, relay, room, key, offerer: showing,
+        onopen: () => { if (pairing === state) emit('pair-ready'); },   // the code can be used now
+    });
+    state.cancel = attempt.cancel;
     try {
         const peer = state.peer = await attempt.promise;
         const other = await pairExchange(peer, secret, showing, { id: self.DeviceId, name: self.Name }, {
             ask: () => new Promise((r) => { state.confirm = r; }),
-            onCheck: async (check) => emit('pair-check', { ...check, again: (await devices()).some((d) => d.Id === check.id) }),
+            onCheck: async (check) => {
+                const again = (await devices()).some((d) => d.Id === check.id);
+                if (pairing === state) emit('pair-check', { ...check, again });   // not into a newer pairing's dialog
+            },
         });
         const row = { Id: other.id, Name: other.name, Key: other.key, Paired: new Date().toISOString() };
         attach(row, peer);     // its handlers first, so nothing the other device sends next is missed
@@ -536,7 +553,7 @@ async function pair(secret, showing) {
     } catch (reason) {
         const peer = state.peer;
         setTimeout(() => peer?.close(), 500);   // after a pair-cancel has had time to go
-        if (reason !== 'cancelled' || !showing) emit('pair-failed', { reason: String(reason) });
+        if ((reason !== 'cancelled' || !showing) && pairing === state) emit('pair-failed', { reason: String(reason) });
     } finally {
         if (pairing === state) pairing = null;
     }
@@ -594,9 +611,13 @@ function attach(device, peer) {
     peer.asked = false;   // the other device asked for this one's backup, and hasn't had an answer yet
     peer.onmessage = async (m) => {
         if (m.t === 'hello' && typeof m.name === 'string') {
-            device.Name = cleanName(m.name);
-            // not if it's gone meanwhile ("Delete all data", Forget): a late hello mustn't bring the pairing back
-            if (!(await devices()).some((d) => d.Id === device.Id)) return;
+            const name = cleanName(m.name);
+            if (name === device.Name) return;   // nothing new (it says hello on every connection)
+            // Forget and "Delete all data" take this connection out of peers at once: if that happened while the
+            // store was read, the name update mustn't write the pairing back
+            if (peers.get(device.Id) !== peer || !(await devices()).some((d) => d.Id === device.Id)) return;
+            if (peers.get(device.Id) !== peer) return;   // and again after that read
+            device.Name = name;
             await putRow('devices', device);
             emit('renamed', describeDevice(device));
         } else if (m.t === 'request') {
@@ -630,27 +651,34 @@ async function stayInTouch(device) {
     if (loops.has(device.Id)) return;
     const loop = { cancel: () => { } };
     loops.set(device.Id, loop);
+    // goOffline (or another loop) takes this one out of loops: checked after every wait, so a loop asleep in its
+    // backoff when Settings closed doesn't carry on beside the new one when Settings opens again
+    const current = () => online && loops.get(device.Id) === loop;
     let backoff = 2000;
     try {
-        while (online && !peers.has(device.Id)) {
+        while (current() && !peers.has(device.Id)) {
             const row = (await devices()).find((d) => d.Id === device.Id);
-            if (!row) return;
+            if (!row || !current()) return;
             const now = Date.now(), w = windowOf(now);
-            const attempt = connect({ relay, room: await syncRoom(row.Key, w), key: row.Key, offerer: self.DeviceId < row.Id });
+            const room = await syncRoom(row.Key, w);
+            if (!current()) return;
+            const attempt = connect({ ...transport, relay, room, key: row.Key, offerer: self.DeviceId < row.Id });
             loop.cancel = attempt.cancel;
             const nextWindow = setTimeout(() => attempt.cancel(), (w + 1) * WINDOW_MS - now + 1000);
             try {
                 const peer = await attempt.promise;
                 clearTimeout(nextWindow);
+                if (!current()) { peer.close(); return; }
                 loops.delete(device.Id);
                 attach(row, peer);
                 return;
             } catch (reason) {
                 clearTimeout(nextWindow);
-                if (!online) return;
+                if (!current()) return;
                 if (reason === 'cancelled') { backoff = 2000; continue; }   // a new window: straight on to its room
                 await sleep(backoff + Math.random() * 1000);                // jitter only; nothing secret
                 backoff = Math.min(backoff * 2, 60_000);
+                if (!current()) return;
             }
         }
     } finally {
@@ -673,10 +701,11 @@ export function goOffline() {
     peers.clear();
 }
 
-/** Sends this device's backup to a connected device. Resolves 'received', 'declined', 'closed' or 'offline'. */
+/** Sends this device's backup to a connected device. Resolves 'received', 'declined', 'closed', 'busy' or 'offline'. */
 export async function send(id, bytes) {
     const peer = peers.get(id);
     if (!peer) return 'offline';
+    if (peer._ack) return 'busy';   // one at a time; the running one keeps its progress (and a request still waits for its answer)
     peer.asked = false;
     const result = await peer.sendBackup(bytes, progress(id, false));
     emit('transfer-ended', { id });

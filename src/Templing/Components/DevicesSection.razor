@@ -113,15 +113,17 @@
 
     void OnPaired(PairedDevice d) => InvokeAsync(() => Snackbar.Add($"Paired with “{d.Name}”", Severity.Success));
 
-    async Task SendTo(PairedDevice d)
+    async Task<string> SendTo(PairedDevice d)
     {
         var result = await Devices.SendAsync(d.Id, Backup.ExportGzip(Store));
         switch (result)
         {
             case "received": Snackbar.Add($"Sent to “{d.Name}”", Severity.Success); break;
             case "declined": Snackbar.Add($"“{d.Name}” didn't accept your data.", Severity.Warning); break;
+            case "busy": Snackbar.Add("A transfer is already under way.", Severity.Info); break;
             default: Snackbar.Add($"The connection to “{d.Name}” closed before it was sent.", Severity.Warning); break;
         }
+        return result;
     }
 
     async Task AskFor(PairedDevice d)
@@ -134,8 +136,8 @@
         var ok = await ConfirmDialog.ShowAsync(Dialogs, $"Send your data to “{d.Name}”?",
             $"“{d.Name}” is asking for a copy of your pieces, practice log, plans, custom metronomes and settings. It chooses what to restore.",
             "Send", cancel: "Not now");
-        if (ok == true) await SendTo(d);
-        else await Devices.DeclineAsync(d.Id);
+        // busy with another transfer: say no, so the asking device isn't left waiting for one
+        if (ok != true || await SendTo(d) == "busy") await Devices.DeclineAsync(d.Id);
     });
 
     // a backup only comes in once you say so (or after you asked for it, with Get)
