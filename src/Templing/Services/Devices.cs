@@ -42,6 +42,10 @@ public sealed class Devices(IJSRuntime js) : IAsyncDisposable
     public IReadOnlyList<PairedDevice> List { get; private set; } = [];
     public Transfer? Transfer { get; private set; }
 
+    /// <summary>Paired devices that were online but couldn't be reached directly (a VPN, a work network), until they connect.</summary>
+    public IReadOnlySet<string> Unreachable => _unreachable;
+    private readonly HashSet<string> _unreachable = [];
+
     /// <summary>The secret from a pairing link (the /pair page), until Settings picks it up and joins.</summary>
     public string? PendingJoin { get; set; }
 
@@ -193,6 +197,13 @@ public sealed class Devices(IJSRuntime js) : IAsyncDisposable
                 // a transfer that stopped part way (or a send that's done): no progress left showing
                 if (Transfer?.DeviceId == data.GetProperty("id").GetString()) { Transfer = null; Changed?.Invoke(); }
                 return;
+            case "unreachable":
+                if (_unreachable.Add(data.GetProperty("id").GetString() ?? "")) Changed?.Invoke();
+                return;
+            case "connected":
+                _unreachable.Remove(data.GetProperty("id").GetString() ?? "");
+                await RefreshAsync();
+                return;
             case "disconnected":
                 if (Transfer?.DeviceId == data.GetProperty("id").GetString()) Transfer = null;
                 await RefreshAsync();
@@ -219,7 +230,7 @@ public sealed class Devices(IJSRuntime js) : IAsyncDisposable
                 await RefreshAsync();
                 Forgotten?.Invoke(data.GetProperty("name").GetString() ?? "");
                 return;
-            default:   // connected, renamed
+            default:   // renamed
                 await RefreshAsync();
                 return;
         }

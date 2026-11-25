@@ -98,6 +98,7 @@
     string Status(PairedDevice d, Transfer? t) =>
         t != null ? $"{(t.Incoming ? "Receiving" : "Sending")}… {(t.Size > 0 ? 100 * t.Done / t.Size : 0)}%"
         : d.Connected ? "Connected"
+        : Devices.Unreachable.Contains(d.Id) ? "Couldn't connect directly. A VPN or work network may be blocking it."
         : d.Paired is { } when ? $"Not connected · paired {Stats.Ago(when.ToLocalTime(), DateTime.Today)}"
         : "Not connected";
 

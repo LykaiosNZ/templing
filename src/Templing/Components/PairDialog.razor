@@ -170,6 +170,7 @@
             "self" => "That's this device's own code. Scan it with your other device.",
             "declined" => "Pairing was cancelled on the other device.",
             "unreachable" => "Couldn't reach the relay that devices pair through. This device may be offline.",
+            "direct" => "These devices couldn't connect directly. This usually happens when one is on a VPN or a work network.",
             _ when Join == null => "Pairing didn't finish. The code may have run out, or the other device lost its connection.",
             _ => "Pairing didn't finish. The code may have run out: make a new one on the other device and scan it again.",
         };

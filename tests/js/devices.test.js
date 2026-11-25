@@ -87,6 +87,19 @@ describe('device manager', () => {
         link.goOffline();
     }, 10_000);
 
+    it('reports a paired device that was there but could not be reached directly', async () => {
+        const key = await link.pairKey(new Uint8Array(32).fill(1), 'a'.repeat(64), 'b'.repeat(64));
+        await putRow('devices', { Id: OTHER, Name: 'Laptop', Key: key, Paired: new Date().toISOString() });
+        const tamper = (text) => text.replace(/"fp":"[0-9a-f]{64}"/, `"fp":"${'ee'.repeat(32)}"`);
+        const WebSocketImpl = fakeRelay({ tamper }), PeerImpl = fakeWebRTC();
+        link.useTransport({ WebSocketImpl, PeerImpl, connectMs: 150 });
+        await link.goOnline();
+        const room = await link.syncRoom(key, link.windowOf(Date.now()));
+        link.connect({ relay: RELAY, room, key, offerer: OTHER < self.id, connectMs: 150, WebSocketImpl, PeerImpl }).promise.catch(() => { });
+        await until(() => events.some(([t, d]) => t === 'unreachable' && d.id === OTHER));
+        link.goOffline();
+    });
+
     it('keeps to one pairing when New code is pressed twice', async () => {
         let sockets = 0;
         const Relay = fakeRelay();
