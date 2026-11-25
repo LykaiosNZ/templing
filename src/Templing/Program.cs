@@ -23,6 +23,7 @@ builder.Services.AddSingleton<ScoreImport>();
 builder.Services.AddSingleton<PlanRunner>();
 builder.Services.AddSingleton(new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 builder.Services.AddSingleton<UpdateCheck>();
+builder.Services.AddSingleton<Devices>();
 builder.Services.AddSingleton<Analytics>();
 // unhandled errors as an Umami event (Analytics)
 builder.Services.AddSingleton<ILoggerProvider, ErrorReporter>();

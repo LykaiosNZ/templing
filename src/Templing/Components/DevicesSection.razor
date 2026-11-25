@@ -1,0 +1,174 @@
+@* Settings > Devices: this device's name, paired devices (Send / Get while connected), and pairing a new one. While
+   this is on screen the link is online, so paired devices that also have Settings open connect directly. *@
+@inject Devices Devices
+@inject DataStore Store
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+@implements IAsyncDisposable
+
+<section aria-labelledby="set-devices">
+    <h2 class="settings-heading" id="set-devices">Devices</h2>
+    <div class="setting-row">
+        <div class="setting-text">
+            <div class="setting-title">This device</div>
+            <div class="setting-desc">@Devices.SelfName</div>
+        </div>
+        <div class="setting-control">
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Edit" OnClick="RenameSelf" Disabled="!_started">Rename…</MudButton>
+        </div>
+    </div>
+    @foreach (var d in Devices.List)
+    {
+        var device = d;
+        var transfer = Devices.Transfer is { } t && t.DeviceId == d.Id ? t : null;
+        <div class="setting-row">
+            <div class="setting-text">
+                <div class="setting-title">@device.Name</div>
+                <div class="setting-desc">@Status(device, transfer)</div>
+                @if (transfer != null)
+                {
+                    <MudProgressLinear Value="@(transfer.Size > 0 ? 100.0 * transfer.Done / transfer.Size : 0)" Color="Color.Primary" Class="device-progress" />
+                }
+            </div>
+            <div class="setting-control">
+                @if (device.Connected)
+                {
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Upload" OnClick="() => SendTo(device)" Disabled="Devices.Transfer != null">Send</MudButton>
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Download" OnClick="() => AskFor(device)" Disabled="Devices.Transfer != null">Get</MudButton>
+                }
+                <MudMenu Icon="@Icons.Material.Rounded.MoreVert" AriaLabel="@($"More for {device.Name}")" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                    <MudMenuItem Icon="@Icons.Material.Rounded.LinkOff" OnClick="() => AfterMenu(() => Forget(device))">Forget…</MudMenuItem>
+                </MudMenu>
+            </div>
+        </div>
+    }
+    <div class="setting-row">
+        <div class="setting-text">
+            <div class="setting-title">Pair a device</div>
+            <div class="setting-desc">Paired devices connect directly while Settings is open on both, to send each other their data. Score files aren't included.</div>
+        </div>
+        <div class="setting-control">
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.QrCode2" OnClick="() => Pair()" Disabled="!_started">Pair…</MudButton>
+        </div>
+    </div>
+</section>
+
+@code {
+    /// <summary>Restores a backup that arrived (the page's usual restore: dialog, then data or everything). Name is where it came from.</summary>
+    [Parameter, EditorRequired] public Func<Backup.BackupFile, string, Task> Restore { get; set; } = default!;
+
+    bool _started;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Devices.Changed += OnChanged;
+        Devices.Paired += OnPaired;
+        Devices.Requested += OnRequested;
+        Devices.Declined += OnDeclined;
+        Devices.Forgotten += OnForgotten;
+        Devices.BackupReceived += OnBackup;
+        try
+        {
+            await Devices.EnsureStartedAsync();
+            await Devices.GoOnlineAsync();
+            _started = true;
+        }
+        catch (JSException)
+        {
+            Snackbar.Add("Devices aren't available in this browser.", Severity.Warning);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // arrived from a pairing link (the /pair page)
+        if (_started && Devices.PendingJoin is { } join)
+        {
+            Devices.PendingJoin = null;
+            await PairDialog.ShowAsync(Dialogs, join);
+        }
+    }
+
+    void OnChanged() => InvokeAsync(StateHasChanged);
+
+    string Status(PairedDevice d, Transfer? t) =>
+        t != null ? $"{(t.Incoming ? "Receiving" : "Sending")}… {(t.Size > 0 ? 100 * t.Done / t.Size : 0)}%"
+        : d.Connected ? "Connected"
+        : d.Paired is { } when ? $"Not connected · paired {Stats.Ago(when.ToLocalTime(), DateTime.Today)}"
+        : "Not connected";
+
+    void AfterMenu(Func<Task> action) => _ = InvokeAsync(action);
+
+    async Task RenameSelf()
+    {
+        var name = await PromptDialog.ShowAsync(Dialogs, "Rename this device", "Name", Devices.SelfName, placeholder: "My phone");
+        if (string.IsNullOrWhiteSpace(name)) return;
+        await Devices.RenameSelfAsync(name);
+    }
+
+    async Task Pair() => await PairDialog.ShowAsync(Dialogs);
+
+    void OnPaired(PairedDevice d) => InvokeAsync(() => Snackbar.Add($"Paired with “{d.Name}”", Severity.Success));
+
+    async Task SendTo(PairedDevice d)
+    {
+        var result = await Devices.SendAsync(d.Id, Backup.ExportGzip(Store));
+        switch (result)
+        {
+            case "received": Snackbar.Add($"Sent to “{d.Name}”", Severity.Success); break;
+            case "declined": Snackbar.Add($"“{d.Name}” didn't take it.", Severity.Warning); break;
+            default: Snackbar.Add($"The connection to “{d.Name}” closed before it was sent.", Severity.Warning); break;
+        }
+    }
+
+    async Task AskFor(PairedDevice d)
+    {
+        if (await Devices.RequestAsync(d.Id)) Snackbar.Add($"Asked “{d.Name}” for its data", Severity.Info);
+    }
+
+    void OnRequested(PairedDevice d) => InvokeAsync(async () =>
+    {
+        var ok = await ConfirmDialog.ShowAsync(Dialogs, $"Send your data to “{d.Name}”?",
+            $"“{d.Name}” is asking for a copy of your pieces, practice log, plans, custom metronomes and settings. It chooses what to restore.",
+            "Send", cancel: "Not now");
+        if (ok == true) await SendTo(d);
+        else await Devices.DeclineAsync(d.Id);
+    });
+
+    void OnDeclined(PairedDevice d) => InvokeAsync(() => Snackbar.Add($"“{d.Name}” said no.", Severity.Info));
+
+    void OnForgotten(string name) => InvokeAsync(() => Snackbar.Add($"“{name}” unpaired from this device.", Severity.Info));
+
+    Task OnBackup(PairedDevice from, byte[] bytes) => InvokeAsync(async () =>
+    {
+        Backup.BackupFile file;
+        try { file = Backup.Parse(bytes); }
+        catch (FormatException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);   // too new, too old or damaged
+            return;
+        }
+        await Restore(file, $"From “{from.Name}”");
+    });
+
+    async Task Forget(PairedDevice d)
+    {
+        var ok = await ConfirmDialog.ShowAsync(Dialogs, $"Forget “{d.Name}”?",
+            $"This device and “{d.Name}” won't connect any more. Your data stays as it is on both. Pair them again to reconnect.",
+            "Forget", destructive: true);
+        if (ok != true) return;
+        await Devices.ForgetAsync(d.Id);
+        Snackbar.Add($"Forgot “{d.Name}”", Severity.Info);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Devices.Changed -= OnChanged;
+        Devices.Paired -= OnPaired;
+        Devices.Requested -= OnRequested;
+        Devices.Declined -= OnDeclined;
+        Devices.Forgotten -= OnForgotten;
+        Devices.BackupReceived -= OnBackup;
+        try { await Devices.GoOfflineAsync(); } catch (JSDisconnectedException) { }
+    }
+}

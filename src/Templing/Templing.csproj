@@ -19,6 +19,15 @@
     <StaticWebAssetFingerprintPattern Include="AppJs" Pattern="*.js" Expression="#[.{fingerprint}]!" />
   </ItemGroup>
 
+  <!-- The relay devices meet through to pair and send backups (relay/ in the repo, AppInfo.RelayUrl). A local one
+       for development: -p:RelayUrl=ws://localhost:8787 with `npm run dev` in relay/ (.claude/launch.json has both). -->
+  <PropertyGroup>
+    <RelayUrl Condition="'$(RelayUrl)' == ''">wss://templing-relay.lykaiosnz.workers.dev</RelayUrl>
+  </PropertyGroup>
+  <ItemGroup>
+    <AssemblyMetadata Include="RelayUrl" Value="$(RelayUrl)" />
+  </ItemGroup>
+
   <!-- -p:Demo=true builds the demo: see Directory.Build.props (DEMO_MODE). Its in-memory stores aren't published otherwise. -->
   <ItemGroup Condition="'$(Demo)' != 'true'">
     <Content Remove="wwwroot\js\memorydb.js" />

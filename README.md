@@ -11,7 +11,7 @@ https://github.com/user-attachments/assets/d3212d45-5bc7-496d-9d7e-51e5f81c88f6
 
 </div>
 
-Templing runs entirely in your browser. There's no account and no server: your pieces, practice log and settings stay on your device, and you can back them up to a file whenever you like. The live site counts anonymous page views with [Umami](https://umami.is) (no cookies, nothing from your library), to see how much it's used. You can turn that off in *Settings & data*.
+Templing runs entirely in your browser. There's no account: your pieces, practice log and settings stay on your device, and you can back them up to a file whenever you like, or send them straight to another of your devices. The live site counts anonymous page views with [Umami](https://umami.is) (no cookies, nothing from your library), to see how much it's used. You can turn that off in *Settings & data*.
 
 ## What it does
 
@@ -60,9 +60,10 @@ Everything common has a shortcut. Press `?` in the app for the full list.
 
 ## Your data
 
-Everything is stored in your browser's IndexedDB, per browser and per address. Nothing is sent anywhere.
+Everything is stored in your browser's IndexedDB, per browser and per address. Nothing is sent anywhere unless you send it to one of your own devices.
 
 - **Backup / restore** a JSON file in *Settings & data* to move to another device or browser. You choose whether a restore brings your settings too.
+- **Devices:** pair another device by scanning a QR code (*Settings & data* > Devices), then send your data to it, or get its data, while Settings is open on both. The devices connect directly (WebRTC) and the data goes straight between them, encrypted. They find each other through a small relay ([relay/](relay/README.md)) that only passes the connection handshake: it never sees your data, but it does see the devices' IP addresses.
 - **CSV export** of the practice log, for spreadsheets.
 - Imported score files aren't in the backup (they can be large); re-import them on the new device.
 
@@ -104,6 +105,7 @@ cd tests/js && npm install && npm test
 - [Blazor WebAssembly](https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor) and [MudBlazor](https://mudblazor.com)
 - [alphaTab](https://alphatab.net) for reading and rendering Guitar Pro / MusicXML
 - [Apache ECharts](https://echarts.apache.org) for the charts
+- [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) for the pairing QR codes
 - [Material Design Icons](https://pictogrammers.com/library/mdi/) by Pictogrammers for extra icons and the logo (built from their sprout and music-note icons, arranged and recoloured)
 - Metronome click sounds recorded by Ludwig Peter Müller (CC0)
 - The Web Audio API for the metronome engine
@@ -112,4 +114,4 @@ Contributors: [CLAUDE.md](CLAUDE.md) covers the code layout and the rules for pe
 
 ## License
 
-[MIT](LICENSE). The vendored libraries keep their own licenses: alphaTab (MPL-2.0, [`src/Templing/wwwroot/lib/alphatab/LICENSE`](src/Templing/wwwroot/lib/alphatab/LICENSE)) and Apache ECharts (Apache-2.0, [`src/Templing/wwwroot/lib/echarts/LICENSE`](src/Templing/wwwroot/lib/echarts/LICENSE)). Icons from Material Design Icons (the generated `Components/Mdi.g.cs` and the logo, a modified combination of them) are under the [Pictogrammers Free License](https://pictogrammers.com/docs/general/license/) (Apache-2.0).
+[MIT](LICENSE). The vendored libraries keep their own licenses: alphaTab (MPL-2.0, [`src/Templing/wwwroot/lib/alphatab/LICENSE`](src/Templing/wwwroot/lib/alphatab/LICENSE)) Apache ECharts (Apache-2.0, [`src/Templing/wwwroot/lib/echarts/LICENSE`](src/Templing/wwwroot/lib/echarts/LICENSE)) and qrcode-generator (MIT, [`src/Templing/wwwroot/lib/qrcode/LICENSE`](src/Templing/wwwroot/lib/qrcode/LICENSE)). Icons from Material Design Icons (the generated `Components/Mdi.g.cs` and the logo, a modified combination of them) are under the [Pictogrammers Free License](https://pictogrammers.com/docs/general/license/) (Apache-2.0).

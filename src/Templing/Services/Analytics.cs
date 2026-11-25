@@ -6,7 +6,7 @@ namespace Templing.Services;
 
 /// <summary>
 /// A few Umami events (index.html loads the tracker, only on the deployed site): practice logged, piece added (and how),
-/// plan started / finished, and unhandled errors (the exception's type only). Nothing from the user's library is sent:
+/// plan started / finished, a device paired, a backup sent to a paired device, and unhandled errors (the exception's type only). Nothing from the user's library is sent:
 /// no names, notes, tempos or ids. The demo build sends none, so its sample data doesn't count as practice.
 /// <see cref="AppSettings.Analytics"/> (Settings > Data) turns all of it off, page views too: the boot script in index.html
 /// only loads the tracker if the saved setting allows, and <see cref="Apply"/> keeps it in step after that.
@@ -17,7 +17,7 @@ public class Analytics
     private readonly DataStore _store;
     private bool? _applied;
 
-    public Analytics(IJSRuntime js, DataStore store, PlanRunner runner)
+    public Analytics(IJSRuntime js, DataStore store, PlanRunner runner, Devices devices)
     {
         _js = js;
         _store = store;
@@ -26,6 +26,8 @@ public class Analytics
         store.PieceAdded += p => Track("piece-added", new { source = Source(p) });
         runner.RunStarted += () => Track("plan-started");
         runner.RunFinished += () => Track("plan-finished");
+        devices.Paired += _ => Track("device-paired");
+        devices.Sent += () => Track("backup-sent");
     }
 
     /// <summary>How a new piece came in: typed in, or from a score file (by its extension).</summary>

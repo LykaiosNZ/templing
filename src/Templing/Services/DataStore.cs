@@ -291,7 +291,8 @@ public class DataStore(IJSRuntime js)
 
     public async Task ClearAllAsync()
     {
-        foreach (var s in new[] { "pieces", "logs", "presets", "files", "plans", "session" }) await _db!.InvokeVoidAsync("clear", s);
+        // "devices" (js/link.js: this device's identity and its pairings) goes too; Devices.ResetAsync starts the link afresh
+        foreach (var s in new[] { "pieces", "logs", "presets", "files", "plans", "session", "devices" }) await _db!.InvokeVoidAsync("clear", s);
         Pieces.Clear(); Logs.Clear(); Presets.Clear(); Plans.Clear();
         Invalidate();
         Notify();
