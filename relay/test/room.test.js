@@ -39,9 +39,8 @@ class FakeState {
 }
 
 const msg = {
-    pair: { t: "pair", fp: "ab".repeat(32), mac: "cd".repeat(32) },
-    offer: { t: "offer", ufrag: "Xk9a", pwd: "q1w2e3r4t5y6u7i8o9p0a+", setup: "actpass", cands: [] },
-    answer: { t: "answer", ufrag: "Yz8b", pwd: "q1w2e3r4t5y6u7i8o9p0a+", setup: "active", cands: [] },
+    offer: { t: "offer", ufrag: "Xk9a", pwd: "q1w2e3r4t5y6u7i8o9p0a+", setup: "actpass", fp: "ab".repeat(32), cands: [] },
+    answer: { t: "answer", ufrag: "Yz8b", pwd: "q1w2e3r4t5y6u7i8o9p0a+", setup: "active", fp: "cd".repeat(32), cands: [] },
     ice: { t: "ice", cand: { addr: "10.0.0.2", port: 5000, type: "host" } },
     bye: { t: "bye" },
 };
@@ -99,15 +98,14 @@ describe("Room", () => {
     it("lets a connection send one handshake's worth of each message", async () => {
         const a = await joined();
         const b = await joined();
-        await room.webSocketMessage(a, text(msg.pair));
         await room.webSocketMessage(a, text(msg.offer));
         for (let i = 0; i < BUDGET.ice; i++) await room.webSocketMessage(a, text(msg.ice));
         await room.webSocketMessage(a, text(msg.bye));
         expect(a.closed).toBeNull();
-        expect(b.sent).toHaveLength(1 + 1 + 1 + BUDGET.ice + 1);
+        expect(b.sent).toHaveLength(1 + 1 + BUDGET.ice + 1);
     });
 
-    for (const [extra, after] of [["pair", ["pair"]], ["offer", ["offer"]], ["answer", ["offer"]], ["bye", ["bye"]]]) {
+    for (const [extra, after] of [["offer", ["offer"]], ["answer", ["offer"]], ["bye", ["bye"]]]) {
         it(`closes a connection that sends another ${extra} after ${after.join(", ")}`, async () => {
             const a = await joined();
             const b = await joined();

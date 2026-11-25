@@ -7,8 +7,8 @@ import { describe, expect, it } from "vitest";
 import { CLOSE, MAX_JOINS } from "../../src/room.js";
 
 const msg = {
-    offer: { t: "offer", ufrag: "Xk9a", pwd: "q1w2e3r4t5y6u7i8o9p0a+", setup: "actpass", cands: [] },
-    answer: { t: "answer", ufrag: "Yz8b", pwd: "q1w2e3r4t5y6u7i8o9p0a+", setup: "active", cands: [] },
+    offer: { t: "offer", ufrag: "Xk9a", pwd: "q1w2e3r4t5y6u7i8o9p0a+", setup: "actpass", fp: "ab".repeat(32), cands: [] },
+    answer: { t: "answer", ufrag: "Yz8b", pwd: "q1w2e3r4t5y6u7i8o9p0a+", setup: "active", fp: "cd".repeat(32), cands: [] },
     bye: { t: "bye" },
 };
 const text = (m) => JSON.stringify(m);

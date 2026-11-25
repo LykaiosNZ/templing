@@ -7,6 +7,7 @@ const offer = {
     ufrag: "Xk9a",
     pwd: "q1w2e3r4t5y6u7i8o9p0a+/b",
     setup: "actpass",
+    fp: hex,
     cands: [
         { addr: "3f2b8c1d-1234-4abc-9def-0123456789ab.local", port: 54321, type: "host" },
         { addr: "203.0.113.7", port: 61000, type: "srflx" },
@@ -18,7 +19,6 @@ const no = (m) => expect(validate(typeof m === "string" ? m : JSON.stringify(m))
 
 describe("validate", () => {
     it("passes each kind of handshake message", () => {
-        ok({ t: "pair", fp: hex, mac: hex });
         ok(offer);
         ok({ ...offer, t: "answer", setup: "active" });
         ok({ t: "ice", cand: offer.cands[1] });
@@ -43,15 +43,17 @@ describe("validate", () => {
 
     it("rejects extra or missing fields", () => {
         no({ t: "bye", note: "x" });
-        no({ t: "pair", fp: hex });
-        no({ t: "pair", fp: hex, mac: hex, name: "Laptop" });
+        no({ t: "pair", fp: hex, mac: hex });                // pairing happens over the data channel now
+        const { fp, ...noFp } = offer;
+        no(noFp);
         no({ ...offer, extra: 1 });
         no({ t: "ice", cand: { ...offer.cands[0], foundation: "1" } });
     });
 
     it("rejects fields that could carry free text", () => {
-        no({ t: "pair", fp: "AB".repeat(32), mac: hex });       // uppercase hex
-        no({ t: "pair", fp: hex + "00", mac: hex });
+        no({ ...offer, fp: "AB".repeat(32) });                // uppercase hex
+        no({ ...offer, fp: hex + "00" });
+        no({ ...offer, fp: "AB:CD" });
         no({ ...offer, ufrag: "has space" });
         no({ ...offer, ufrag: "x".repeat(9) });              // browsers send 4 or 8
         no({ ...offer, pwd: "short" });
@@ -90,7 +92,7 @@ describe("validate", () => {
 
     it("rejects __proto__ and other keys it doesn't know", () => {
         no('{"t":"bye","__proto__":{"x":1}}');
-        no('{"t":"pair","fp":"' + hex + '","mac":"' + hex + '","constructor":1}');
+        no(JSON.stringify({ ...offer, constructor: 1 }));
     });
 
     it("rejects binary messages", () => {
