@@ -53,7 +53,7 @@ dotnet run --project src/Templing/Templing.csproj --launch-profile http   # http
 | `wwwroot/js/beatdisplay.js` | The Metronome page's beat display (strip / ring), fed each heard click by `metronome.js`; settings come from `#metro-beats` data attributes |
 | `wwwroot/js/shapes.js`, `wwwroot/js/countdown.js` | Shared SVG shapes (segments, countdown ring / bar) for the beat display and the Timer's ring, which `countdown.js` draws on each engine frame. Reuse these rather than drawing a near copy (DESIGN.md, Shared components) |
 | `Services/DemoData.cs`, `tools/demo` | The demo build's sample data (`-p:Demo=true`), and the Puppeteer walkthrough that records demo videos |
-| `Services/ClickSounds.cs` + `wwwroot/sounds` | Click sounds: hi/lo WAV pairs (CC0, `Credits.txt`), the catalog and display names, `Default`. Audio cues stay synthesised in `metronome.js` |
+| `Services/ClickSounds.cs` + `wwwroot/sounds` | Click sounds: hi/lo WAV pairs (CC0, `Credits.txt`), the catalog and display names, `Default`. Every WAV is peak-normalised to −1 dBFS (`node tools/sounds/normalize.mjs`; run it on any sound you add), and the volume slider only turns them down. Audio cues stay synthesised in `metronome.js` |
 | `wwwroot/js/db.js` | IndexedDB wrapper (JSON stores + binary `files` store) |
 | `tests/Templing.Tests`, `tests/js` | C# (xUnit) and JS (Vitest) unit tests; see Run / build |
 | `relay/` | The relay: a Cloudflare Worker + Durable Object that lets two devices swap a WebRTC handshake (`relay/README.md`). Its own Node project (Wrangler needs Node 22.12+), tested in CI, deployed by `relay.yml` when it changes on `main` |
