@@ -63,7 +63,7 @@ Everything common has a shortcut. Press `?` in the app for the full list.
 Everything is stored in your browser's IndexedDB, per browser and per address. Nothing is sent anywhere unless you send it to one of your own devices.
 
 - **Backup / restore** a JSON file in *Settings & data* to move to another device or browser. You choose whether a restore brings your settings too.
-- **Devices:** pair another device by scanning a QR code (*Settings & data* > Devices), then send your data to it, or get its data, while Settings is open on both. The devices connect directly (WebRTC) and the data goes straight between them, encrypted. They find each other through a small relay ([relay/](relay/README.md)) that only passes the connection handshake: it never sees your data, but it does see the devices' IP addresses.
+- **Devices:** pair another device by scanning a QR code or typing a short code (*Settings & data* > Devices), then send your data to it, or get its data, while Settings is open on both. The devices connect directly (WebRTC) and the data goes straight between them, encrypted. They find each other through a small relay ([relay/](relay/README.md)) that only passes the connection handshake: it never sees your data, but it does see the devices' IP addresses.
 - **CSV export** of the practice log, for spreadsheets.
 - Imported score files aren't in the backup (they can be large); re-import them on the new device.
 
