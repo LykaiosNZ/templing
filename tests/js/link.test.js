@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     build, cleanName, connect, extract, guessName, matchCode, pairAuth, pairExchange, pairKey, pairRoom, proof, sameText, secretFrom, syncRoom,
-    toBase64Url, windowOf, WINDOW_MS,
+    newCode, normalizeCode, windowOf, WINDOW_MS,
 } from '../../src/Templing/wwwroot/js/link.js';
 import { validate } from '../../relay/src/schema.js';
 import { chromeOffer, fakeRelay, fakeWebRTC } from './fakelink.js';
@@ -47,14 +47,22 @@ describe('descriptions', () => {
 describe('keys', () => {
     const secret = new Uint8Array(32).map((_, i) => i);
 
-    it('reads a pairing secret from its link text, and nothing else', () => {
-        const text = toBase64Url(secret);
-        expect(text).toHaveLength(43);
-        expect(secretFrom(text)).toEqual(secret);
-        expect(secretFrom(text.slice(1))).toBeNull();
-        expect(secretFrom(text + 'A')).toBeNull();
-        expect(secretFrom('!'.repeat(43))).toBeNull();
-        expect(secretFrom(null)).toBeNull();
+    it('makes ten-character pairing codes, and reads them however they were typed', () => {
+        for (let i = 0; i < 50; i++) expect(newCode()).toMatch(/^[0-9A-HJKMNP-TV-Z]{10}$/);
+        expect(new Set(Array.from({ length: 50 }, newCode)).size).toBe(50);
+        expect(normalizeCode('K7Q2M-9XDAB')).toBe('K7Q2M9XDAB');
+        expect(normalizeCode(' k7q2m 9xdab ')).toBe('K7Q2M9XDAB');
+        expect(normalizeCode('KOQ2M-9XDIL')).toBe('K0Q2M9XD11');   // O, I and L for 0, 1 and 1
+        expect(normalizeCode('K7Q2M-9XDA')).toBeNull();             // too short
+        expect(normalizeCode('K7Q2M-9XDABC')).toBeNull();           // too long
+        expect(normalizeCode('K7Q2M-9XDAU')).toBeNull();            // U isn't used
+        expect(normalizeCode(null)).toBeNull();
+    });
+
+    it('gives the same secret for a code however it was typed, and none for anything else', () => {
+        expect(secretFrom('k7q2m 9xdab')).toEqual(secretFrom('K7Q2M-9XDAB'));
+        expect(secretFrom('K7Q2M-9XDAC')).not.toEqual(secretFrom('K7Q2M-9XDAB'));
+        expect(secretFrom('!'.repeat(10))).toBeNull();
     });
 
     const nonce = (n) => String(n).repeat(64).slice(0, 64);

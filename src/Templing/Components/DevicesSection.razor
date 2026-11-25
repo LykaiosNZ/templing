@@ -49,6 +49,7 @@
             <div class="setting-desc">Paired devices connect directly while Settings is open on both, to send each other their data. Score files aren't included.</div>
         </div>
         <div class="setting-control">
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Keyboard" OnClick="EnterCode" Disabled="!_started">Enter a code…</MudButton>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.QrCode2" OnClick="() => Pair()" Disabled="!_started">Pair…</MudButton>
         </div>
     </div>
@@ -110,6 +111,14 @@
     }
 
     async Task Pair() => await PairDialog.ShowAsync(Dialogs);
+
+    // for a device without a camera: the pairing code Pair… shows on the other device, typed in
+    async Task EnterCode()
+    {
+        var code = await PromptDialog.ShowAsync(Dialogs, "Enter a pairing code", "Pairing code", ok: "Pair", placeholder: "K7Q2M-9XDAB");
+        if (string.IsNullOrWhiteSpace(code)) return;
+        await PairDialog.ShowAsync(Dialogs, code.Trim());
+    }
 
     void OnPaired(PairedDevice d) => InvokeAsync(() => Snackbar.Add($"Paired with “{d.Name}”", Severity.Success));
 
