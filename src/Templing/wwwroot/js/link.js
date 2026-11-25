@@ -159,10 +159,11 @@ function gathered(pc, ms = 3000) {
 
 /**
  * Joins a relay room and connects to the device that joins it too. Resolves with a Peer once both proofs check
- * out; rejects with a reason ('closed' if the relay refused or dropped the room, 'left', 'timeout', 'proof',
- * 'cancelled'). Call cancel() to give up.
+ * out; rejects with a reason ('unreachable' if the relay couldn't be reached or refused the room, 'closed' if it
+ * dropped it, 'left', 'timeout', 'proof', 'cancelled'). onopen is called once the room is joined. Call cancel() to
+ * give up.
  */
-export function connect({ relay, room, key, offerer, WebSocketImpl = WebSocket, PeerImpl = RTCPeerConnection }) {
+export function connect({ relay, room, key, offerer, onopen, WebSocketImpl = WebSocket, PeerImpl = RTCPeerConnection }) {
     let cancel;
     const promise = new Promise((resolve, reject) => {
         const role = offerer ? 'offer' : 'answer';
@@ -216,7 +217,9 @@ export function connect({ relay, room, key, offerer, WebSocketImpl = WebSocket, 
                 fail('closed');
             }
         };
-        ws.onclose = () => { if (!done) fail('closed'); };
+        let opened = false;
+        ws.onopen = () => { opened = true; onopen?.(); };
+        ws.onclose = () => { if (!done) fail(opened ? 'closed' : 'unreachable'); };
         ws.onerror = () => { };
 
         channel.onopen = async () => {
@@ -424,7 +427,10 @@ export async function renameSelf(name) {
 
 async function pair(secret, showing) {
     pairCancel();
-    const attempt = connect({ relay, room: await pairRoom(secret), key: await pairAuth(secret), offerer: showing });
+    const attempt = connect({
+        relay, room: await pairRoom(secret), key: await pairAuth(secret), offerer: showing,
+        onopen: () => emit('pair-ready'),   // the code can be used now
+    });
     const state = { cancel: attempt.cancel, peer: null, confirm: null };
     pairing = state;
     try {
@@ -442,7 +448,12 @@ async function pair(secret, showing) {
         emit('pair-check', { name, code, again, confirming: showing });
         if (showing) {
             // the person holding this device says the codes match
-            const ok = await new Promise((r) => { state.confirm = r; peer.closed.then(() => r(false)); });
+            // ...unless the other device cancels or goes first
+            const ok = await new Promise((r, no) => {
+                state.confirm = r;
+                peer.closed.then(() => no('closed'));
+                peer.onmessage = (m) => { if (m.t === 'pair-cancel') no('declined'); };
+            });
             if (!ok) { peer.send({ t: 'pair-cancel' }); throw 'cancelled'; }
             peer.send({ t: 'pair-ok' });
         } else {
@@ -488,7 +499,11 @@ export function pairCancel() {
     pairing = null;
     if (p?.confirm) { p.confirm(false); return; }   // pair() tells the other device, then closes
     p?.cancel();
-    p?.peer?.close();
+    const peer = p?.peer;
+    if (peer) {
+        peer.send({ t: 'pair-cancel' });            // so the device showing the code stops asking
+        setTimeout(() => peer.close(), 500);
+    }
 }
 
 /** Wires up a connected device: its messages, backups, and going offline again. */

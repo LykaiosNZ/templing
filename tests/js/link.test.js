@@ -285,6 +285,19 @@ describe('connect', () => {
         expect(await got).toEqual({ t: 'request' });
     });
 
+    it('says the relay is unreachable when its socket never opens, and closed when it drops after', async () => {
+        const key = await pairAuth(secret);
+        class Refused { constructor() { setTimeout(() => this.onclose?.()); } send() { } close() { } }
+        class Dropped { constructor() { setTimeout(() => { this.onopen?.(); this.onclose?.(); }); } send() { } close() { } }
+        const PeerImpl = fakeWebRTC();
+        const opened = [];
+        const refused = connect({ relay: 'wss://relay.test', room: 'r', key, offerer: true, WebSocketImpl: Refused, PeerImpl, onopen: () => opened.push('refused') });
+        const dropped = connect({ relay: 'wss://relay.test', room: 'r', key, offerer: true, WebSocketImpl: Dropped, PeerImpl, onopen: () => opened.push('dropped') });
+        await expect(refused.promise).rejects.toBe('unreachable');
+        await expect(dropped.promise).rejects.toBe('closed');
+        expect(opened).toEqual(['dropped']);
+    });
+
     it('refuses a device that has a different key', async () => {
         const [a, b] = await pairUp({ keyB: await pairAuth(new Uint8Array(32).fill(4)) });
         expect(a).toEqual({ status: 'rejected', reason: 'proof' });

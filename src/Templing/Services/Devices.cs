@@ -48,8 +48,10 @@ public sealed class Devices(IJSRuntime js) : IAsyncDisposable
     public event Action? Changed;
     /// <summary>Paired with a device (either side). For the page's message and <see cref="Analytics"/>.</summary>
     public event Action<PairedDevice>? Paired;
-    /// <summary>Pairing didn't work: "timeout", "closed", "proof", "left", "declined" (cancelled on the other device)…</summary>
+    /// <summary>Pairing didn't work: "unreachable" (no relay), "timeout", "closed", "proof", "left", "declined" (cancelled on the other device)…</summary>
     public event Action<string>? PairFailed;
+    /// <summary>Pairing has joined its relay room: the code can be used (or the link joined).</summary>
+    public event Action? PairReady;
     /// <summary>Pairing connected: show the matching code (and, on the device showing the QR code, ask to confirm).</summary>
     public event Action<PairCheck>? PairChecking;
     /// <summary>A connected device wants to send its backup (size in bytes): <see cref="AcceptAsync"/> or <see cref="DeclineAsync"/>.</summary>
@@ -185,6 +187,9 @@ public sealed class Devices(IJSRuntime js) : IAsyncDisposable
             case "paired":
                 await RefreshAsync();
                 if (Device() is { } paired) Paired?.Invoke(paired);
+                return;
+            case "pair-ready":
+                PairReady?.Invoke();
                 return;
             case "pair-check":
                 if (data.Deserialize<PairCheck>(Json) is { } check) PairChecking?.Invoke(check);
