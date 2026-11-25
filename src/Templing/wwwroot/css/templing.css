@@ -459,6 +459,8 @@ button.tempo-value:focus-visible { outline: 2px solid var(--ring); outline-offse
 .pair-qr svg { display: block; width: 100%; height: auto; border-radius: 8px; }
 .pair-code { font-family: 'JetBrains Mono', monospace; font-size: 2rem; font-weight: 700; letter-spacing: .08em; text-align: center; color: var(--ink); }
 .pair-status { display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--ink-2); }
+/* the spinner's rotating ring pokes a few pixels past its box mid-turn, which flickered a scrollbar on the dialog */
+.pair-status .mud-progress-circular { overflow: hidden; flex: none; }
 @media (max-width: 600px) { .setting-row { flex-wrap: wrap; } .setting-control { justify-content: flex-start; } }
 /* Settings > Colours: a swatch beside each picker */
 .mode-toggle.mud-toggle-group { width: 140px; }
