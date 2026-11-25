@@ -188,6 +188,14 @@ public sealed class Devices(IJSRuntime js) : IAsyncDisposable
                 await RefreshAsync();
                 if (Device() is { } paired) Paired?.Invoke(paired);
                 return;
+            case "transfer-ended":
+                // a transfer that stopped part way (or a send that's done): no progress left showing
+                if (Transfer?.DeviceId == data.GetProperty("id").GetString()) { Transfer = null; Changed?.Invoke(); }
+                return;
+            case "disconnected":
+                if (Transfer?.DeviceId == data.GetProperty("id").GetString()) Transfer = null;
+                await RefreshAsync();
+                return;
             case "pair-ready":
                 PairReady?.Invoke();
                 return;
@@ -210,7 +218,7 @@ public sealed class Devices(IJSRuntime js) : IAsyncDisposable
                 await RefreshAsync();
                 Forgotten?.Invoke(data.GetProperty("name").GetString() ?? "");
                 return;
-            default:   // connected, disconnected, renamed
+            default:   // connected, renamed
                 await RefreshAsync();
                 return;
         }
