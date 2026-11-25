@@ -53,11 +53,19 @@ describe("validate", () => {
         no({ t: "pair", fp: "AB".repeat(32), mac: hex });       // uppercase hex
         no({ t: "pair", fp: hex + "00", mac: hex });
         no({ ...offer, ufrag: "has space" });
-        no({ ...offer, ufrag: "x".repeat(33) });
+        no({ ...offer, ufrag: "x".repeat(9) });              // browsers send 4 or 8
         no({ ...offer, pwd: "short" });
+        no({ ...offer, pwd: "p".repeat(33) });               // browsers send 22-32
         no({ ...offer, setup: "holdconn" });
         no({ t: "ice", cand: { addr: "example.com", port: 1, type: "host" } });
         no({ t: "ice", cand: { addr: "not-a-uuid.local", port: 1, type: "host" } });
+        no({ t: "ice", cand: { addr: "3f2b8c1d-1234-1abc-9def-0123456789ab.local", port: 1, type: "host" } });   // not v4
+        no({ t: "ice", cand: { addr: "3f2b8c1d-1234-4abc-cdef-0123456789ab.local", port: 1, type: "host" } });   // bad variant
+        no({ t: "ice", cand: { addr: "fffff::1", port: 1, type: "host" } });
+        no({ t: "ice", cand: { addr: "1::2::3", port: 1, type: "host" } });
+        no({ t: "ice", cand: { addr: "a:", port: 1, type: "host" } });
+        no({ t: "ice", cand: { addr: "fe80::1%eth0", port: 1, type: "host" } });
+        no({ t: "ice", cand: { addr: "[::1]", port: 1, type: "host" } });
         no({ t: "ice", cand: { addr: "256.1.1.1", port: 1, type: "host" } });
         no({ t: "ice", cand: { addr: "10.0.0.1", port: 0, type: "host" } });
         no({ t: "ice", cand: { addr: "10.0.0.1", port: 70000, type: "host" } });
@@ -71,6 +79,18 @@ describe("validate", () => {
         ok({ ...offer, cands: many.slice(0, MAX_CANDIDATES) });
         expect(validate(" ".repeat(MAX_MESSAGE - 11) + '{"t":"bye"}')).not.toBeNull();
         expect(validate(" ".repeat(MAX_MESSAGE - 10) + '{"t":"bye"}')).toBeNull();
+    });
+
+    it("forwards IPv6 addresses in their one canonical spelling", () => {
+        const sent = (addr) => JSON.parse(validate(JSON.stringify({ t: "ice", cand: { addr, port: 1, type: "host" } }))).cand.addr;
+        expect(sent("2001:0db8:0000:0000:0000:0000:0000:0001")).toBe("2001:db8::1");
+        expect(sent("2001:DB8::1")).toBe("2001:db8::1");
+        expect(sent("2001:db8:0:0:1:0:0:1")).toBe("2001:db8::1:0:0:1");
+    });
+
+    it("rejects __proto__ and other keys it doesn't know", () => {
+        no('{"t":"bye","__proto__":{"x":1}}');
+        no('{"t":"pair","fp":"' + hex + '","mac":"' + hex + '","constructor":1}');
     });
 
     it("rejects binary messages", () => {
