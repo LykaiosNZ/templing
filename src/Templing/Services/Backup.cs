@@ -78,6 +78,9 @@ public static class Backup
     /// </summary>
     public static byte[] ExportGzip(DataStore store, DateTimeOffset? now = null) => Gzip(ExportUtf8(store, now));
 
+    /// <summary>The most a compressed backup may unpack to.</summary>
+    public const int MaxJsonBytes = 400_000_000;
+
     public static byte[] Gzip(byte[] data)
     {
         using var output = new MemoryStream();
@@ -88,14 +91,20 @@ public static class Backup
     /// <summary>A gzip file starts with these two bytes; JSON never does.</summary>
     public static bool IsGzip(byte[] data) => data.Length >= 2 && data[0] == 0x1f && data[1] == 0x8b;
 
-    static byte[] Gunzip(byte[] data)
+    public static byte[] Gunzip(byte[] data, int max = MaxJsonBytes)
     {
         if (data.Length < 18) throw Damaged();
         try
         {
             using var gz = new GZipStream(new MemoryStream(data), CompressionMode.Decompress);
-            using var output = new MemoryStream(data.Length * 8);
-            gz.CopyTo(output);
+            using var output = new MemoryStream((int)Math.Min((long)data.Length * 8, 64_000_000));
+            // a capped copy: a small file can unpack to gigabytes (a "gzip bomb", from a file or a paired device)
+            var buffer = new byte[81920];
+            for (int n; (n = gz.Read(buffer)) > 0;)
+            {
+                if (output.Length + n > max) throw new FormatException("That backup is too large to restore.");
+                output.Write(buffer, 0, n);
+            }
             // a file cut short decompresses without an error: its last 4 bytes are the full length (mod 2^32), so check them
             if (BitConverter.ToUInt32(data, data.Length - 4) != (uint)output.Length) throw Damaged();
             return output.ToArray();

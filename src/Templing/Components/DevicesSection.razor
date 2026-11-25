@@ -64,6 +64,7 @@
         Devices.Changed += OnChanged;
         Devices.Paired += OnPaired;
         Devices.Requested += OnRequested;
+        Devices.Offered += OnOffered;
         Devices.Declined += OnDeclined;
         Devices.Forgotten += OnForgotten;
         Devices.BackupReceived += OnBackup;
@@ -135,6 +136,18 @@
         else await Devices.DeclineAsync(d.Id);
     });
 
+    // a backup only comes in once you say so (or after you asked for it, with Get)
+    void OnOffered(PairedDevice d, long size) => InvokeAsync(async () =>
+    {
+        var ok = await ConfirmDialog.ShowAsync(Dialogs, $"Receive data from “{d.Name}”?",
+            $"“{d.Name}” wants to send you its data ({Size(size)}). You choose what to restore once it's here.",
+            "Receive", cancel: "Not now");
+        if (ok == true) await Devices.AcceptAsync(d.Id);
+        else await Devices.DeclineAsync(d.Id);
+    });
+
+    static string Size(long bytes) => bytes >= 1_000_000 ? $"{bytes / 1_000_000.0:0.#} MB" : $"{Math.Max(1, bytes / 1000)} KB";
+
     void OnDeclined(PairedDevice d) => InvokeAsync(() => Snackbar.Add($"“{d.Name}” said no.", Severity.Info));
 
     void OnForgotten(string name) => InvokeAsync(() => Snackbar.Add($"“{name}” unpaired from this device.", Severity.Info));
@@ -166,6 +179,7 @@
         Devices.Changed -= OnChanged;
         Devices.Paired -= OnPaired;
         Devices.Requested -= OnRequested;
+        Devices.Offered -= OnOffered;
         Devices.Declined -= OnDeclined;
         Devices.Forgotten -= OnForgotten;
         Devices.BackupReceived -= OnBackup;

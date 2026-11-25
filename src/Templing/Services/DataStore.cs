@@ -60,6 +60,7 @@ public class DataStore(IJSRuntime js)
         Plans = await GetAll<PracticePlan>("plans");
         var settings = await GetAll<AppSettings>("settings");
         Settings = settings.FirstOrDefault() ?? new AppSettings();
+        Settings.Colours?.Clean();
         Pieces.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
         Loaded = true;
         Notify();
@@ -221,6 +222,7 @@ public class DataStore(IJSRuntime js)
     {
         CancelSettingsSave();
         settings.Id = "app";
+        settings.Colours?.Clean();   // a backup's colours go into a style sheet: only real colours
         Settings = settings;
         await Put("settings", Settings);
         Changed?.Invoke(); // settings don't feed the lookups
