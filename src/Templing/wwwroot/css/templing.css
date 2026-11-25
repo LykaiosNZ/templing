@@ -457,8 +457,12 @@ button.tempo-value:focus-visible { outline: 2px solid var(--ring); outline-offse
 .device-progress { margin-top: 8px; max-width: 260px; }
 .pair-qr { width: min(240px, 100%); margin: 0 auto 16px; }
 .pair-qr svg { display: block; width: 100%; height: auto; border-radius: 8px; }
-.pair-number { font-family: 'JetBrains Mono', monospace; font-size: 2rem; font-weight: 700; letter-spacing: .08em; text-align: center; color: var(--ink); }
-.pair-code { font-family: 'JetBrains Mono', monospace; font-size: 1.35rem; font-weight: 700; letter-spacing: .12em; text-align: center; color: var(--ink); margin: -4px 0 14px; user-select: all; }
+/* the pairing code and number are read off one screen and checked or typed on another: large Inter (the app's font,
+   clearer than bold mono), and the code has no letters that look like digits (link.js CODE_ALPHABET). Google Fonts'
+   Inter leaves out the slashed-zero and open-digit features, so don't count on font-feature-settings here */
+.pair-number, .pair-code { color: var(--ink); text-align: center; font-weight: 600; }
+.pair-number { font-size: 2.2rem; letter-spacing: .06em; }
+.pair-code { font-size: 1.6rem; letter-spacing: .1em; margin: -4px 0 14px; user-select: all; }
 .pair-status { display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--ink-2); }
 /* the spinner's rotating ring pokes a few pixels past its box mid-turn, which flickered a scrollbar on the dialog */
 .pair-status .mud-progress-circular { overflow: hidden; flex: none; }

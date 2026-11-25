@@ -61,6 +61,10 @@ jobs:
           # served from /templing/, not the domain root
           sed -i 's|<base href="/" />|<base href="/templing/" />|' index.html
           grep -q '<base href="/templing/" />' index.html
+          # stylesheets keep their names from release to release (unlike .js, which is fingerprinted), and Pages lets
+          # browsers cache them for 10 minutes: tag each with the commit, so a release never draws with old styles
+          sed -i "s|\(href=\"[^\"]*\.css\)\"|\1?v=${GITHUB_SHA::12}\"|g" index.html
+          grep -q "templing.css?v=${GITHUB_SHA::12}" index.html
           # Pages has no SPA fallback: its 404 page is the app, which then routes the deep link itself.
           # Only this top-level 404.html is used, so a deep link into the demo goes to the demo's start instead.
           cp index.html 404.html
@@ -76,6 +80,8 @@ jobs:
         run: |
           sed -i 's|<base href="/" />|<base href="/templing/demo/" />|; s|<html lang="en">|<html lang="en" data-demo>|' index.html
           grep -q '<base href="/templing/demo/" />' index.html
+          sed -i "s|\(href=\"[^\"]*\.css\)\"|\1?v=${GITHUB_SHA::12}\"|g" index.html   # as for the app
+          grep -q "templing.css?v=${GITHUB_SHA::12}" index.html
           grep -q '<html lang="en" data-demo>' index.html
           find . -type f \( -name '*.br' -o -name '*.gz' \) -delete
           cp -r . ../../publish/wwwroot/demo

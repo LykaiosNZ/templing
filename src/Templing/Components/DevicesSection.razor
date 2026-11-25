@@ -123,7 +123,7 @@
     // for a device without a camera: the pairing code Pair… shows on the other device, typed in
     async Task EnterCode()
     {
-        var code = await PromptDialog.ShowAsync(Dialogs, "Enter a pairing code", "Pairing code", ok: "Pair", placeholder: "K7Q2M-9XDAB",
+        var code = await PromptDialog.ShowAsync(Dialogs, "Enter a pairing code", "Pairing code", ok: "Pair", placeholder: "K7Q2M-9XDAH",
             empty: "Type the code from the other device", check: CodeProblem);
         if (string.IsNullOrWhiteSpace(code)) return;
         await PairDialog.ShowAsync(Dialogs, code.Trim());
