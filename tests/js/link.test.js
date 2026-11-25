@@ -48,11 +48,12 @@ describe('keys', () => {
     const secret = new Uint8Array(32).map((_, i) => i);
 
     it('makes ten-character pairing codes, and reads them however they were typed', () => {
-        for (let i = 0; i < 50; i++) expect(newCode()).toMatch(/^[0-9A-HJKMNP-TV-Z]{10}$/);
+        for (let i = 0; i < 50; i++) expect(newCode()).toMatch(/^[0-9ACDEFHJKMNPQRTVWXY]{10}$/);   // no B G S Z, which look like digits
         expect(new Set(Array.from({ length: 50 }, newCode)).size).toBe(50);
-        expect(normalizeCode('K7Q2M-9XDAB')).toBe('K7Q2M9XDAB');
-        expect(normalizeCode(' k7q2m 9xdab ')).toBe('K7Q2M9XDAB');
+        expect(normalizeCode('K7Q2M-9XDAH')).toBe('K7Q2M9XDAH');
+        expect(normalizeCode(' k7q2m 9xdah ')).toBe('K7Q2M9XDAH');
         expect(normalizeCode('KOQ2M-9XDIL')).toBe('K0Q2M9XD11');   // O, I and L for 0, 1 and 1
+        expect(normalizeCode('BGSZ0-12345')).toBe('86520' + '12345');   // B, G, S and Z for 8, 6, 5 and 2
         expect(normalizeCode('K7Q2M-9XDA')).toBeNull();             // too short
         expect(normalizeCode('K7Q2M-9XDABC')).toBeNull();           // too long
         expect(normalizeCode('K7Q2M-9XDAU')).toBeNull();            // U isn't used
@@ -60,8 +61,8 @@ describe('keys', () => {
     });
 
     it('gives the same secret for a code however it was typed, and none for anything else', () => {
-        expect(secretFrom('k7q2m 9xdab')).toEqual(secretFrom('K7Q2M-9XDAB'));
-        expect(secretFrom('K7Q2M-9XDAC')).not.toEqual(secretFrom('K7Q2M-9XDAB'));
+        expect(secretFrom('k7q2m 9xdah')).toEqual(secretFrom('K7Q2M-9XDAH'));
+        expect(secretFrom('K7Q2M-9XDAC')).not.toEqual(secretFrom('K7Q2M-9XDAH'));
         expect(secretFrom('!'.repeat(10))).toBeNull();
     });
 

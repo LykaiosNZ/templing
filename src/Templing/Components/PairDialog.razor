@@ -91,7 +91,7 @@
     Qr? _qr;
     string? _link;
     string? _code;
-    // K7Q2M-9XDAB: two groups of five, easier to read out and type
+    // K7Q2M-9XDAH: two groups of five, easier to read out and type
     string Formatted => _code is { Length: 10 } c ? $"{c[..5]}-{c[5..]}" : _code ?? "";
     string? _failed;
     PairCheck? _check;
