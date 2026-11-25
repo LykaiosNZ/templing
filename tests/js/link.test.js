@@ -218,6 +218,26 @@ describe('connect', () => {
         expect(opened).toEqual(['dropped']);
     });
 
+    it('says the devices could not reach each other when they swapped details but never connected', async () => {
+        // the relay changing a fingerprint stands in for any route the two can't use: nothing ever links up
+        const tamper = (text) => text.replace(/"fp":"[0-9a-f]{64}"/, `"fp":"${'ee'.repeat(32)}"`);
+        const WebSocketImpl = fakeRelay({ tamper }), PeerImpl = fakeWebRTC();
+        const key = await pairAuth(secret), room = await pairRoom(secret);
+        const a = connect({ relay: 'wss://relay.test', room, key, offerer: true, connectMs: 150, WebSocketImpl, PeerImpl });
+        const b = connect({ relay: 'wss://relay.test', room, key, offerer: false, connectMs: 150, WebSocketImpl, PeerImpl });
+        expect(await Promise.allSettled([a.promise, b.promise])).toEqual([
+            { status: 'rejected', reason: 'direct' }, { status: 'rejected', reason: 'direct' },
+        ]);
+    });
+
+    it('still says timeout when the other device never answered at all', async () => {
+        const WebSocketImpl = fakeRelay(), PeerImpl = fakeWebRTC();
+        const key = await pairAuth(secret), room = await pairRoom(secret);
+        const a = connect({ relay: 'wss://relay.test', room, key, offerer: true, connectMs: 150, WebSocketImpl, PeerImpl });
+        new WebSocketImpl(`wss://relay.test/room/${room}`);   // someone joins and says nothing
+        await expect(a.promise).rejects.toBe('timeout');
+    });
+
     it('refuses a device that has a different key', async () => {
         const [a, b] = await pairUp({ keyB: await pairAuth(new Uint8Array(32).fill(4)) });
         expect(a).toEqual({ status: 'rejected', reason: 'proof' });

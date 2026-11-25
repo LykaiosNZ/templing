@@ -174,10 +174,12 @@ function gathered(pc, ms = 3000) {
 /**
  * Joins a relay room and connects to the device that joins it too. Resolves with a Peer once both proofs check
  * out; rejects with a reason ('unreachable' if the relay couldn't be reached or refused the room, 'closed' if it
- * dropped it, 'left', 'timeout', 'proof', 'cancelled'). onopen is called once the room is joined. Call cancel() to
- * give up.
+ * dropped it, 'direct' if the two swapped their details but couldn't reach each other (a VPN, a work network),
+ * 'left', 'timeout', 'proof', 'cancelled'). onopen is called once the room is joined. Call cancel() to give up.
  */
-export function connect({ relay, room, key, offerer, onopen, WebSocketImpl = WebSocket, PeerImpl = RTCPeerConnection }) {
+export function connect({
+    relay, room, key, offerer, onopen, connectMs = CONNECT_MS, WebSocketImpl = WebSocket, PeerImpl = RTCPeerConnection,
+}) {
     let cancel;
     const promise = new Promise((resolve, reject) => {
         const role = offerer ? 'offer' : 'answer';
@@ -215,7 +217,8 @@ export function connect({ relay, room, key, offerer, onopen, WebSocketImpl = Web
             try { m = JSON.parse(e.data); } catch { return; }
             try {
                 if (m.t === 'joined') {
-                    timer = setTimeout(() => fail('timeout'), CONNECT_MS);
+                    // once both have each other's details, running out of time means no direct route between them
+                    timer = setTimeout(() => fail(theirs ? 'direct' : 'timeout'), connectMs);
                     if (offerer) sendRelay(await describe('offer'));
                 } else if (m.t === 'offer' && !offerer && !theirs) {
                     theirs = m.fp;
@@ -225,7 +228,7 @@ export function connect({ relay, room, key, offerer, onopen, WebSocketImpl = Web
                     theirs = m.fp;
                     await pc.setRemoteDescription({ type: 'answer', sdp: build(m) });
                 } else if (m.t === 'left') {
-                    fail('left');
+                    fail(theirs ? 'direct' : 'left');   // after the swap, the other gave up connecting too
                 }
             } catch {
                 fail('closed');
@@ -488,7 +491,7 @@ const loops = new Map();       // device id -> { cancel } for the presence loop'
 let pairing = null;            // { cancel, peer, confirm } while pairing
 let transport = {};            // the WebSocket and RTCPeerConnection to use: the browser's, or the tests' fakes
 
-/** Tests only: fakes for the relay socket and WebRTC (connect's WebSocketImpl / PeerImpl). */
+/** Tests only: fakes for the relay socket and WebRTC (connect's WebSocketImpl / PeerImpl), and a shorter connectMs. */
 export function useTransport(t) { transport = t ?? {}; }
 
 const emit = (type, data) => dotnet?.invokeMethodAsync('OnLinkEvent', type, JSON.stringify(data ?? {}));
@@ -687,6 +690,7 @@ async function stayInTouch(device) {
                 clearTimeout(nextWindow);
                 if (!current()) return;
                 if (reason === 'cancelled') { backoff = 2000; continue; }   // a new window: straight on to its room
+                if (reason === 'direct') emit('unreachable', { id: device.Id });   // it's there, but can't be reached
                 await sleep(backoff + Math.random() * 1000);                // jitter only; nothing secret
                 backoff = Math.min(backoff * 2, 60_000);
                 if (!current()) return;
