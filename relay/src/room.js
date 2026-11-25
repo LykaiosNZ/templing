@@ -18,8 +18,9 @@ const OPEN = 1;   // WebSocket.OPEN
  * costs nothing and the object can be evicted between messages. State: the room's join count and expiry alarm
  * (storage, wiped when it expires), and each socket's message counts (its attachment). No message is stored or logged.
  *
- * A room id is good for one use: MAX_JOINS joins within LIFETIME_MS of the first, and the expiry isn't moved by the
- * room emptying, so a device can't keep a room alive by reconnecting. Devices work out a fresh id for each window.
+ * A room allows MAX_JOINS joins within LIFETIME_MS of the first, and the expiry isn't moved by the room emptying, so
+ * a device can't keep a room alive or reset its limits by reconnecting. When it expires it's wiped, and the same id
+ * would start a new room; devices work out a fresh id for each time window anyway.
  */
 export class Room {
     constructor(ctx, env) {
@@ -33,9 +34,13 @@ export class Room {
     async fetch() {
         const refused = await this.admit();
         if (refused) return refused;
-        const [client, server] = Object.values(new WebSocketPair());
-        this.join(server);
-        return new Response(null, { status: 101, webSocket: client });
+        try {
+            const [client, server] = Object.values(new WebSocketPair());
+            this.join(server);
+            return new Response(null, { status: 101, webSocket: client });
+        } catch {
+            return new Response("Unavailable", { status: 503 });   // the join stays counted: one retry lost
+        }
     }
 
     /** Counts a join, or returns the response refusing it. Storage calls hold the input gate, so joins can't interleave. */
@@ -43,8 +48,11 @@ export class Room {
         const joins = (await this.ctx.storage.get("joins")) ?? 0;
         if (joins >= MAX_JOINS) return new Response("Room used up", { status: 410 });
         if (this.open().length >= MAX_PEERS) return new Response("Room full", { status: 409 });
-        await this.ctx.storage.put("joins", joins + 1);
-        if (joins === 0) await this.ctx.storage.setAlarm(Date.now() + LIFETIME_MS);
+        // both writes issued before awaiting, so they're committed together: a counted join always has an expiry
+        const alarm = await this.ctx.storage.getAlarm();
+        const writes = [this.ctx.storage.put("joins", joins + 1)];
+        if (alarm === null) writes.push(this.ctx.storage.setAlarm(Date.now() + LIFETIME_MS));
+        await Promise.all(writes);
         return null;
     }
 
@@ -60,6 +68,8 @@ export class Room {
     }
 
     async webSocketMessage(ws, message) {
+        // a socket that's closing (the room expired, it broke the rules, or it's leaving) says nothing more
+        if (ws.readyState !== OPEN || attachment(ws)?.left) return;
         const clean = validate(message);       // binary messages arrive as ArrayBuffer and fail here
         if (clean === null) return close(ws, CLOSE.notAllowed);
 
@@ -89,8 +99,13 @@ export class Room {
     }
 
     async alarm() {
-        for (const ws of this.ctx.getWebSockets()) close(ws, CLOSE.expired);
-        await this.ctx.storage.deleteAll();
+        // marked as gone first, so nothing from these sockets (a late message, their "left") reaches a device that
+        // joins the same id after the wipe
+        for (const ws of this.ctx.getWebSockets()) {
+            try { ws.serializeAttachment({ ...attachment(ws), left: true }); } catch { /* already gone */ }
+            close(ws, CLOSE.expired);
+        }
+        await this.ctx.storage.deleteAll();   // also deletes the alarm (compatibility date 2026-02-24 or later)
     }
 
     /** Sockets that are open (not closing), other than `except`. */

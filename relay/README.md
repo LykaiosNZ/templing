@@ -8,7 +8,7 @@ A Cloudflare Worker + Durable Object that lets two of a person's devices swap a 
 GET wss://<relay>/room/<64 hex>     WebSocket; one Durable Object per room
 ```
 
-- **A room is two devices, used once.** A third device is refused, and a room accepts 6 joins in all. It closes 10 minutes after its first join, even if it empties and fills again in between, and is then forgotten. So devices work out a fresh room id (a hash of their pairing secret and the time window) each time. When the other device joins or leaves, the relay sends `{t:"joined"}` / `{t:"left"}`.
+- **A room is two devices, for 10 minutes.** A third device is refused, and a room accepts 6 joins in all. It closes 10 minutes after its first join, even if it empties and fills again in between, so reconnecting can't keep it alive or reset its limits. Then it's wiped, and nothing from its sockets reaches a device that later uses the same id. Devices work out a fresh room id (a hash of their pairing secret and the time window) each time. When the other device joins or leaves, the relay sends `{t:"joined"}` / `{t:"left"}`.
 - **Only handshake messages go through.** Each message is parsed and checked against fixed shapes (`src/schema.js`): fingerprints, ICE username/password (the lengths browsers use), setup role, and candidates (an IPv4 or IPv6 address, or a browser's `.local` name, with a port and type). No free text, no unknown fields, at most 1 KB a message. The relay forwards its own re-serialised copy, with IPv6 addresses in their canonical spelling, never the client's text. Anything else closes the connection.
 - **One handshake per connection.** A connection may send 1 `pair`, 1 `offer` or `answer`, 8 `ice` and 1 `bye`. Anything more closes it.
 - **No TURN, no data.** `relay` candidates are refused, and the app's data goes over the WebRTC data channel between the devices. If they can't connect directly, the transfer fails and the app suggests a backup file.
@@ -18,10 +18,10 @@ GET wss://<relay>/room/<64 hex>     WebSocket; one Durable Object per room
 
 The relay does see devices' IP addresses, the times they connect, and their handshake fields (addresses and ports). App data never passes through it: WebRTC encrypts the data channel end to end, and paired devices check each other's certificate fingerprints, so the relay can't read it or put itself in the middle.
 
-### What's left, honestly
+### What's left, honestly (accepted)
 
-- **A few hundred bytes per connection.** Handshake fields necessarily carry bits the sender chooses: a fingerprint is 32 arbitrary bytes, and an address or port is whatever the sender says. So someone with their own client could move about 500 bytes per connection (64 in `pair`, the rest in up to 16 addresses). With joins limited per IP, that's a few KB a minute from one address. That's far too slow to be worth using, but it isn't zero, and no handshake relay can make it zero.
-- **The free plan can be exhausted.** Workers Free allows 100,000 Durable Object requests a day, and going over fails rather than bills. Someone with many addresses could use that up and stop the relay for everyone until the next day. Cloudflare's rate limiter is also per location and approximate. If that happens, add a daily cap (a counter Durable Object) or move to the paid plan. Either way, the app falls back to backup files.
+- **A few hundred bytes per connection.** Handshake fields necessarily carry bits the sender chooses: a fingerprint is 32 arbitrary bytes, and an address or port is whatever the sender says. So someone with their own client could move about 400 bytes per connection (64 in `pair`, the rest in up to 16 candidates), and no handshake relay can make that zero. The overall ceiling is the free plan's daily quota rather than the per-address limit, because cheap servers come with thousands of IPv6 /64s: a determined user could push in the order of tens of MB a day. That's far below anything worth abusing compared with ordinary file hosts.
+- **Anyone can use up the free plan.** Workers Free allows 100,000 requests a day, refused ones included, and going over fails rather than bills, so one busy client could stop the relay for everyone until the next day. That's accepted: the app falls back to backup files. If it ever matters, put the relay on a custom domain behind a WAF rate-limiting rule (which runs before the Worker) or move to the paid plan.
 
 ## Develop
 

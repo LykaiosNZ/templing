@@ -28,6 +28,7 @@ class FakeState {
         this.storage = {
             get: async (k) => data.get(k),
             put: async (k, v) => { data.set(k, v); },
+            getAlarm: async () => this.alarm,
             setAlarm: async (t) => { this.alarm = t; },
             deleteAll: async () => { data.clear(); this.alarm = null; },
         };
@@ -185,6 +186,38 @@ describe("Room", () => {
         b.readyState = 3;
         await expect(room.webSocketClose(a)).resolves.toBeUndefined();
         await expect(room.webSocketClose(b)).resolves.toBeUndefined();
+    });
+
+    it("ignores anything a closing socket still sends", async () => {
+        const a = await joined();
+        const b = await joined();
+        a.close(1000, "");
+        await room.webSocketMessage(a, text(msg.bye));
+        expect(b.sent).toEqual([joinedMsg]);
+    });
+
+    it("gives a counted join an expiry even if an earlier one was lost", async () => {
+        state.data.set("joins", 1);   // counted, but its alarm never got set
+        await joined();
+        expect(state.alarm).not.toBeNull();
+    });
+
+    it("answers 503 if the socket can't be set up, with the join still counted", async () => {
+        // no WebSocketPair outside the Workers runtime, so setting up the socket throws here
+        const res = await room.fetch();
+        expect(res.status).toBe(503);
+        expect(state.data.get("joins")).toBe(1);
+    });
+
+    it("lets nothing from an expired room reach a device joining the same id afterwards", async () => {
+        const a = await joined();
+        await room.alarm();
+        const c = await joined();                       // a fresh room under the same id
+        expect(state.data.get("joins")).toBe(1);
+        expect(state.alarm).not.toBeNull();
+        await room.webSocketMessage(a, text(msg.bye));   // a late message from the closed socket
+        await hangUp(a);                                // and its close
+        expect(c.sent).toEqual([]);
     });
 
     it("closes every connection and forgets the room when it expires", async () => {
