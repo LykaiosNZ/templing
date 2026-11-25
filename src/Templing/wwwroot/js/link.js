@@ -2,8 +2,10 @@
 // (relay/ in the repo) only lets them swap a handshake; app data goes over the data channel, never through it.
 //
 // Pairing. One device shows a QR code of a link to …/pair#<secret>, a random 32 bytes. The secret only proves the
-// pairing: both devices join a relay room and prove (below) that they hold it, then each sends 32 fresh random bytes
-// over the now encrypted channel, and the pair's key is HMAC(secret, both nonces). So someone who learns the secret
+// pairing: both devices join a relay room and prove (below) that they hold it, then each adds 32 fresh random bytes
+// over the now encrypted channel, and the pair's key is HMAC(secret, both nonces). The device showing the code first
+// commits to its nonce (sends its hash), the other then sends its nonce, and only then is the first revealed: neither
+// side can pick its nonce after seeing the other's, so no one can try nonces until the two screens' codes match. So someone who learns the secret
 // later (from the browser's history, a clipboard, a photo of the code) can't work out the key. Both screens then show
 // a six-digit code derived from the key and that connection's two certificate fingerprints, and the device showing
 // the QR code asks "Pair with …?": whoever got to the code first, and any relay in the middle, would show a different
@@ -19,10 +21,11 @@
 //
 // Data channel messages are JSON text, plus binary chunks of a backup between {t:"accept"} and {t:"sent"}:
 //   {t:"proof", mac}
-//   pairing: {t:"pair", id, name, nonce} → {t:"pair-ok"} | {t:"pair-cancel"} from the device showing the code
+//   pairing (pairExchange): showing {t:"pair", id, name, commit} → other {t:"pair", id, name, nonce}
+//     → showing {t:"pair-reveal", nonce}; then {t:"pair-ok"} | {t:"pair-cancel"} from the device showing the code
 //   {t:"hello", id, name} (names may change) · {t:"forget"}
 //   {t:"send", size} → {t:"accept"} | {t:"declined"}; after accept the chunks, {t:"sent"} → {t:"received"} | {t:"declined"}
-//   {t:"request"} → a send or {t:"declined"}
+//   {t:"request"} → a send or {t:"request-declined"}
 // A backup is only taken in once the receiving user accepts it, or after this device asked for it; one offer or
 // request at a time per device, anything more is declined.
 //
@@ -253,6 +256,7 @@ export class Peer {
         this.pc = pc;
         this.channel = channel;
         this.fps = fps;                 // { offer, answer }: this connection's certificate fingerprints
+        this._queue = [];               // messages that came while nothing listened, for the next onmessage
         this.onmessage = null;          // (message) for anything not part of a transfer
         this.onoffer = null;            // (size) the other device wants to send a backup: call accept() or decline()
         this.onbackup = null;           // (Uint8Array) when a backup has arrived
@@ -261,15 +265,34 @@ export class Peer {
         this._offered = 0;              // the size of a backup offered and not yet accepted or declined
         this._incoming = null;          // { size, parts, received } once accepted
         this._ack = null;               // resolves the send waiting for accept / received / declined
+        this._aborted = false;          // an incoming backup was turned down part way: its "sent" needs no reply
+        this.onaborted = null;          // () an accepted or offered backup won't arrive after all
         this.closed = new Promise((resolve) => {
             const end = () => resolve();
             channel.addEventListener('close', end);
             pc.addEventListener('connectionstatechange', () => { if (['failed', 'closed'].includes(pc.connectionState)) end(); });
         });
-        this.closed.then(() => { this._ack?.('closed'); this.close(); });
+        this.closed.then(() => {
+            this._ack?.('closed');
+            if (this._incoming || this._offered) { this._incoming = null; this._offered = 0; this.onaborted?.(); }
+            this.close();
+        });
         channel.onmessage = (e) => this._receive(e.data);
         // what came in while the proof was checked: once whoever awaited this connection has set its handlers
         if (early.length) setTimeout(() => { for (const d of early) this._receive(d); });
+    }
+
+    // Messages are never lost between one handler and the next (pairing awaits crypto between its steps, and the
+    // other device may already have answered): while onmessage is null they wait here, and setting it hands them over.
+    get onmessage() { return this._onmessage; }
+    set onmessage(handler) {
+        this._onmessage = handler;
+        while (this._onmessage && this._queue.length) this._onmessage(this._queue.shift());
+    }
+
+    _deliver(m) {
+        if (this._onmessage) this._onmessage(m);
+        else if (this._queue.length < 64) this._queue.push(m);   // a few at most in practice; never unbounded
     }
 
     send(message) {
@@ -292,8 +315,11 @@ export class Peer {
         this.channel.bufferedAmountLowThreshold = HIGH_WATER / 2;
         for (let at = 0; at < bytes.length; at += CHUNK) {
             if (this.channel.readyState !== 'open') { this._ack = null; return 'closed'; }
-            if (this.channel.bufferedAmount > HIGH_WATER)
-                await new Promise((r) => this.channel.addEventListener('bufferedamountlow', r, { once: true }));
+            if (this.channel.bufferedAmount > HIGH_WATER) {
+                // a closed channel never drains: don't wait for it
+                await Promise.race([new Promise((r) => this.channel.addEventListener('bufferedamountlow', r, { once: true })), this.closed]);
+                if (this.channel.readyState !== 'open') { this._ack = null; return 'closed'; }
+            }
             this.channel.send(bytes.subarray(at, Math.min(at + CHUNK, bytes.length)));
             onprogress?.(Math.min(at + CHUNK, bytes.length), bytes.length);
         }
@@ -324,7 +350,13 @@ export class Peer {
             if (!inc) return;   // nothing accepted: dropped, never buffered
             const part = new Uint8Array(data);
             inc.received += part.length;
-            if (inc.received > inc.size) { this._incoming = null; this.send({ t: 'declined' }); return; }
+            if (inc.received > inc.size) {   // more than it said: turned down, once
+                this._incoming = null;
+                this._aborted = true;
+                this.send({ t: 'declined' });
+                this.onaborted?.();
+                return;
+            }
             inc.parts.push(part);
             this.onprogress?.(inc.received, inc.size);
             return;
@@ -340,7 +372,12 @@ export class Peer {
         } else if (m.t === 'sent') {
             const inc = this._incoming;
             this._incoming = null;
-            if (!inc || inc.received !== inc.size) { this.send({ t: 'declined' }); return; }
+            if (!inc && this._aborted) { this._aborted = false; return; }   // already turned down
+            if (!inc || inc.received !== inc.size) {
+                this.send({ t: 'declined' });
+                if (inc) this.onaborted?.();
+                return;
+            }
             const bytes = new Uint8Array(inc.size);
             let at = 0;
             for (const p of inc.parts) { bytes.set(p, at); at += p.length; }
@@ -348,8 +385,8 @@ export class Peer {
             this.onbackup?.(bytes);
         } else if ((m.t === 'accept' || m.t === 'received' || m.t === 'declined') && this._ack) {
             this._ack(m.t);
-        } else {
-            this.onmessage?.(m);
+        } else if (m.t !== 'accept' && m.t !== 'received' && m.t !== 'declined') {
+            this._deliver(m);   // (a late transfer reply with no send waiting for it is dropped)
         }
     }
 
@@ -360,17 +397,68 @@ export class Peer {
 }
 
 /** The next message of one of these kinds (anything else is ignored meanwhile), or a rejection on close / timeout. */
-function next(peer, kinds, ms) {
+export function next(peer, kinds, ms) {
     return new Promise((resolve, reject) => {
-        const t = setTimeout(() => reject('timeout'), ms);
-        peer.closed.then(() => { clearTimeout(t); reject('closed'); });
-        peer.onmessage = (m) => {
-            if (!kinds.includes(m.t)) return;
+        let settled = false;
+        const finish = (fn, v) => {
+            if (settled) return;
+            settled = true;
             clearTimeout(t);
-            peer.onmessage = null;
-            resolve(m);
+            if (peer.onmessage === handler) peer.onmessage = null;
+            fn(v);
         };
+        const t = setTimeout(() => finish(reject, 'timeout'), ms);
+        const handler = (m) => { if (kinds.includes(m.t)) finish(resolve, m); };
+        peer.onmessage = handler;
+        peer.closed.then(() => finish(reject, 'closed'));
     });
+}
+
+const sha256 = async (text) => toHex(await crypto.subtle.digest('SHA-256', te.encode(text)));
+
+/**
+ * The pairing exchange over a proven connection: ids, names and nonces, committed before they're revealed, then the
+ * matching code and the showing side's confirmation (ask). Resolves the other device as { id, name, key }; rejects
+ * 'proof' (a bad message or nonce), 'self', 'declined' (cancelled on the other device), 'cancelled' (here),
+ * 'closed' or 'timeout'. onCheck({ name, code, confirming }) shows the code.
+ */
+export async function pairExchange(peer, secret, showing, me, { ask, onCheck }) {
+    const nonce = toHex(crypto.getRandomValues(new Uint8Array(32)));
+    const valid = (m) => isHex(m.id, 8);
+    let other, theirNonce;
+    if (showing) {
+        const reply = next(peer, ['pair'], 15_000);
+        peer.send({ t: 'pair', id: me.id, name: me.name, commit: await sha256(nonce) });
+        other = await reply;
+        if (other.id === me.id) throw 'self';
+        if (!valid(other) || !isHex(other.nonce, 32)) throw 'proof';
+        theirNonce = other.nonce;
+        peer.send({ t: 'pair-reveal', nonce });   // only now: their nonce is fixed
+    } else {
+        other = await next(peer, ['pair'], 15_000);
+        if (other.id === me.id) throw 'self';
+        if (!valid(other) || !isHex(other.commit, 32)) throw 'proof';
+        const reveal = next(peer, ['pair-reveal'], 15_000);
+        peer.send({ t: 'pair', id: me.id, name: me.name, nonce });
+        theirNonce = (await reveal).nonce;
+        if (!isHex(theirNonce, 32) || !sameText(await sha256(theirNonce), other.commit)) throw 'proof';
+    }
+    const name = cleanName(other.name);
+    const key = await pairKey(secret, showing ? nonce : theirNonce, showing ? theirNonce : nonce);
+    const code = await matchCode(key, peer.fps.offer, peer.fps.answer);
+    await onCheck({ id: other.id, name, code, confirming: showing });
+    if (showing) {
+        // the person holding this device says the codes match, unless the other device cancels or goes first
+        const cancelled = next(peer, ['pair-cancel'], WINDOW_MS).then(() => { throw 'declined'; });
+        cancelled.catch(() => { });
+        const ok = await Promise.race([ask(), cancelled]);
+        if (!ok) { peer.send({ t: 'pair-cancel' }); throw 'cancelled'; }
+        peer.send({ t: 'pair-ok' });
+    } else {
+        const word = await next(peer, ['pair-ok', 'pair-cancel'], WINDOW_MS);
+        if (word.t !== 'pair-ok') throw 'declined';
+    }
+    return { id: other.id, name, key };
 }
 
 // ---------- devices (the 'devices' store) and what .NET calls
@@ -387,7 +475,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** A device name as shown: no control or formatting characters (which could make it read as something else), one line, 40 characters. */
 export function cleanName(name) {
-    return String(name ?? '').replace(/\s+/g, ' ').replace(/[\p{C}]/gu, '').trim().slice(0, 40) || 'Unnamed device';
+    const clean = String(name ?? '').replace(/\s+/g, ' ').replace(/[\p{C}]/gu, '').trim();
+    return [...clean].slice(0, 40).join('').trim() || 'Unnamed device';   // by character, so an emoji isn't cut in half
 }
 
 /** A starting name for this device, from the browser: "Chrome on Windows". The user can rename it. */
@@ -435,36 +524,15 @@ async function pair(secret, showing) {
     pairing = state;
     try {
         const peer = state.peer = await attempt.promise;
-        const nonce = toHex(crypto.getRandomValues(new Uint8Array(32)));
-        const reply = next(peer, ['pair'], 15_000);
-        peer.send({ t: 'pair', id: self.DeviceId, name: self.Name, nonce });
-        const other = await reply;
-        if (!isHex(other.id, 8) || !isHex(other.nonce, 32)) throw 'proof';
-        if (other.id === self.DeviceId) throw 'self';
-        const name = cleanName(other.name);
-        const key = await pairKey(secret, showing ? nonce : other.nonce, showing ? other.nonce : nonce);
-        const code = await matchCode(key, peer.fps.offer, peer.fps.answer);
-        const again = (await devices()).some((d) => d.Id === other.id);
-        emit('pair-check', { name, code, again, confirming: showing });
-        if (showing) {
-            // the person holding this device says the codes match
-            // ...unless the other device cancels or goes first
-            const ok = await new Promise((r, no) => {
-                state.confirm = r;
-                peer.closed.then(() => no('closed'));
-                peer.onmessage = (m) => { if (m.t === 'pair-cancel') no('declined'); };
-            });
-            if (!ok) { peer.send({ t: 'pair-cancel' }); throw 'cancelled'; }
-            peer.send({ t: 'pair-ok' });
-        } else {
-            const word = await next(peer, ['pair-ok', 'pair-cancel'], WINDOW_MS);
-            if (word.t !== 'pair-ok') throw 'declined';
-        }
-        const row = { Id: other.id, Name: name, Key: key, Paired: new Date().toISOString() };
+        const other = await pairExchange(peer, secret, showing, { id: self.DeviceId, name: self.Name }, {
+            ask: () => new Promise((r) => { state.confirm = r; }),
+            onCheck: async (check) => emit('pair-check', { ...check, again: (await devices()).some((d) => d.Id === check.id) }),
+        });
+        const row = { Id: other.id, Name: other.name, Key: other.key, Paired: new Date().toISOString() };
+        attach(row, peer);     // its handlers first, so nothing the other device sends next is missed
+        state.peer = null;     // it's the device's connection now
         await putRow('devices', row);
         emit('paired', describeDevice(row));
-        attach(row, peer);
-        state.peer = null;   // it's the device's connection now
     } catch (reason) {
         const peer = state.peer;
         setTimeout(() => peer?.close(), 500);   // after a pair-cancel has had time to go
@@ -506,6 +574,17 @@ export function pairCancel() {
     }
 }
 
+/** A transfer's progress, to .NET at most every 100 ms (each one redraws Settings), and always the last. */
+function progress(id, incoming) {
+    let last = 0;
+    return (done, size) => {
+        const now = Date.now();
+        if (done < size && now - last < 100) return;
+        last = now;
+        emit('progress', { id, done, size, incoming });
+    };
+}
+
 /** Wires up a connected device: its messages, backups, and going offline again. */
 function attach(device, peer) {
     peers.get(device.Id)?.close();
@@ -516,13 +595,15 @@ function attach(device, peer) {
     peer.onmessage = async (m) => {
         if (m.t === 'hello' && typeof m.name === 'string') {
             device.Name = cleanName(m.name);
+            // not if it's gone meanwhile ("Delete all data", Forget): a late hello mustn't bring the pairing back
+            if (!(await devices()).some((d) => d.Id === device.Id)) return;
             await putRow('devices', device);
             emit('renamed', describeDevice(device));
         } else if (m.t === 'request') {
             if (peer.asked) return;   // one question at a time
             peer.asked = true;
             emit('requested', describeDevice(device));
-        } else if (m.t === 'declined') {
+        } else if (m.t === 'request-declined') {
             peer.expecting = false;
             emit('declined', describeDevice(device));
         } else if (m.t === 'forget') {
@@ -532,7 +613,8 @@ function attach(device, peer) {
         }
     };
     peer.onoffer = (size) => emit('offered', { ...describeDevice(device), size });
-    peer.onprogress = (received, size) => emit('progress', { id: device.Id, done: received, size, incoming: true });
+    peer.onprogress = progress(device.Id, true);
+    peer.onaborted = () => emit('transfer-ended', { id: device.Id });
     peer.onbackup = (bytes) => dotnet?.invokeMethodAsync('OnBackupReceived', device.Id, bytes);
     peer.send({ t: 'hello', id: self.DeviceId, name: self.Name });   // names may have changed since pairing
     peer.closed.then(() => {
@@ -596,7 +678,9 @@ export async function send(id, bytes) {
     const peer = peers.get(id);
     if (!peer) return 'offline';
     peer.asked = false;
-    return peer.sendBackup(bytes, (done, size) => emit('progress', { id, done, size, incoming: false }));
+    const result = await peer.sendBackup(bytes, progress(id, false));
+    emit('transfer-ended', { id });
+    return result;
 }
 
 /** Asks a connected device for its backup; the one that comes back is taken without asking again. */
@@ -618,7 +702,7 @@ export function decline(id) {
     const peer = peers.get(id);
     if (!peer) return;
     if (peer._offered) { peer.decline(); return; }
-    if (peer.asked) { peer.asked = false; peer.send({ t: 'declined' }); }
+    if (peer.asked) { peer.asked = false; peer.send({ t: 'request-declined' }); }
 }
 
 /** Forgets a paired device here, and on it too if it's connected. */
@@ -636,8 +720,11 @@ export async function forget(id) {
 
 /** After "Delete all data" cleared the store: drop every connection and start again as a new device. */
 export async function reset() {
+    const wasOnline = online;
     pairCancel();
     goOffline();
     self = null;
-    return init(relay, dotnet);
+    const me = await init(relay, dotnet);
+    if (wasOnline) await goOnline();   // Settings is still open: a device paired from here on should connect
+    return me;
 }

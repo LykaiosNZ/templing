@@ -31,10 +31,11 @@
                 }
             </div>
             <div class="setting-control">
-                @if (device.Connected)
+                @* only while connected and nothing is on its way: the description says why they're not there *@
+                @if (device.Connected && Devices.Transfer == null)
                 {
-                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Upload" OnClick="() => SendTo(device)" Disabled="Devices.Transfer != null">Send</MudButton>
-                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Download" OnClick="() => AskFor(device)" Disabled="Devices.Transfer != null">Get</MudButton>
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Upload" OnClick="() => SendTo(device)">Send data</MudButton>
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Download" OnClick="() => AskFor(device)">Get data</MudButton>
                 }
                 <MudMenu Icon="@Icons.Material.Rounded.MoreVert" AriaLabel="@($"More for {device.Name}")" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
                     <MudMenuItem Icon="@Icons.Material.Rounded.LinkOff" OnClick="() => AfterMenu(() => Forget(device))">Forget…</MudMenuItem>
@@ -76,6 +77,7 @@
         }
         catch (JSException)
         {
+            Devices.PendingJoin = null;   // a pairing link can't be joined here either
             Snackbar.Add("Devices aren't available in this browser.", Severity.Warning);
         }
     }
@@ -117,7 +119,7 @@
         switch (result)
         {
             case "received": Snackbar.Add($"Sent to “{d.Name}”", Severity.Success); break;
-            case "declined": Snackbar.Add($"“{d.Name}” didn't take it.", Severity.Warning); break;
+            case "declined": Snackbar.Add($"“{d.Name}” didn't accept your data.", Severity.Warning); break;
             default: Snackbar.Add($"The connection to “{d.Name}” closed before it was sent.", Severity.Warning); break;
         }
     }
@@ -148,7 +150,7 @@
 
     static string Size(long bytes) => bytes >= 1_000_000 ? $"{bytes / 1_000_000.0:0.#} MB" : $"{Math.Max(1, bytes / 1000)} KB";
 
-    void OnDeclined(PairedDevice d) => InvokeAsync(() => Snackbar.Add($"“{d.Name}” said no.", Severity.Info));
+    void OnDeclined(PairedDevice d) => InvokeAsync(() => Snackbar.Add($"“{d.Name}” declined to send its data.", Severity.Info));
 
     void OnForgotten(string name) => InvokeAsync(() => Snackbar.Add($"“{name}” unpaired from this device.", Severity.Info));
 
