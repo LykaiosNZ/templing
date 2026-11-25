@@ -35,7 +35,7 @@
                 </div>
             }
         }
-        else if (Join == null)
+        else if (Join == null && _ready)
         {
             @if (_qr != null)
             {
@@ -57,12 +57,12 @@
         {
             <div class="pair-status">
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" />
-                <span>Connecting to the other device…</span>
+                <span>@(Join == null ? "Making a code…" : "Connecting to the other device…")</span>
             </div>
         }
     </DialogContent>
     <DialogActions>
-        @if (Join == null && _failed == null && _check == null && _link != null)
+        @if (Join == null && _failed == null && _check == null && _ready && _link != null)
         {
             <MudButton StartIcon="@Icons.Material.Rounded.ContentCopy" OnClick="Copy">Copy link</MudButton>
         }
@@ -88,7 +88,8 @@
     string? _link;
     string? _failed;
     PairCheck? _check;
-    bool _confirmed, _done;
+    bool _confirmed, _done, _ready;
+    DateTime _started = DateTime.UtcNow;
 
     string Title => _check is { Confirming: true } ? $"Pair with “{_check.Name}”?" : Join == null ? "Pair a device" : "Pairing";
 
@@ -97,6 +98,7 @@
         Devices.Paired += OnPaired;
         Devices.PairFailed += OnFailed;
         Devices.PairChecking += OnCheck;
+        Devices.PairReady += OnReady;
         if (Join != null)
         {
             if (!await Devices.PairJoinAsync(Join)) _failed = "That pairing link isn't complete. Scan the code again.";
@@ -110,6 +112,8 @@
         _qr = null;
         _check = null;
         _confirmed = false;
+        _ready = false;   // "Making a code…" until the relay room is joined: shows that New code is trying
+        _started = DateTime.UtcNow;
         var secret = await Devices.PairStartAsync();
         _link = Nav.BaseUri + "pair#" + secret;
         var qr = System.Text.Json.JsonDocument.Parse(await QrPath(_link)).RootElement;
@@ -121,6 +125,12 @@
         await using var qr = await JS.InvokeAsync<IJSObjectReference>("import", "./js/qr.js");
         return await qr.InvokeAsync<string>("path", text);
     }
+
+    void OnReady() => InvokeAsync(() =>
+    {
+        _ready = true;
+        StateHasChanged();
+    });
 
     void OnCheck(PairCheck check) => InvokeAsync(() =>
     {
@@ -141,14 +151,18 @@
         Dialog.Close(DialogResult.Ok(d));
     });
 
-    void OnFailed(string reason) => InvokeAsync(() =>
+    void OnFailed(string reason) => InvokeAsync(async () =>
     {
+        // an offline device fails in milliseconds: let "Making a code…" show for a moment, so New code visibly tries
+        var shown = DateTime.UtcNow - _started;
+        if (shown < TimeSpan.FromMilliseconds(600)) await Task.Delay(TimeSpan.FromMilliseconds(600) - shown);
         _check = null;
         _failed = reason switch
         {
             "proof" => "The other device couldn't be verified, so they weren't paired.",
             "self" => "That's this device's own code. Scan it with your other device.",
             "declined" => "Pairing was cancelled on the other device.",
+            "unreachable" => "Couldn't reach the relay that devices pair through. This device may be offline.",
             _ when Join == null => "Pairing didn't finish. The code may have run out, or the other device lost its connection.",
             _ => "Pairing didn't finish. The code may have run out: make a new one on the other device and scan it again.",
         };
@@ -169,6 +183,7 @@
         Devices.Paired -= OnPaired;
         Devices.PairFailed -= OnFailed;
         Devices.PairChecking -= OnCheck;
+        Devices.PairReady -= OnReady;
         if (!_done) await Devices.PairCancelAsync();
     }
 
