@@ -1,5 +1,5 @@
-@* Asks for one name (save / rename). The field is focused with its text selected, Enter saves, and Save says why
-   it's disabled (empty, or a name that's already taken). *@
+@* Asks for one value, usually a name (save / rename). The field is focused with its text selected, Enter saves, and
+   Save says why it's disabled (empty, a name that's already taken, or what Check says). *@
 <MudDialog>
     <DialogContent>
         <MudTextField @ref="_field" T="string" @bind-Value="_value" Label="@Label" Placeholder="@Placeholder" Immediate="true" OnKeyDown="KeyDown" OnKeyUp="KeyUp" />
@@ -23,6 +23,10 @@
     [Parameter] public string OkText { get; set; } = "Save";
     /// <summary>Names already in use (compared ignoring case); the current <see cref="Value"/> is always allowed.</summary>
     [Parameter] public IEnumerable<string> Taken { get; set; } = [];
+    /// <summary>Why Save is disabled while the field is empty: "Add a name" unless it's asking for something else.</summary>
+    [Parameter] public string Empty { get; set; } = "Add a name";
+    /// <summary>Anything else that's wrong with the value, as what to do about it; null when it's fine.</summary>
+    [Parameter] public Func<string, string?>? Check { get; set; }
 
     MudTextField<string>? _field;
     string? _value;
@@ -31,8 +35,9 @@
     {
         get
         {
-            if (string.IsNullOrWhiteSpace(_value)) return "Add a name";
+            if (string.IsNullOrWhiteSpace(_value)) return Empty;
             var name = _value.Trim();
+            if (Check?.Invoke(name) is { } wrong) return wrong;
             if (string.Equals(name, Value?.Trim(), StringComparison.OrdinalIgnoreCase)) return null;
             var clash = Taken.FirstOrDefault(t => string.Equals(t.Trim(), name, StringComparison.OrdinalIgnoreCase));
             return clash is null ? null : $"You already have “{clash.Trim()}”";
@@ -63,12 +68,13 @@
     void KeyUp(KeyboardEventArgs e) { if (e.Key == "Enter" && _enterDown) Ok(); }
 
     public static async Task<string?> ShowAsync(IDialogService d, string title, string label, string? value = null, string ok = "Save",
-        string? placeholder = null, IEnumerable<string>? taken = null)
+        string? placeholder = null, IEnumerable<string>? taken = null, string empty = "Add a name", Func<string, string?>? check = null)
     {
         var p = new DialogParameters<PromptDialog>
         {
             { x => x.Label, label }, { x => x.Value, value }, { x => x.OkText, ok },
             { x => x.Placeholder, placeholder }, { x => x.Taken, taken ?? [] },
+            { x => x.Empty, empty }, { x => x.Check, check },
         };
         var r = await d.ShowAsync<PromptDialog>(title, p, new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = true });
         var res = await r.Result;
