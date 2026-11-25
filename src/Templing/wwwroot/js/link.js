@@ -1,8 +1,9 @@
 // Device link: two of a person's devices connect directly over WebRTC and send a backup between them. The relay
 // (relay/ in the repo) only lets them swap a handshake; app data goes over the data channel, never through it.
 //
-// Pairing. One device shows a QR code of a link to …/pair#<secret>, a random 32 bytes. The secret only proves the
-// pairing: both devices join a relay room and prove (below) that they hold it, then each adds 32 fresh random bytes
+// Pairing. One device shows a pairing code: ten characters someone can type (K7Q2M-9XDAB, about 50 random bits), as
+// text and as a QR code of a link to …/pair#<code>. The other device scans the link or types the code. The code only
+// proves the pairing (it can't be guessed in its 10 minutes, and the steps below don't rest on it being long): both devices join a relay room and prove (below) that they hold it, then each adds 32 fresh random bytes
 // over the now encrypted channel, and the pair's key is HMAC(secret, both nonces). The device showing the code first
 // commits to its nonce (sends its hash), the other then sends its nonce, and only then is the first revealed: neither
 // side can pick its nonce after seeing the other's, so no one can try nonces until the two screens' codes match. So someone who learns the secret
@@ -48,17 +49,27 @@ const te = new TextEncoder();
 
 export const toHex = (bytes) => [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, '0')).join('');
 
-export function toBase64Url(bytes) {
-    let s = '';
-    for (const b of bytes) s += String.fromCharCode(b);
-    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+// Pairing codes use Crockford's base 32: digits and capitals without I, L, O and U, so nothing reads as something
+// else, and typing O, I or L for 0, 1 or 1 still works.
+const CODE_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+export const CODE_LENGTH = 10;
+
+/** A new pairing code: ten random characters (256 is a multiple of 32, so each is uniform). */
+export function newCode() {
+    return [...crypto.getRandomValues(new Uint8Array(CODE_LENGTH))].map((b) => CODE_ALPHABET[b & 31]).join('');
 }
 
-/** A pairing secret from a link: exactly 32 bytes, base64url. Null for anything else. */
+/** A pairing code as typed or linked ("k7q2m-9xdab", "K7Q2M 9XDAB", with O for 0…), in its one form; null if it isn't one. */
+export function normalizeCode(text) {
+    if (typeof text !== 'string') return null;
+    const code = text.toUpperCase().replace(/[\s-]/g, '').replace(/O/g, '0').replace(/[IL]/g, '1');
+    return code.length === CODE_LENGTH && [...code].every((c) => CODE_ALPHABET.includes(c)) ? code : null;
+}
+
+/** The pairing secret a code stands for; null if the text isn't a code. */
 export function secretFrom(text) {
-    if (typeof text !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(text)) return null;
-    const bin = atob(text.replace(/-/g, '+').replace(/_/g, '/') + '=');
-    return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+    const code = normalizeCode(text);
+    return code ? te.encode(`templing/pair-code/v1/${code}`) : null;
 }
 
 /** Compares two strings in time that doesn't depend on where they differ. */
@@ -559,14 +570,14 @@ async function pair(secret, showing) {
     }
 }
 
-/** Shows-the-code side: makes a secret, returns it (base64url, for the link) and waits in the pairing room. */
+/** Shows-the-code side: makes a pairing code, returns it (for the text and the link) and waits in its room. */
 export function pairStart() {
-    const secret = crypto.getRandomValues(new Uint8Array(32));
-    pair(secret, true);
-    return toBase64Url(secret);
+    const code = newCode();
+    pair(secretFrom(code), true);
+    return code;
 }
 
-/** Scanned-the-code side. False if the link's secret isn't one. */
+/** Scanned-the-link or typed-the-code side. False if the text isn't a pairing code. */
 export function pairJoin(text) {
     const secret = secretFrom(text);
     if (!secret) return false;
