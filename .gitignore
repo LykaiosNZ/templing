@@ -10,3 +10,6 @@ tools/demo/node_modules/
 tools/demo/*.webm
 tools/demo/*.gif
 tools/demo/*.mp4
+relay/node_modules/
+relay/.wrangler/
+relay/dist/
