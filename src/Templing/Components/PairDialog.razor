@@ -1,5 +1,7 @@
 @* Pairing a device: shows a QR code of the pairing link and waits for the other device, or (Join) joins the pairing a
-   scanned link belongs to. Closes with the paired device once both sides have proved they hold the same key. *@
+   scanned link belongs to. Once connected both show the same six-digit code; the device showing the QR code asks
+   "Pair with …?", so a device that got to the code first (or anything in between) is caught by a code that doesn't
+   match. Closes with the paired device. *@
 @inject Devices Devices
 @inject IJSRuntime JS
 @inject NavigationManager Nav
@@ -8,12 +10,30 @@
 
 <MudDialog>
     <TitleContent>
-        <MudText Typo="Typo.h6">@(Join == null ? "Pair a device" : "Pairing")</MudText>
+        <MudText Typo="Typo.h6">@Title</MudText>
     </TitleContent>
     <DialogContent>
         @if (_failed != null)
         {
             <MudAlert Severity="Severity.Warning" Dense="true">@_failed</MudAlert>
+        }
+        else if (_check != null)
+        {
+            <MudText Typo="Typo.body2" Class="mb-3">
+                @(_check.Confirming ? $"Check that “{_check.Name}” shows the same code." : "The same code is on the other device.")
+            </MudText>
+            <div class="pair-code" aria-label="@($"Code {_check.Code}")">@(_check.Code[..3]) @(_check.Code[3..])</div>
+            @if (_check.Again)
+            {
+                <MudText Typo="Typo.caption" Class="muted d-block mt-3">This replaces the pairing you already have with “@_check.Name”.</MudText>
+            }
+            @if (!_check.Confirming)
+            {
+                <div class="pair-status mt-3">
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                    <span>Waiting for the other device to confirm…</span>
+                </div>
+            }
         }
         else if (Join == null)
         {
@@ -42,7 +62,7 @@
         }
     </DialogContent>
     <DialogActions>
-        @if (Join == null && _failed == null && _link != null)
+        @if (Join == null && _failed == null && _check == null && _link != null)
         {
             <MudButton StartIcon="@Icons.Material.Rounded.ContentCopy" OnClick="Copy">Copy link</MudButton>
         }
@@ -51,6 +71,10 @@
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.QrCode2" OnClick="StartAsync">New code</MudButton>
         }
         <MudButton OnClick="Cancel">@(_failed != null ? "Close" : "Cancel")</MudButton>
+        @if (_check is { Confirming: true } && _failed == null)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Confirm" Disabled="_confirmed">Pair</MudButton>
+        }
     </DialogActions>
 </MudDialog>
 
@@ -63,12 +87,16 @@
     Qr? _qr;
     string? _link;
     string? _failed;
-    bool _done;
+    PairCheck? _check;
+    bool _confirmed, _done;
+
+    string Title => _check is { Confirming: true } ? $"Pair with “{_check.Name}”?" : Join == null ? "Pair a device" : "Pairing";
 
     protected override async Task OnInitializedAsync()
     {
         Devices.Paired += OnPaired;
         Devices.PairFailed += OnFailed;
+        Devices.PairChecking += OnCheck;
         if (Join != null)
         {
             if (!await Devices.PairJoinAsync(Join)) _failed = "That pairing link isn't complete. Scan the code again.";
@@ -80,6 +108,8 @@
     {
         _failed = null;
         _qr = null;
+        _check = null;
+        _confirmed = false;
         var secret = await Devices.PairStartAsync();
         _link = Nav.BaseUri + "pair#" + secret;
         var qr = System.Text.Json.JsonDocument.Parse(await QrPath(_link)).RootElement;
@@ -92,6 +122,19 @@
         return await qr.InvokeAsync<string>("path", text);
     }
 
+    void OnCheck(PairCheck check) => InvokeAsync(() =>
+    {
+        _check = check;
+        _link = null;   // nothing to copy any more
+        StateHasChanged();
+    });
+
+    async Task Confirm()
+    {
+        _confirmed = true;
+        await Devices.PairConfirmAsync(true);
+    }
+
     void OnPaired(PairedDevice d) => InvokeAsync(() =>
     {
         _done = true;
@@ -100,10 +143,12 @@
 
     void OnFailed(string reason) => InvokeAsync(() =>
     {
+        _check = null;
         _failed = reason switch
         {
             "proof" => "The other device couldn't be verified, so they weren't paired.",
             "self" => "That's this device's own code. Scan it with your other device.",
+            "declined" => "Pairing was cancelled on the other device.",
             _ when Join == null => "Pairing didn't finish. The code may have run out, or the other device lost its connection.",
             _ => "Pairing didn't finish. The code may have run out: make a new one on the other device and scan it again.",
         };
@@ -123,6 +168,7 @@
     {
         Devices.Paired -= OnPaired;
         Devices.PairFailed -= OnFailed;
+        Devices.PairChecking -= OnCheck;
         if (!_done) await Devices.PairCancelAsync();
     }
 

@@ -11,6 +11,17 @@ public sealed record PairedDevice(
     [property: JsonPropertyName("paired")] DateTime? Paired,
     [property: JsonPropertyName("connected")] bool Connected);
 
+/// <summary>
+/// Pairing has connected and proved itself: both screens show <paramref name="Code"/>. The device showing the QR code
+/// (<paramref name="Confirming"/>) asks whether to pair with <paramref name="Name"/>; <paramref name="Again"/> when it's
+/// already paired with that device (this pairing replaces the old one).
+/// </summary>
+public sealed record PairCheck(
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("code")] string Code,
+    [property: JsonPropertyName("again")] bool Again,
+    [property: JsonPropertyName("confirming")] bool Confirming);
+
 /// <summary>A backup on its way to or from a paired device.</summary>
 public sealed record Transfer(string DeviceId, bool Incoming, long Done, long Size);
 
@@ -37,8 +48,12 @@ public sealed class Devices(IJSRuntime js) : IAsyncDisposable
     public event Action? Changed;
     /// <summary>Paired with a device (either side). For the page's message and <see cref="Analytics"/>.</summary>
     public event Action<PairedDevice>? Paired;
-    /// <summary>Pairing didn't work: "timeout", "closed", "proof", "left"…</summary>
+    /// <summary>Pairing didn't work: "timeout", "closed", "proof", "left", "declined" (cancelled on the other device)…</summary>
     public event Action<string>? PairFailed;
+    /// <summary>Pairing connected: show the matching code (and, on the device showing the QR code, ask to confirm).</summary>
+    public event Action<PairCheck>? PairChecking;
+    /// <summary>A connected device wants to send its backup (size in bytes): <see cref="AcceptAsync"/> or <see cref="DeclineAsync"/>.</summary>
+    public event Action<PairedDevice, long>? Offered;
     /// <summary>A connected device asks for this device's backup.</summary>
     public event Action<PairedDevice>? Requested;
     /// <summary>A connected device said no to a request or a backup.</summary>
@@ -101,6 +116,9 @@ public sealed class Devices(IJSRuntime js) : IAsyncDisposable
     /// <summary>Joins the pairing a link's secret belongs to. False if the secret isn't one.</summary>
     public async Task<bool> PairJoinAsync(string secret) => await (await Link()).InvokeAsync<bool>("pairJoin", secret);
 
+    /// <summary>The device showing the code: the codes match (pair) or not (cancel).</summary>
+    public async Task PairConfirmAsync(bool ok) => await (await Link()).InvokeVoidAsync("pairConfirm", ok);
+
     public async Task PairCancelAsync()
     {
         if (_link != null) await _link.InvokeVoidAsync("pairCancel");
@@ -132,6 +150,10 @@ public sealed class Devices(IJSRuntime js) : IAsyncDisposable
 
     public async Task<bool> RequestAsync(string id) => await (await Link()).InvokeAsync<bool>("request", id);
 
+    /// <summary>Takes the backup a device offered.</summary>
+    public async Task AcceptAsync(string id) => await (await Link()).InvokeVoidAsync("accept", id);
+
+    /// <summary>Says no to a device's request, or to the backup it offered.</summary>
     public async Task DeclineAsync(string id) => await (await Link()).InvokeVoidAsync("decline", id);
 
     public async Task ForgetAsync(string id)
@@ -163,6 +185,12 @@ public sealed class Devices(IJSRuntime js) : IAsyncDisposable
             case "paired":
                 await RefreshAsync();
                 if (Device() is { } paired) Paired?.Invoke(paired);
+                return;
+            case "pair-check":
+                if (data.Deserialize<PairCheck>(Json) is { } check) PairChecking?.Invoke(check);
+                return;
+            case "offered":
+                if (Device() is { } offering) Offered?.Invoke(offering, data.GetProperty("size").GetInt64());
                 return;
             case "pair-failed":
                 PairFailed?.Invoke(data.GetProperty("reason").GetString() ?? "");

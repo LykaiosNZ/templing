@@ -24,9 +24,21 @@
          once the saved setting says it may, and Services/Analytics.cs turns it on or off as the setting changes.
          Ids in routes are folded (library/:id) so each screen is one page in the stats, and no ids leave the device. -->
     <script>
+        // A pairing link (…/pair#<secret>, Settings > Devices): take the secret out of the address before anything else
+        // sees it (the tracker, which also reports the previous address as the referrer), and keep it here for the
+        // /pair page (Pages/Pair.razor). The browser may still have the link in its history, so the secret only proves
+        // the pairing; the pair's key comes from what the devices then swap over the encrypted channel (js/link.js).
+        var templingPairSecret = null;
+        if (/\/pair\/?$/.test(location.pathname) && location.hash.length > 1) {
+            templingPairSecret = location.hash.slice(1);
+            history.replaceState(null, '', location.pathname);
+        }
+        function templingTakePairSecret() { var s = templingPairSecret; templingPairSecret = null; return s; }
+
         var templingAnalyticsOn = false;
         function templingUmami(type, payload) {
             if (!templingAnalyticsOn) return false;   // switched off after the tracker loaded: send nothing
+            if (payload && payload.referrer) payload.referrer = payload.referrer.split(/[?#]/)[0];
             if (payload && payload.url) payload.url = payload.url.split(/[?#]/)[0].replace(/\/(library|piece|preset)\/[^/]+(\/[^/]+)?$/, function (m, kind, sub) { return '/' + kind + '/:id' + (sub ? '/:section' : ''); });
             return payload;
         }
@@ -38,6 +50,7 @@
             t.id = 'umami'; t.defer = true; t.src = 'https://cloud.umami.is/script.js';
             t.setAttribute('data-website-id', 'a2236001-0146-4dd6-8898-cee6ad6a1baa');
             t.setAttribute('data-domains', 'lykaiosnz.github.io');
+            t.setAttribute('data-exclude-hash', 'true');   // never a fragment (a pairing link's secret) in a URL or referrer
             t.setAttribute('data-before-send', 'templingUmami');
             document.head.appendChild(t);
         }

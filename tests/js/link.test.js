@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-    build, connect, extract, guessName, pairKey, pairRoom, proof, secretFrom, syncRoom, toBase64Url, windowOf, WINDOW_MS,
+    build, cleanName, connect, extract, guessName, matchCode, pairAuth, pairKey, pairRoom, proof, sameText, secretFrom, syncRoom,
+    toBase64Url, windowOf, WINDOW_MS,
 } from '../../src/Templing/wwwroot/js/link.js';
 import { validate } from '../../relay/src/schema.js';
 
@@ -69,15 +70,33 @@ describe('keys', () => {
         expect(secretFrom(null)).toBeNull();
     });
 
-    it('gives both devices the same rooms and proofs from the same secret', async () => {
-        const [a, b] = [await pairKey(secret), await pairKey(new Uint8Array(secret))];
+    const nonce = (n) => String(n).repeat(64).slice(0, 64);
+
+    it('gives both devices the same rooms and proofs from the same secret and nonces', async () => {
+        const [a, b] = [await pairKey(secret, nonce(1), nonce(2)), await pairKey(new Uint8Array(secret), nonce(1), nonce(2))];
         expect(await pairRoom(secret)).toMatch(/^[0-9a-f]{64}$/);
         expect(await syncRoom(a, 7)).toBe(await syncRoom(b, 7));
         expect(await proof(a, 'offer', 'x', 'y')).toBe(await proof(b, 'offer', 'x', 'y'));
     });
 
+    it('makes the pair key from both nonces, so the pairing secret alone is not enough', async () => {
+        const key = await pairKey(secret, nonce(1), nonce(2));
+        for (const other of [await pairKey(secret, nonce(1), nonce(3)), await pairKey(secret, nonce(2), nonce(1)), await pairAuth(secret)])
+            expect(await syncRoom(other, 7)).not.toBe(await syncRoom(key, 7));
+    });
+
+    it('shows a six-digit code that changes with either fingerprint or the key', async () => {
+        const key = await pairKey(secret, nonce(1), nonce(2));
+        const code = await matchCode(key, 'aa', 'bb');
+        expect(code).toMatch(/^\d{6}$/);
+        expect(await matchCode(await pairKey(secret, nonce(1), nonce(2)), 'aa', 'bb')).toBe(code);
+        expect(await matchCode(key, 'aa', 'cc')).not.toBe(code);
+        expect(await matchCode(key, 'cc', 'bb')).not.toBe(code);
+        expect(await matchCode(await pairKey(secret, nonce(1), nonce(4)), 'aa', 'bb')).not.toBe(code);
+    });
+
     it('changes the room every window, and keeps rooms and proofs apart', async () => {
-        const key = await pairKey(secret);
+        const key = await pairKey(secret, nonce(1), nonce(2));
         expect(await syncRoom(key, 7)).not.toBe(await syncRoom(key, 8));
         expect(windowOf(7 * WINDOW_MS)).toBe(7);
         expect(windowOf(8 * WINDOW_MS - 1)).toBe(7);
@@ -85,13 +104,32 @@ describe('keys', () => {
     });
 
     it('makes a proof that fails if a fingerprint, the role or the key differs', async () => {
-        const key = await pairKey(secret);
-        const other = await pairKey(new Uint8Array(32).fill(9));
+        const key = await pairAuth(secret);
+        const other = await pairAuth(new Uint8Array(32).fill(9));
         const good = await proof(key, 'offer', 'aa', 'bb');
         expect(await proof(key, 'offer', 'aa', 'cc')).not.toBe(good);   // a relay swapped the other fingerprint
         expect(await proof(key, 'offer', 'bb', 'aa')).not.toBe(good);
         expect(await proof(key, 'answer', 'aa', 'bb')).not.toBe(good);
         expect(await proof(other, 'offer', 'aa', 'bb')).not.toBe(good);
+    });
+});
+
+describe('sameText', () => {
+    it('compares whole strings', () => {
+        expect(sameText('abc', 'abc')).toBe(true);
+        expect(sameText('abc', 'abd')).toBe(false);
+        expect(sameText('abc', 'ab')).toBe(false);
+        expect(sameText(undefined, 'abc')).toBe(false);
+    });
+});
+
+describe('cleanName', () => {
+    it('keeps a name to one plain line', () => {
+        expect(cleanName('  My\nphone  ')).toBe('My phone');
+        expect(cleanName('Lap\u202Etop')).toBe('Laptop');          // right-to-left override
+        expect(cleanName('Phone\u200B\u0007')).toBe('Phone');     // zero-width space, bell
+        expect(cleanName('x'.repeat(60))).toHaveLength(40);
+        expect(cleanName('\u202E')).toBe('Unnamed device');
     });
 });
 
@@ -188,24 +226,56 @@ describe('connect', () => {
     async function pairUp({ keyB, tamper } = {}) {
         const WebSocketImpl = fakeRelay({ tamper });
         const PeerImpl = fakeWebRTC();
-        const key = await pairKey(secret);
+        const key = await pairAuth(secret);
         const room = await pairRoom(secret);
         const a = connect({ relay: 'wss://relay.test', room, key, offerer: true, WebSocketImpl, PeerImpl });
         const b = connect({ relay: 'wss://relay.test', room, key: keyB ?? key, offerer: false, WebSocketImpl, PeerImpl });
         return Promise.allSettled([a.promise, b.promise]);
     }
 
-    it('connects two devices with the same key, and sends a backup across', async () => {
+    it('connects two devices with the same key, and sends a backup once the other accepts it', async () => {
         const [a, b] = await pairUp();
         expect(a.status).toBe('fulfilled');
         expect(b.status).toBe('fulfilled');
+        expect(a.value.fps.offer).toBe(b.value.fps.offer);
+        expect(a.value.fps.answer).toBe(b.value.fps.answer);
         const backup = crypto.getRandomValues(new Uint8Array(50_000));
         const got = new Promise((r) => { b.value.onbackup = r; });
+        b.value.onoffer = (size) => { expect(size).toBe(50_000); b.value.accept(); };
         const progress = [];
         const result = await a.value.sendBackup(backup, (done, size) => progress.push([done, size]));
         expect(result).toBe('received');
         expect(await got).toEqual(backup);
         expect(progress.at(-1)).toEqual([50_000, 50_000]);
+    });
+
+    it('sends nothing when the other declines, and takes one it asked for without asking', async () => {
+        const [a, b] = await pairUp();
+        b.value.onoffer = () => b.value.decline();
+        expect(await a.value.sendBackup(new Uint8Array(10))).toBe('declined');
+        b.value.onoffer = () => { throw new Error('asked although it was expecting one'); };
+        b.value.expecting = true;
+        const got = new Promise((r) => { b.value.onbackup = r; });
+        expect(await a.value.sendBackup(new Uint8Array([1, 2, 3]))).toBe('received');
+        expect(await got).toEqual(new Uint8Array([1, 2, 3]));
+    });
+
+    it('drops data nobody accepted, and turns down a second offer while one waits', async () => {
+        const [a, b] = await pairUp();
+        const offers = [];
+        b.value.onoffer = (size) => offers.push(size);
+        let backups = 0;
+        b.value.onbackup = () => backups++;
+        a.value.channel.send(new Uint8Array(1000));          // chunks without an accepted offer
+        a.value.send({ t: 'send', size: 5 });
+        const second = new Promise((r) => { a.value.onmessage = r; });
+        a.value.send({ t: 'send', size: 6 });
+        expect(await second).toEqual({ t: 'declined' });
+        a.value.send({ t: 'sent' });
+        await new Promise((r) => setTimeout(r, 20));
+        expect(offers).toEqual([5]);
+        expect(backups).toBe(0);
+        expect(b.value._incoming).toBeNull();
     });
 
     it('passes other messages through once connected', async () => {
@@ -216,7 +286,7 @@ describe('connect', () => {
     });
 
     it('refuses a device that has a different key', async () => {
-        const [a, b] = await pairUp({ keyB: await pairKey(new Uint8Array(32).fill(4)) });
+        const [a, b] = await pairUp({ keyB: await pairAuth(new Uint8Array(32).fill(4)) });
         expect(a).toEqual({ status: 'rejected', reason: 'proof' });
         expect(b).toEqual({ status: 'rejected', reason: 'proof' });
     });

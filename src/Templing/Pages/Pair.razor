@@ -1,16 +1,19 @@
 @page "/pair"
 @* A pairing link (…/pair#<secret>, the QR code another device shows): hands the secret to Settings > Devices, which
-   joins that pairing. Replacing this history entry drops the secret from the back button. *@
+   joins that pairing. index.html has already taken the secret out of the address (templingTakePairSecret), before the
+   analytics tracker or anything else could see it. *@
 @inject Devices Devices
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <PageTitle>Pairing · Templing</PageTitle>
 
 @code {
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        var secret = new Uri(Nav.Uri).Fragment.TrimStart('#');
-        Devices.PendingJoin = AppInfo.Demo || secret.Length == 0 ? null : secret;
+        string? secret = null;
+        try { secret = await JS.InvokeAsync<string?>("templingTakePairSecret"); } catch (JSException) { }
+        Devices.PendingJoin = AppInfo.Demo || string.IsNullOrEmpty(secret) ? null : secret;
         Nav.NavigateTo("settings", replace: true);
     }
 }

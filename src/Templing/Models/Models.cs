@@ -436,4 +436,17 @@ public class CustomColours
     public Dictionary<string, string> Light { get; set; } = new();
     public Dictionary<string, string> Dark { get; set; } = new();
     public Dictionary<string, string> For(bool dark) => dark ? Dark : Light;
+
+    /// <summary>
+    /// "#rrggbb" (or "#rrggbbaa"), the only form a colour may take. Colours are written into a style sheet
+    /// (ThemeColours.Css), so anything else, from an old row or a restored backup, could break out of it.
+    /// </summary>
+    public static bool IsColour(string? value) => value != null && System.Text.RegularExpressions.Regex.IsMatch(value, "^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$");
+
+    /// <summary>Drops anything that isn't a colour (see <see cref="IsColour"/>). Run on every settings object that comes in.</summary>
+    public void Clean()
+    {
+        foreach (var map in new[] { Light ??= new(), Dark ??= new() })
+            foreach (var key in map.Where(kv => !IsColour(kv.Value)).Select(kv => kv.Key).ToList()) map.Remove(key);
+    }
 }

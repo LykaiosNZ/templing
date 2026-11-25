@@ -41,7 +41,7 @@ public static class ThemeColours
     /// <summary>The colour in use for a slot: the user's, else the built-in one.</summary>
     public static string Get(CustomColours? custom, string key, bool dark)
     {
-        if (custom != null && custom.For(dark).TryGetValue(key, out var c) && !string.IsNullOrWhiteSpace(c)) return c;
+        if (custom != null && custom.For(dark).TryGetValue(key, out var c) && CustomColours.IsColour(c)) return c;
         var slot = Slots.First(s => s.Key == key);
         return dark ? slot.Dark : slot.Light;
     }
@@ -68,7 +68,7 @@ public static class ThemeColours
 
     static void Apply(Palette p, CustomColours custom, bool dark)
     {
-        string? C(string key) => custom.For(dark).TryGetValue(key, out var c) ? c : null;
+        string? C(string key) => custom.For(dark).TryGetValue(key, out var c) && CustomColours.IsColour(c) ? c : null;
         if (C("accent") is { } a) p.Primary = a;
         if (C("data") is { } d) p.Secondary = d;
         if (C("good") is { } g) p.Success = g;
@@ -93,7 +93,8 @@ public static class ThemeColours
             if (map.Count == 0) continue;
             var mode = dark ? "dark" : "light";
             sb.Append($".theme-{mode}, :root:has(.theme-{mode}) {{");
-            string? C(string key) => map.TryGetValue(key, out var c) ? c : null;
+            // only #rrggbb: this text goes into a <style> as markup, so a value must never be able to close it
+            string? C(string key) => map.TryGetValue(key, out var c) && CustomColours.IsColour(c) ? c : null;
             if (C("accent") is { } a) sb.Append($"--accent:{a};--accent-soft:color-mix(in srgb,{a} {(dark ? 14 : 12)}%,transparent);");
             if (C("data") is { } d)
             {
