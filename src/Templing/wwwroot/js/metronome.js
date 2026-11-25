@@ -22,10 +22,6 @@ import * as countdown from './countdown.js';
 const LOOKAHEAD_MS = 25;
 const SCHEDULE_AHEAD = 0.12;
 
-// Applied after the volume slider: at 100% the Default click peaks around -6 dB (tuned by ear and on an
-// interface's meter). The synthesised cues are scaled down by it, so they stay at their old level.
-const OUTPUT_GAIN = 4;
-
 let ctx = null;
 let master = null;
 let dotnet = null;
@@ -40,24 +36,22 @@ let st = null;
 function ensureCtx() {
     if (!ctx) {
         ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
-        // sources -> master (the volume slider, 0-1) -> a fixed boost -> a limiter -> speakers.
-        // The click samples are quiet at their recorded level; the boost makes 100% loud enough, and the
-        // limiter keeps boosted accents and cues from clipping.
+        // sources -> master (the volume slider, 0-1) -> a limiter -> speakers.
+        // The click samples are peak-normalised to -1 dBFS (tools/sounds/normalize.mjs), so an accent at 100% is
+        // as loud as it can be without clipping, and the slider only turns it down. The limiter catches sounds
+        // that overlap (a long sample's tail under the next click, a cue on a beat).
         master = ctx.createGain();
-        const boost = ctx.createGain();
-        boost.gain.value = OUTPUT_GAIN;
         const limiter = ctx.createDynamicsCompressor();
         limiter.threshold.value = -1;
         limiter.knee.value = 0;
         limiter.ratio.value = 20;
         limiter.attack.value = 0.001;
         limiter.release.value = 0.1;
-        master.connect(boost);
-        boost.connect(limiter);
+        master.connect(limiter);
         limiter.connect(ctx.destination);
     }
     if (ctx.state === 'suspended') ctx.resume();
-    master.gain.value = cfg ? cfg.volume : 0.8;
+    master.gain.value = cfg ? cfg.volume : 1;
 }
 
 export function init(ref) { dotnet = ref; }
@@ -149,7 +143,7 @@ function click(time, kind) {
         o.frequency.value = kind === 'cue-hi' ? 1046 : kind === 'cue-end' ? 523 : 784;
         const dur = kind === 'cue-end' ? 0.6 : 0.18;
         g.gain.setValueAtTime(0.0001, time);
-        g.gain.exponentialRampToValueAtTime(0.6 / OUTPUT_GAIN, time + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.6, time + 0.01);
         g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
         o.connect(g); o.start(time); o.stop(time + dur + 0.02);
         return;
@@ -168,7 +162,7 @@ function playSample(id, time, kind, g) {
         const o = ctx.createOscillator();
         o.type = 'square'; o.frequency.value = kind === 'accent' ? 2000 : 1400;
         g.gain.setValueAtTime(0.0001, time);
-        g.gain.exponentialRampToValueAtTime(level * 0.5, time + 0.002);
+        g.gain.exponentialRampToValueAtTime(level * 0.9, time + 0.002); // about -1 dB, like the samples
         g.gain.exponentialRampToValueAtTime(0.0001, time + 0.025);
         o.connect(g); o.start(time); o.stop(time + 0.05);
         return;
