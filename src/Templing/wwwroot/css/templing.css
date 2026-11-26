@@ -459,8 +459,8 @@ button.tempo-value:focus-visible { outline: 2px solid var(--ring); outline-offse
 .pair-qr svg { display: block; width: 100%; height: auto; border-radius: 8px; }
 /* the pairing code and number are read off one screen and checked or typed on another: Atkinson Hyperlegible Mono
    (Braille Institute), drawn so that 0 / O, 1 / I / l, 8 / B, 5 / S can't be taken for each other; only these two use
-   it, so its file only loads when the pairing dialog shows them. The code also has no letters that look like digits
-   (link.js CODE_ALPHABET) */
+   it, so its file only loads when the pairing dialog shows them. That's what keeps the code readable: it uses every
+   digit and letter, each meaning just itself (link.js CODE_ALPHABET) */
 .pair-number, .pair-code { font-family: 'Atkinson Hyperlegible Mono', ui-monospace, monospace; color: var(--ink); text-align: center; font-weight: 600; }
 .pair-number { font-size: 2.2rem; letter-spacing: .06em; }
 .pair-code { font-size: 1.6rem; letter-spacing: .1em; margin: -4px 0 14px; user-select: all; }

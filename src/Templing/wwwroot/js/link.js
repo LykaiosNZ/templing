@@ -1,7 +1,7 @@
 // Device link: two of a person's devices connect directly over WebRTC and send a backup between them. The relay
 // (relay/ in the repo) only lets them swap a handshake; app data goes over the data channel, never through it.
 //
-// Pairing. One device shows a pairing code: ten characters someone can type (K7Q2M-9XDAH, about 48 random bits), as
+// Pairing. One device shows a pairing code: ten characters someone can type (K7Q2M-9XDAB, about 51 random bits), as
 // text and as a QR code of a link to …/pair#<code>. The other device scans the link or types the code. The code only
 // proves the pairing (it can't be guessed in its 10 minutes, and the steps below don't rest on it being long): both devices join a relay room and prove (below) that they hold it, then each adds 32 fresh random bytes
 // over the now encrypted channel, and the pair's key is HMAC(secret, both nonces). The device showing the code first
@@ -49,27 +49,26 @@ const te = new TextEncoder();
 
 export const toHex = (bytes) => [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, '0')).join('');
 
-// Pairing codes use digits and the capitals that can't be taken for one: Crockford's base 32 (no I, L, O or U) less
-// B, G, S and Z, which look like 8, 6, 5 and 2. Typing any of those eight for the digit it looks like still works.
-const CODE_ALPHABET = '0123456789ACDEFHJKMNPQRTVWXY';   // 28 characters
-const LOOKALIKES = { O: '0', I: '1', L: '1', B: '8', G: '6', S: '5', Z: '2' };
+// Pairing codes are digits and capital letters: all 36. The font they're shown in (Atkinson Hyperlegible Mono) keeps
+// look-alikes such as 0 / O and 1 / I apart, so every character means just itself.
+const CODE_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 export const CODE_LENGTH = 10;
 
-/** A new pairing code: ten random characters, each uniform (bytes from 252 up are skipped: 252 = 9 × 28). */
+/** A new pairing code: ten random characters, each uniform (bytes from 252 up are skipped: 252 = 7 × 36). */
 export function newCode() {
     let code = '';
     while (code.length < CODE_LENGTH) {
         for (const b of crypto.getRandomValues(new Uint8Array(CODE_LENGTH))) {
-            if (b < 252 && code.length < CODE_LENGTH) code += CODE_ALPHABET[b % 28];
+            if (b < 252 && code.length < CODE_LENGTH) code += CODE_ALPHABET[b % 36];
         }
     }
     return code;
 }
 
-/** A pairing code as typed or linked ("k7q2m-9xdah", "K7Q2M 9XDAH", with O for 0, S for 5…), in its one form; null if it isn't one. */
+/** A pairing code as typed or linked ("k7q2m-9xdab", "K7Q2M 9XDAB"), in its one form; null if it isn't one. */
 export function normalizeCode(text) {
     if (typeof text !== 'string') return null;
-    const code = text.toUpperCase().replace(/[\s-]/g, '').replace(/[OILBGSZ]/g, (c) => LOOKALIKES[c]);
+    const code = text.toUpperCase().replace(/[\s-]/g, '');
     return code.length === CODE_LENGTH && [...code].every((c) => CODE_ALPHABET.includes(c)) ? code : null;
 }
 
