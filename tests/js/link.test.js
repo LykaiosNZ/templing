@@ -48,15 +48,15 @@ describe('keys', () => {
     const secret = new Uint8Array(32).map((_, i) => i);
 
     it('makes ten-character pairing codes, and reads them however they were typed', () => {
-        for (let i = 0; i < 50; i++) expect(newCode()).toMatch(/^[0-9ACDEFHJKMNPQRTVWXY]{10}$/);   // no B G S Z, which look like digits
+        for (let i = 0; i < 50; i++) expect(newCode()).toMatch(/^[0-9A-Z]{10}$/);
         expect(new Set(Array.from({ length: 50 }, newCode)).size).toBe(50);
         expect(normalizeCode('K7Q2M-9XDAH')).toBe('K7Q2M9XDAH');
         expect(normalizeCode(' k7q2m 9xdah ')).toBe('K7Q2M9XDAH');
-        expect(normalizeCode('KOQ2M-9XDIL')).toBe('K0Q2M9XD11');   // O, I and L for 0, 1 and 1
-        expect(normalizeCode('BGSZ0-12345')).toBe('86520' + '12345');   // B, G, S and Z for 8, 6, 5 and 2
+        expect(normalizeCode('KOQ2M-9XDIL')).toBe('KOQ2M9XDIL');   // every character means just itself: O isn't 0
+        expect(normalizeCode('KOQ2M-9XDIL')).not.toBe(normalizeCode('K0Q2M-9XD1L'));
         expect(normalizeCode('K7Q2M-9XDA')).toBeNull();             // too short
         expect(normalizeCode('K7Q2M-9XDABC')).toBeNull();           // too long
-        expect(normalizeCode('K7Q2M-9XDAU')).toBeNull();            // U isn't used
+        expect(normalizeCode('K7Q2M-9XDA!')).toBeNull();            // not a letter or digit
         expect(normalizeCode(null)).toBeNull();
     });
 
