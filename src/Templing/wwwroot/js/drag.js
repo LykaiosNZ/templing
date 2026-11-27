@@ -4,10 +4,11 @@
 const blank = new Image();
 blank.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
+// Library cards (data-drag-card) are dragged into another group's box: they keep the browser's ghost of the card.
 document.addEventListener('dragstart', e => {
-    const handle = e.target instanceof Element ? e.target.closest('[data-drag-handle]') : null;
+    const handle = e.target instanceof Element ? e.target.closest('[data-drag-handle], [data-drag-card]') : null;
     if (!handle || !e.dataTransfer) return;
     e.dataTransfer.setData('text/plain', '');
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setDragImage(blank, 0, 0);
+    if (handle.hasAttribute('data-drag-handle')) e.dataTransfer.setDragImage(blank, 0, 0);
 });

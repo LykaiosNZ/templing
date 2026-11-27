@@ -91,6 +91,7 @@ kbd {
 /* Library list view: one row per piece, same columns as the header; the link is the row, actions sit at the end */
 .piece-list { display: flex; flex-direction: column; }
 .piece-list-head, .piece-row { display: grid; grid-template-columns: minmax(0, 1fr) 168px; align-items: center; gap: 8px; }
+.piece-list.with-groups .piece-list-head, .piece-list.with-groups .piece-row { grid-template-columns: minmax(0, 1fr) 198px; }   /* + the Group menu */
 .pr-cols { display: grid; grid-template-columns: 22px minmax(140px, 2fr) minmax(130px, 1fr) 170px 100px 110px; align-items: center; gap: 12px; min-width: 0; }
 .piece-list-head { padding: 0 8px 6px; font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--grid); }
 .piece-row { padding: 2px 8px; border-bottom: 1px solid var(--grid); border-radius: 8px; }
@@ -109,7 +110,7 @@ kbd {
     .pr-cols > .pr-time { display: none; } }
 @media (max-width: 700px) {
     .piece-list-head { display: none; }
-    .piece-row { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    .piece-row, .piece-list.with-groups .piece-row { grid-template-columns: minmax(0, 1fr); gap: 0; }
     .pr-cols, .piece-list.with-groups .pr-cols { grid-template-columns: 22px minmax(0, 1fr) auto; }
     .pr-wide { display: none; }
     .pr-actions { justify-content: flex-start; margin: -4px 0 4px 26px; }
@@ -128,6 +129,12 @@ kbd {
 .group-band.first .group-band-fill { border-top-width: 1px; border-radius: var(--radius) var(--radius) 0 0; padding-top: 4px; }
 .group-band.last .group-band-fill { border-bottom-width: 1px; border-bottom-left-radius: var(--radius); border-bottom-right-radius: var(--radius); padding-bottom: 0; }
 .group-band.ungrouped .group-band-fill { background: none; border-color: transparent; }
+.group-band.empty .group-band-fill { padding-bottom: 4px; }
+/* dragging a card (Library.razor): the box it would drop into lights up; No group gets an accent outline */
+.group-band.drop-target .group-band-fill { background: color-mix(in srgb, var(--group, var(--accent)) 20%, transparent); border-color: var(--group, var(--accent)); }
+.group-band.ungrouped.drop-target .group-band-fill { --group: var(--accent); }
+.piece-card.dragging { opacity: .4; }
+.piece-grid.grouped .piece-card[draggable="true"] { cursor: grab; }
 .group-head { display: flex; align-items: center; gap: 8px; min-height: 44px; }
 .group-title { font-size: 1rem; font-weight: 700; margin: 0; letter-spacing: -.01em; }
 /* a group's colour dot and name (GroupTag) */
