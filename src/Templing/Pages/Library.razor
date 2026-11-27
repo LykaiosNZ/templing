@@ -88,12 +88,10 @@ else
 {
     @if (Store.Settings.LibraryList)
     {
-        var withGroups = Store.Groups.Count > 0;
         <Pager Total="_rows.Count" PageSize="PageSize" Page="_page" PageChanged="GoToPage" Label="Library pages">
-        <div class="piece-list @(withGroups ? "with-groups" : "")" role="list">
+        <div class="piece-list" role="list">
             <div class="piece-list-head" aria-hidden="true">
-                <span class="pr-cols"><span></span><span>Piece</span>@if (withGroups)
-                {<span class="pr-wide">Group</span>}<span>Tempo</span><span class="pr-wide">Progress</span><span class="pr-wide">Last practised</span><span class="pr-wide pr-time">Practice time</span></span>
+                <span class="pr-cols"><span></span><span>Piece</span><span class="pr-wide">Group</span><span>Tempo</span><span class="pr-wide">Progress</span><span class="pr-wide">Last practised</span><span class="pr-wide pr-time">Practice time</span></span>
                 <span></span>
             </div>
             @* one page at a time, drawn in full, and not keyed: see CLAUDE.md, Long lists *@
@@ -105,11 +103,8 @@ else
                     <a class="piece-row-link pr-cols" href="library/@piece.Id" aria-label="@($"{piece.Name} details")">
                         <MudIcon Icon="@piece.Type.Icon()" Size="Size.Small" Class="fav-kind" title="@piece.Type.Label()" />
                         <span class="pr-name">@piece.Name</span>
-                        @if (withGroups)
-                        {
-                            @* drawn by the overlay below: a menu can't sit inside the row's link *@
-                            <span class="pr-group pr-wide"></span>
-                        }
+                        @* drawn by the overlay below: a menu can't sit inside the row's link; shown before any group exists too, so New group… is there *@
+                        <span class="pr-group pr-wide"></span>
                         <span class="pr-tempo">
                             @* "150 / 180 bpm": the unit once, so it fits *@
                             <span class="mono">@(st.Sessions == 0 ? "—" : st.Last?.ToString("0") ?? "—")</span>@if (piece.Goal is { } g)
@@ -132,11 +127,8 @@ else
                         <span class="muted small pr-wide">@(st.Sessions > 0 ? Stats.Ago(st.LastDate, DateTime.Today) : "Not started yet")</span>
                         <span class="muted small pr-wide pr-time" title="@(st.Sessions == 1 ? "1 session" : $"{st.Sessions} sessions")">@(st.Sessions > 0 ? Stats.Duration(st.TotalSec) : "")</span>
                     </a>
-                    @if (withGroups)
-                    {
-                        @* the Group column's menu, laid over the link on the same columns (only that cell takes clicks) *@
-                        <div class="pr-cols pr-overlay"><span></span><span></span><span class="pr-group pr-wide"><GroupPicker Piece="piece" /></span></div>
-                    }
+                    @* the Group column's menu, laid over the link on the same columns (only that cell takes clicks) *@
+                    <div class="pr-cols pr-overlay"><span></span><span></span><span class="pr-group pr-wide"><GroupPicker Piece="piece" /></span></div>
                     </div>
                     <span class="pr-actions">
                         @PracticeActions(piece)
@@ -225,14 +217,8 @@ else
                 </a>
                 <div class="piece-card-actions">
                     @PracticeActions(piece)
-                    @if (Store.Groups.Count > 0)
-                    {
-                        <span class="card-group"><GroupPicker Piece="piece" /></span>
-                    }
-                    else
-                    {
-                        <MudSpacer />
-                    }
+                    @* shown before any group exists too: its New group… is how a first group gets made from a card *@
+                    <span class="card-group"><GroupPicker Piece="piece" /></span>
                     @ManageActions(piece)
                 </div>
             </article>
