@@ -1,7 +1,6 @@
 @page "/library"
-@implements IAsyncDisposable
+@implements IDisposable
 @inject DataStore Store
-@inject IJSRuntime JS
 @inject IDialogService Dialogs
 @inject NavigationManager Nav
 
@@ -97,21 +96,11 @@ else
                 {<span class="pr-wide">Group</span>}<span>Tempo</span><span class="pr-wide">Progress</span><span class="pr-wide">Last practised</span><span class="pr-wide pr-time">Practice time</span></span>
                 <span></span>
             </div>
-            @if (_pageRows.Count > 0)
+            @* one page at a time, drawn in full, and not keyed: see CLAUDE.md, Long lists *@
+            @foreach (var row in _pageRows)
             {
-                @* plain outlines until the first rows are drawn, a moment later (CSS hides them then); they cost nothing to draw *@
-                <div class="row-placeholders" aria-hidden="true">
-                    @for (var i = 0; i < Math.Min(_pageRows.Count, 15); i++)
-                    {
-                        <div class="row-placeholder"><span class="ph-line ph-icon"></span><span class="ph-line ph-name"></span><span class="ph-line ph-tempo"></span></div>
-                    }
-                </div>
-            }
-            @* only the rows near the screen are drawn: a big library has hundreds, each with a dozen components *@
-            @* @key: Virtualize reuses elements as you scroll, so without it a bar animated from the last piece's progress *@
-            <Virtualize Items="_pageRows" Context="row" ItemSize="41" OverscanCount="5">
-                @{ var piece = row.Piece; var st = row.Stats; }
-                <div class="piece-row @(piece.Archived ? "archived" : "")" role="listitem" @key="piece.Id">
+                var piece = row.Piece; var st = row.Stats;
+                <div class="piece-row @(piece.Archived ? "archived" : "")" role="listitem">
                     <div class="pr-main">
                     <a class="piece-row-link pr-cols" href="library/@piece.Id" aria-label="@($"{piece.Name} details")">
                         <MudIcon Icon="@piece.Type.Icon()" Size="Size.Small" Class="fav-kind" title="@piece.Type.Label()" />
@@ -154,31 +143,17 @@ else
                         @ManageActions(piece)
                     </span>
                 </div>
-            </Virtualize>
+            }
         </div>
         </Pager>
     }
     else
     {
-    @* drawn a row of cards at a time, and only the rows near the screen (each card is about 20 components) *@
     <Pager Total="_rows.Count" PageSize="PageSize" Page="_page" PageChanged="GoToPage" Label="Library pages">
-    <div class="piece-grid" role="list" @ref="_grid" style="--cols:@_columns">
-        @if (_pageRows.Count > 0)
+    <div class="piece-grid" role="list">
+        @foreach (var row in _pageRows)
         {
-            @* plain card outlines until the first cards are drawn, a moment later (CSS hides them then); they cost nothing to draw *@
-            <div class="piece-grid-row card-placeholders" aria-hidden="true">
-                @for (var i = 0; i < Math.Min(_pageRows.Count, 12); i++)
-                {
-                    <div class="piece-card card-placeholder"><span class="ph-line ph-pill"></span><span class="ph-line ph-title"></span><span class="ph-line ph-big"></span><span class="ph-line ph-bar"></span></div>
-                }
-            </div>
-        }
-        @if (_columns > 0)
-        {
-        <Virtualize Items="_cardRows" Context="cardRow" ItemSize="232" OverscanCount="2">
-        @* @key: Virtualize reuses elements as you scroll, so without it a bar animated from the last piece's progress *@
-        <div @key="cardRow[0].Piece.Id">@CardRowContent(cardRow)</div>
-        </Virtualize>
+            @Card(row)
         }
     </div>
     </Pager>
@@ -186,14 +161,11 @@ else
 }
 
 @code {
-    RenderFragment CardRowContent(Row[] cards) =>
-        @<div class="piece-grid-row">
-        @foreach (var row in cards)
-        {
-            var piece = row.Piece; var st = row.Stats;
-            var cardGroup = Store.GetGroup(piece.GroupId);
+    RenderFragment Card(Row row) =>
+        @<text>
+            @{ var piece = row.Piece; var st = row.Stats; var cardGroup = Store.GetGroup(piece.GroupId); }
             @* a piece in a group is tinted with its colour *@
-            <article class="piece-card @(piece.Archived ? "archived" : "") @(cardGroup is null ? "" : "in-group")" role="listitem" @key="piece.Id"
+            <article class="piece-card @(piece.Archived ? "archived" : "") @(cardGroup is null ? "" : "in-group")" role="listitem"
                      style="@(cardGroup is null ? null : $"--group:{GroupColours.Hex(cardGroup.Colour)}")">
                 <a class="piece-card-link" href="library/@piece.Id" aria-label="@($"{piece.Name} details")">
                     <div class="piece-card-top">
@@ -264,8 +236,7 @@ else
                     @ManageActions(piece)
                 </div>
             </article>
-        }
-        </div>;
+        </text>;
 
     async Task SetListView(bool list) { Store.Settings.LibraryList = list; await Store.SaveSettingsAsync(); }
 
@@ -327,46 +298,14 @@ else
     void ShowPage()
     {
         _pageRows = Pager.Slice(_rows, _page, PageSize).ToList();
-        ChunkRows();
     }
 
     // the filters or sort changed: back to page 1
     void Filter() { _page = 1; Refresh(); }
 
-    // card view: the page's rows in rows of as many cards as fit (js/columns.js reports the count)
-    List<Row[]> _cardRows = new();
-    int _columns;
-    ElementReference _grid;
-    ElementReference? _watched;
-    IJSObjectReference? _columnsJs;
-    DotNetObjectReference<Library>? _self;
-
-    void ChunkRows() => _cardRows = _columns > 0 ? _pageRows.Chunk(_columns).ToList() : new();
-
     void ClearFilters() { _search = null; _type = "all"; _groups = []; Filter(); }
 
     async Task EditGroup(PieceGroup g) => await GroupDialog.ShowAsync(Dialogs, g);
-
-    [JSInvokable]
-    public void OnColumns(int columns)
-    {
-        if (columns == _columns) return;
-        _columns = columns;
-        ChunkRows();
-        StateHasChanged();
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        // watch the grid's width while it's shown; the list view has no grid
-        var grid = Store.Settings.LibraryList || Store.Pieces.Count == 0 || _rows.Count == 0 ? (ElementReference?)null : _grid;
-        if (grid?.Id == _watched?.Id) return;
-        _columnsJs ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/columns.js");
-        if (_watched is { } old) await _columnsJs.InvokeVoidAsync("unwatch", old);
-        _watched = grid;
-        if (grid is { } g) await _columnsJs.InvokeVoidAsync("watch", g, _self ??= DotNetObjectReference.Create(this));
-        else _columns = 0; // a grid shown again starts from its own measurement
-    }
 
     protected override void OnInitialized()
     {
@@ -429,11 +368,5 @@ else
     async Task Log(Piece piece) =>
         await LogDialog.ShowAsync(Dialogs, new PracticeLog { PieceId = piece.Id, PieceName = piece.Name, Unit = piece.Unit }, true);
 
-    public async ValueTask DisposeAsync()
-    {
-        Store.Changed -= OnStoreChanged;
-        try { if (_columnsJs != null && _watched is { } g) await _columnsJs.InvokeVoidAsync("unwatch", g); }
-        catch (JSDisconnectedException) { }
-        _self?.Dispose();
-    }
+    public void Dispose() => Store.Changed -= OnStoreChanged;
 }
