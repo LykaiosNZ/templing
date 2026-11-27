@@ -1,6 +1,7 @@
 // The metronome engine, run on a fake audio clock: what it plays, when, and what it reports to .NET.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { installFakeAudio } from './fakeaudio.js';
+import { installFakeWorker, throttlePageTimers } from './fakeworker.js';
 
 let m, audio, events;
 
@@ -52,6 +53,7 @@ beforeEach(async () => {
 afterEach(() => {
     m.stop();
     vi.useRealTimers();
+    vi.unstubAllGlobals();
 });
 
 describe('clicks', () => {
@@ -200,6 +202,68 @@ describe('intervals', () => {
         expectClose(times(), [0.08, 1.08, 2.08, 3.08]);
         expect(last('finished').reason).toBe('rest');
         expect(last('finished').active).toBe(0);
+    });
+});
+
+// The other tests run on the setInterval fallback (jsdom has no Worker); these give it the real tick script.
+describe('the tick worker', () => {
+    let workers;
+    beforeEach(() => { workers = installFakeWorker(); });
+
+    it('drives the scheduler', async () => {
+        await configure();
+        m.start();
+        advance(2.1);
+        expect(workers).toHaveLength(1);
+        expect(workers[0].messages).toEqual([25]);
+        expectClose(times(), [0.08, 0.58, 1.08, 1.58, 2.08]);
+    });
+
+    it('stops ticking on pause and stop, and the next run uses the same worker', async () => {
+        await configure();
+        m.start();
+        advance(1);
+        m.pause();
+        advance(0.1);
+        expect(workers[0].timers.size).toBe(0);
+        m.resume();
+        advance(1);
+        m.stop();
+        advance(0.1);
+        expect(workers[0].timers.size).toBe(0);
+        expect(workers[0].messages).toEqual([25, 0, 25, 0]);
+        m.start();
+        advance(0.1);
+        expect(workers).toHaveLength(1);
+        expect(workers[0].timers.size).toBe(1);
+    });
+
+    it("keeps the rest cues on time when the page's timers are slowed, as in a hidden tab", async () => {
+        throttlePageTimers(60_000);
+        await configure({ interval: { enabled: true, workSec: 5, restSec: 4, rounds: 2, cues: true } });
+        m.start();
+        advance(15);
+        const cues = audio.sounds.filter(s => s.kind.startsWith('cue'));
+        expectClose(times(cues), [2.08, 3.08, 4.08, 5.08, 6.08, 7.08, 8.08, 9.08, 11.43, 12.43, 13.43, 14.43]);
+        expect(audio.sounds.find(s => s.time > 9.08 && !s.kind.startsWith('cue')).time).toBeCloseTo(9.43);
+    });
+
+    it('a rest-only countdown pips on time in a hidden tab', async () => {
+        throttlePageTimers(1000);
+        await configure({ restFirstSec: 3, restOnly: true, interval: { cues: true } });
+        m.start();
+        advance(4);
+        expectClose(times(), [0.08, 1.08, 2.08, 3.08]);
+    });
+
+    it('without one, a hidden tab plays the first pip late, on top of the second', async () => {
+        vi.unstubAllGlobals(); // no Worker: the setInterval fallback, as before the worker
+        throttlePageTimers(1000);
+        await configure({ restFirstSec: 3, restOnly: true, interval: { cues: true } });
+        m.start();
+        advance(4);
+        expect(times()[0]).toBeGreaterThan(0.9);
+        expect(gaps()[0]).toBeLessThan(0.1);
     });
 });
 
