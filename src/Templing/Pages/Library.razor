@@ -31,6 +31,29 @@
     </MudChipSet>
     <MudSpacer />
     <div class="toolbar-end">
+    @if (Store.Groups.Count > 0)
+    {
+        @* several groups at once; none picked shows every piece *@
+        <MudSelect T="string" MultiSelection="true" SelectedValues="_groups" SelectedValuesChanged="GroupsChanged" MultiSelectionTextFunc="GroupsText" RelativeWidth="DropdownWidth.Adaptive" Clearable="true" OnClearButtonClick="ClearGroups"
+                   Label="Group" Variant="Variant.Outlined" Margin="Margin.Dense" Class="toolbar-select" Dense="true">
+            @foreach (var g in Store.Groups)
+            {
+                var group = g;
+                @* the pencil edits the group without picking it (CSS hides it in the field once picked) *@
+                <MudSelectItem T="string" Value="@g.Id">
+                    <span class="group-option">
+                        <GroupTag Group="group" />
+                        <span class="group-option-edit" @onclick:stopPropagation="true">
+                            <MudTooltip Text="Edit group">
+                                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit group {group.Name}")" OnClick="() => EditGroup(group)" />
+                            </MudTooltip>
+                        </span>
+                    </span>
+                </MudSelectItem>
+            }
+            <MudSelectItem T="string" Value="@NoGroup">No group</MudSelectItem>
+        </MudSelect>
+    }
     <MudToggleGroup T="bool" Value="Store.Settings.LibraryList" ValueChanged="SetListView" Color="Color.Primary" Size="Size.Small" Outlined="true" CheckMark="false"
                     Class="view-toggle" aria-label="View">
         <MudToggleItem Value="false"><MudTooltip Text="Cards"><MudIcon Icon="@Icons.Material.Rounded.GridView" Size="Size.Small" aria-label="Cards" /></MudTooltip></MudToggleItem>
@@ -55,13 +78,22 @@
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Add" Class="mt-2">Add your first piece</MudButton>
     </div>
 }
+else if (_rows.Count == 0)
+{
+    <div class="empty-state">
+        <MudText Typo="Typo.h6">No matching pieces</MudText>
+        <MudButton Variant="Variant.Outlined" OnClick="ClearFilters">Clear filters</MudButton>
+    </div>
+}
 else
 {
     @if (Store.Settings.LibraryList)
     {
-        <div class="piece-list" role="list">
+        var withGroups = Store.Groups.Count > 0;
+        <div class="piece-list @(withGroups ? "with-groups" : "")" role="list">
             <div class="piece-list-head" aria-hidden="true">
-                <span class="pr-cols"><span></span><span>Piece</span><span>Tempo</span><span class="pr-wide">Progress</span><span class="pr-wide">Last practised</span><span class="pr-wide">Practice time</span></span>
+                <span class="pr-cols"><span></span><span>Piece</span>@if (withGroups)
+                {<span class="pr-wide">Group</span>}<span>Tempo</span><span class="pr-wide">Progress</span><span class="pr-wide">Last practised</span><span class="pr-wide pr-time">Practice time</span></span>
                 <span></span>
             </div>
             @if (_rows.Count > 0)
@@ -82,6 +114,11 @@ else
                     <a class="piece-row-link pr-cols" href="library/@piece.Id" aria-label="@($"{piece.Name} details")">
                         <MudIcon Icon="@piece.Type.Icon()" Size="Size.Small" Class="fav-kind" title="@piece.Type.Label()" />
                         <span class="pr-name">@piece.Name</span>
+                        @if (withGroups)
+                        {
+                            <span class="pr-group pr-wide">@if (Store.GetGroup(piece.GroupId) is { } pg)
+                            {<GroupTag Group="pg" />}</span>
+                        }
                         <span class="pr-tempo">
                             @* "150 / 180 bpm": the unit once, so it fits *@
                             <span class="mono">@(st.Sessions == 0 ? "—" : st.Last?.ToString("0") ?? "—")</span>@if (piece.Goal is { } g)
@@ -102,7 +139,7 @@ else
                             }
                         </span>
                         <span class="muted small pr-wide">@(st.Sessions > 0 ? Stats.Ago(st.LastDate, DateTime.Today) : "Not started yet")</span>
-                        <span class="muted small pr-wide" title="@(st.Sessions == 1 ? "1 session" : $"{st.Sessions} sessions")">@(st.Sessions > 0 ? Stats.Duration(st.TotalSec) : "")</span>
+                        <span class="muted small pr-wide pr-time" title="@(st.Sessions == 1 ? "1 session" : $"{st.Sessions} sessions")">@(st.Sessions > 0 ? Stats.Duration(st.TotalSec) : "")</span>
                     </a>
                     <span class="pr-actions">
                         @PracticeActions(piece)
@@ -115,7 +152,7 @@ else
     else
     {
     @* drawn a row of cards at a time, and only the rows near the screen (each card is about 20 components) *@
-    <div class="piece-grid" role="list" @ref="_grid" style="--cols:@_columns">
+    <div class="piece-grid @(_grouped ? "grouped" : "")" role="list" @ref="_grid" style="--cols:@_columns">
         @if (_rows.Count > 0)
         {
             @* plain card outlines until the first cards are drawn, a moment later (CSS hides them then); they cost nothing to draw *@
@@ -130,8 +167,41 @@ else
         {
         <Virtualize Items="_cardRows" Context="cardRow" ItemSize="232" OverscanCount="2">
         @* @key: Virtualize reuses elements as you scroll, so without it a bar animated from the last piece's progress *@
-        <div class="piece-grid-row" @key="cardRow[0].Piece.Id">
-        @foreach (var row in cardRow)
+        @if (cardRow.Band is { } band)
+        {
+            @* grouped: each row is a slice of its group's tinted box (the first slice has the heading, the last one the bottom edge),
+               since a virtualised list can't wrap a group's rows in one element *@
+            <div class="group-band @(cardRow.First ? "first" : "") @(cardRow.Last ? "last" : "") @(band.Group is null ? "ungrouped" : "")"
+                 style="@(band.Group is { } bg ? $"--group:{GroupColours.Hex(bg.Colour)}" : null)" @key="cardRow.Key">
+                <div class="group-band-fill">
+                    @if (cardRow.First)
+                    {
+                        @GroupHead(band)
+                    }
+                    @CardRowContent(cardRow.Cards)
+                </div>
+            </div>
+        }
+        else
+        {
+            <div @key="cardRow.Key">@CardRowContent(cardRow.Cards)</div>
+        }
+        </Virtualize>
+        }
+    </div>
+    }
+}
+
+@code {
+    RenderFragment GroupHead(Band band) =>
+        @<div class="group-head">
+            <h2 class="group-title @(band.Group is null ? "muted" : "")">@(band.Group?.Name ?? "No group")</h2>
+            <span class="muted small">@(band.Count == 1 ? "1 piece" : $"{band.Count} pieces")</span>
+        </div>;
+
+    RenderFragment CardRowContent(Row[] cards) =>
+        @<div class="piece-grid-row">
+        @foreach (var row in cards)
         {
             var piece = row.Piece; var st = row.Stats;
             <article class="piece-card @(piece.Archived ? "archived" : "")" role="listitem" @key="piece.Id">
@@ -197,14 +267,8 @@ else
                 </div>
             </article>
         }
-        </div>
-        </Virtualize>
-        }
-    </div>
-    }
-}
+        </div>;
 
-@code {
     async Task SetListView(bool list) { Store.Settings.LibraryList = list; await Store.SaveSettingsAsync(); }
 
     // the same buttons on cards and list rows
@@ -236,20 +300,64 @@ else
     string? _search;
     string? _type = "all";
     string _sort = "recent";
+    const string NoGroup = "none";
+    // the groups picked in the filter (NoGroup for the pieces in none); empty = every piece
+    IReadOnlyCollection<string> _groups = [];
+
+    void GroupsChanged(IEnumerable<string> picked) { _groups = picked.ToList(); Refresh(); }
+    // the field's × goes back to All groups
+    void ClearGroups() { _groups = []; Refresh(); }
+
+    string GroupsText(IReadOnlyList<string> picked) => picked.Count switch
+    {
+        0 => "All groups",
+        1 => picked[0] == NoGroup ? "No group" : Store.GetGroup(picked[0])?.Name ?? "All groups",
+        var n => $"{n} groups",
+    };
+    // cards are drawn in their groups (a tinted box each) once any piece shown is in one
+    bool _grouped;
     bool _showArchived;
     // the stats sort and filter needs; a card's feel rating and section bars come from Store as it's drawn
     record Row(Piece Piece, PieceStats Stats);
     List<Row> _rows = new();
 
-    // card view: _rows in rows of as many cards as fit (js/columns.js reports the count)
-    List<Row[]> _cardRows = new();
+    // card view: _rows in rows of as many cards as fit (js/columns.js reports the count); grouped, each group's rows,
+    // groups by name and then the pieces in none
+    record Band(PieceGroup? Group, int Count);
+    record CardRow(string Key, Row[] Cards, Band? Band = null, bool First = false, bool Last = false);
+    List<CardRow> _cardRows = new();
     int _columns;
     ElementReference _grid;
     ElementReference? _watched;
+    bool _watchedGrouped;
     IJSObjectReference? _columnsJs;
     DotNetObjectReference<Library>? _self;
 
-    void ChunkRows() => _cardRows = _columns > 0 ? _rows.Chunk(_columns).ToList() : new();
+    void ChunkRows()
+    {
+        _cardRows = new();
+        if (_columns <= 0) return;
+        if (!_grouped)
+        {
+            _cardRows.AddRange(_rows.Chunk(_columns).Select(c => new CardRow(c[0].Piece.Id, c)));
+            return;
+        }
+        var groups = Store.Groups.ToDictionary(g => g.Id);
+        // Store.Groups is in name order; the rows keep the chosen sort inside each group
+        var bands = _rows.GroupBy(r => r.Piece.GroupId is { } id && groups.ContainsKey(id) ? id : "")
+            .OrderBy(g => g.Key == "" ? int.MaxValue : Store.Groups.FindIndex(x => x.Id == g.Key));
+        foreach (var rows in bands)
+        {
+            var band = new Band(rows.Key == "" ? null : groups[rows.Key], rows.Count());
+            var chunks = rows.Chunk(_columns).ToList();
+            for (var i = 0; i < chunks.Count; i++)
+                _cardRows.Add(new CardRow($"{rows.Key}/{chunks[i][0].Piece.Id}", chunks[i], band, i == 0, i == chunks.Count - 1));
+        }
+    }
+
+    void ClearFilters() { _search = null; _type = "all"; _groups = []; Refresh(); }
+
+    async Task EditGroup(PieceGroup g) => await GroupDialog.ShowAsync(Dialogs, g);
 
     [JSInvokable]
     public void OnColumns(int columns)
@@ -262,9 +370,11 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // watch the grid's width while it's shown; the list view has no grid
-        var grid = Store.Settings.LibraryList || Store.Pieces.Count == 0 ? (ElementReference?)null : _grid;
-        if (grid?.Id == _watched?.Id) return;
+        // watch the grid's width while it's shown; the list view has no grid. Grouping changes the room for cards
+        // (the boxes' padding), so measure again when that changes
+        var grid = Store.Settings.LibraryList || Store.Pieces.Count == 0 || _rows.Count == 0 ? (ElementReference?)null : _grid;
+        if (grid?.Id == _watched?.Id && _grouped == _watchedGrouped) return;
+        _watchedGrouped = _grouped;
         _columnsJs ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/columns.js");
         if (_watched is { } old) await _columnsJs.InvokeVoidAsync("unwatch", old);
         _watched = grid;
@@ -282,9 +392,19 @@ else
 
     void Refresh()
     {
+        if (_groups.Any(id => id != NoGroup && Store.GetGroup(id) is null))   // a group was deleted
+            _groups = _groups.Where(id => id == NoGroup || Store.GetGroup(id) is not null).ToList();
         var q = Store.Pieces.Where(i => _showArchived || !i.Archived);
-        if (!string.IsNullOrWhiteSpace(_search)) q = q.Where(i => i.Name.Contains(_search, StringComparison.OrdinalIgnoreCase));
+        // the search finds a group's pieces by its name too
+        if (!string.IsNullOrWhiteSpace(_search))
+            q = q.Where(i => i.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)
+                || Store.GetGroup(i.GroupId)?.Name.Contains(_search, StringComparison.OrdinalIgnoreCase) == true);
         if (_type is { } t && t != "all") q = q.Where(i => i.Type.ToString() == t);
+        if (_groups.Count > 0)
+        {
+            var picked = _groups.ToHashSet();
+            q = q.Where(i => Store.GetGroup(i.GroupId) is { } g ? picked.Contains(g.Id) : picked.Contains(NoGroup));
+        }
         var rows = q.Select(i => new Row(i, Store.StatsFor(i)));
         _rows = (_sort switch
         {
@@ -293,6 +413,7 @@ else
             "time" => rows.OrderByDescending(r => r.Stats.TotalSec),
             _ => rows.OrderByDescending(r => r.Stats.LastDate ?? DateTime.MinValue).ThenBy(r => r.Piece.Name)
         }).ToList();
+        _grouped = Store.Groups.Count > 0 && _rows.Any(r => Store.GetGroup(r.Piece.GroupId) is not null);
         ChunkRows();
     }
 

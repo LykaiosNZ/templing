@@ -7,10 +7,12 @@ public class BackupTests
 {
     static async Task<DataStore> Filled()
     {
-        var piece = new Piece { Name = "Spain", Goal = 140, Sections = [new Section { Name = "Intro", Bpm = 90, ScoreBars = [[0, 4, 4], [1, 3, 4]] }] };
+        var group = new PieceGroup { Name = "Chick Corea", Colour = "teal" };
+        var piece = new Piece { Name = "Spain", Goal = 140, GroupId = group.Id, Sections = [new Section { Name = "Intro", Bpm = 90, ScoreBars = [[0, 4, 4], [1, 3, 4]] }] };
         var (store, _) = await FakeJs.StoreAsync(db =>
         {
             db.Seed("pieces", piece);
+            db.Seed("groups", group);
             db.Seed("logs", new PracticeLog { PieceId = piece.Id, PieceName = piece.Name, Value = 100, ValueMin = 90, Effort = 2 });
             db.Seed("presets", new MetronomePreset { Name = "Odd" });
             db.Seed("plans", new PracticePlan { Steps = [new PlanStep { PieceId = piece.Id, Trainer = true }] });
@@ -42,7 +44,7 @@ public class BackupTests
 
         Assert.Equal(150, target.Settings.WeeklyGoalMin);
         Assert.Single(target.Pieces);
-        Assert.Equal("Restored 1 piece, 1 log entry, 1 plan and 1 custom metronome", summary);
+        Assert.Equal("Restored 1 piece, 1 group, 1 log entry, 1 plan and 1 custom metronome", summary);
     }
 
     [Fact]
@@ -193,6 +195,18 @@ public class BackupTests
 
         Assert.Equal(99, store.Settings.WeeklyGoalMin);
         Assert.False(store.Settings.DarkMode);
+
+        // groups came in format 5
+        if (format >= 5)
+        {
+            var group = Assert.Single(store.Groups);
+            Assert.Equal(("Chick Corea", "teal", group.Id), (group.Name, group.Colour, piece.GroupId));
+        }
+        else
+        {
+            Assert.Empty(store.Groups);
+            Assert.Null(piece.GroupId);
+        }
     }
 
     /// <summary>

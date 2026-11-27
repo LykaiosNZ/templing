@@ -147,7 +147,44 @@ public class Piece
     public bool Favourite { get; set; }
     /// <summary>The metronome's click for this piece (a <c>ClickSounds</c> id); null = the default from Settings.</summary>
     public string? Sound { get; set; }
+    /// <summary>The <see cref="PieceGroup"/> it's in (one at most); null = no group. A deleted group leaves it null.</summary>
+    public string? GroupId { get; set; }
     public DateTime Created { get; set; } = DateTime.Now;
+}
+
+/// <summary>A named, coloured group of pieces in the library (e.g. an artist or a set list). Shown in name order.</summary>
+public class PieceGroup
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string Name { get; set; } = "";
+    /// <summary>A <see cref="GroupColours"/> key. Anything else (an old or foreign backup) reads as the default.</summary>
+    public string Colour { get; set; } = GroupColours.Default;
+}
+
+/// <summary>
+/// The colours a group can have: a fixed palette that tints well in light and dark mode. Groups store the key, never a
+/// colour value, so a backup from elsewhere can't put anything else into a style attribute.
+/// </summary>
+public static class GroupColours
+{
+    public const string Default = "blue";
+
+    public static readonly IReadOnlyList<(string Key, string Label, string Hex)> All =
+    [
+        ("red", "Red", "#e5484d"),
+        ("orange", "Orange", "#f76b15"),
+        ("amber", "Amber", "#e2a336"),
+        ("green", "Green", "#30a46c"),
+        ("teal", "Teal", "#12a594"),
+        ("blue", "Blue", "#0090ff"),
+        ("indigo", "Indigo", "#3e63dd"),
+        ("purple", "Purple", "#8e4ec6"),
+        ("pink", "Pink", "#d6409f"),
+        ("grey", "Grey", "#8b8d98"),
+    ];
+
+    /// <summary>The colour for a key, the default's for an unknown one.</summary>
+    public static string Hex(string? key) => (All.FirstOrDefault(c => c.Key == key) is { Key: not null } c ? c : All.First(c => c.Key == Default)).Hex;
 }
 
 public class PracticeLog

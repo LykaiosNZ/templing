@@ -22,6 +22,38 @@ public class DataStoreTests
     }
 
     [Fact]
+    public async Task Groups_load_and_stay_in_name_order()
+    {
+        var (store, js) = await FakeJs.StoreAsync(db => db.Seed("groups", new PieceGroup { Name = "warm-ups" }, new PieceGroup { Name = "Bach" }));
+        Assert.Equal(["Bach", "warm-ups"], store.Groups.Select(g => g.Name));
+
+        await store.SaveGroupAsync(new PieceGroup { Name = "Metallica" });
+        Assert.Equal(["Bach", "Metallica", "warm-ups"], store.Groups.Select(g => g.Name));
+        Assert.Equal(3, js.Db.Count("groups"));
+        Assert.Same(store.Groups[0], store.FindGroupByName(" bach "));
+    }
+
+    [Fact]
+    public async Task Deleting_a_group_keeps_its_pieces_in_no_group()
+    {
+        var group = new PieceGroup { Name = "Set list" };
+        var other = new PieceGroup { Name = "Other" };
+        var (store, js) = await FakeJs.StoreAsync(db =>
+        {
+            db.Seed("groups", group, other);
+            db.Seed("pieces", new Piece { Id = "a", Name = "A", GroupId = group.Id }, new Piece { Id = "b", Name = "B", GroupId = other.Id });
+        });
+
+        await store.DeleteGroupAsync(group);
+
+        Assert.Equal([other.Id], store.Groups.Select(g => g.Id));
+        Assert.Equal(1, js.Db.Count("groups"));
+        Assert.Null(store.GetPiece("a")!.GroupId);
+        Assert.Null(js.Db.Row<Piece>("pieces", "a")!.GroupId);
+        Assert.Equal(other.Id, store.GetPiece("b")!.GroupId);
+    }
+
+    [Fact]
     public async Task An_empty_database_gets_default_settings()
     {
         var (store, _) = await FakeJs.StoreAsync();
@@ -137,13 +169,14 @@ public class DataStoreTests
             db.Seed("logs", new PracticeLog());
             db.Seed("presets", new MetronomePreset());
             db.Seed("plans", new PracticePlan());
+            db.Seed("groups", new PieceGroup());
             db.Seed("files", new { Id = "f" });
             db.Seed("session", new { Id = "planrun" });
             db.Seed("settings", new AppSettings());
         });
         await store.ClearAllAsync();
-        Assert.Empty(store.Pieces); Assert.Empty(store.Logs); Assert.Empty(store.Presets); Assert.Empty(store.Plans);
-        foreach (var s in new[] { "pieces", "logs", "presets", "plans", "files", "session" }) Assert.Equal(0, js.Db.Count(s));
+        Assert.Empty(store.Pieces); Assert.Empty(store.Logs); Assert.Empty(store.Presets); Assert.Empty(store.Plans); Assert.Empty(store.Groups);
+        foreach (var s in new[] { "pieces", "logs", "presets", "plans", "groups", "files", "session" }) Assert.Equal(0, js.Db.Count(s));
         Assert.Equal(1, js.Db.Count("settings"));
     }
 

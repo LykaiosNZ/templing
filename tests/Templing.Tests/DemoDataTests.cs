@@ -53,6 +53,8 @@ public class DemoDataTests
             if (step.SectionId != null) Assert.Contains(piece.Sections, s => s.Id == step.SectionId);
         }
         Assert.All(d.Pieces, p => Assert.Equal(p.Sections.Count, p.Sections.Select(s => s.Id).Distinct().Count()));
+        Assert.All(d.Pieces.Where(p => p.GroupId != null), p => Assert.Contains(d.Groups, g => g.Id == p.GroupId));
+        Assert.Contains(d.Pieces, p => p.GroupId == null);   // the Library shows "No group" too
         Assert.All(d.Logs.Where(l => l.Value != null), l => Assert.InRange(l.Value!.Value, TempoLimits.Min(l.Unit), TempoLimits.Max(l.Unit)));
     }
 

@@ -1,0 +1,122 @@
+@* A library group: name and colour (from GroupColours). New groups come from the piece editor; existing ones are edited
+   from the Library (a group's heading on the cards, or beside the group filter), with Delete on the left. *@
+@inject DataStore Store
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <div class="d-flex flex-column gap-4">
+            <MudTextField @ref="_field" T="string" @bind-Value="_name" Label="Name" Placeholder="e.g. an artist or a set list" Immediate="true"
+                          OnKeyDown="KeyDown" OnKeyUp="KeyUp" />
+            <div>
+                <MudText Typo="Typo.subtitle2" Class="mb-1" id="group-colour-label">Colour</MudText>
+                <div class="group-swatches" role="radiogroup" aria-labelledby="group-colour-label">
+                    @foreach (var c in GroupColours.All)
+                    {
+                        var key = c.Key;
+                        var on = key == _colour;
+                        <MudTooltip Text="@c.Label">
+                            <button type="button" role="radio" aria-checked="@(on ? "true" : "false")" aria-label="@c.Label"
+                                    class="group-swatch @(on ? "on" : "")" style="--group:@c.Hex" @onclick="() => _colour = key">
+                                @if (on)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Rounded.Check" Size="Size.Small" />
+                                }
+                            </button>
+                        </MudTooltip>
+                    }
+                </div>
+            </div>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        @if (!IsNew)
+        {
+            <MudButton Color="Color.Error" OnClick="Delete">Delete</MudButton>
+        }
+        @if (Blocker is { } why)
+        {
+            <MudText Typo="Typo.body2" Class="muted ml-2">@why</MudText>
+        }
+        <MudSpacer />
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(Blocker != null)" OnClick="Save">@(IsNew ? "Add" : "Save")</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public PieceGroup? Group { get; set; }
+    bool IsNew => Group is null;
+
+    MudTextField<string>? _field;
+    string? _name;
+    string _colour = GroupColours.Default;
+
+    string? Blocker
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_name)) return "Add a name";
+            var clash = Store.FindGroupByName(_name);
+            return clash is null || clash.Id == Group?.Id ? null : $"You already have “{clash.Name}”";
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        _name = Group?.Name;
+        // a new group takes the first colour no group uses yet, so groups start out apart
+        _colour = Group?.Colour is { } c && GroupColours.All.Any(x => x.Key == c) ? c
+            : GroupColours.All.FirstOrDefault(x => Store.Groups.All(g => g.Colour != x.Key)).Key ?? GroupColours.Default;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _field is null) return;
+        await Task.Yield(); // after the dialog has taken focus for itself
+        await _field.FocusAsync();
+        if (!string.IsNullOrEmpty(_name)) await _field.SelectAsync();
+    }
+
+    async Task Save()
+    {
+        if (Blocker != null) return;
+        var g = Group ?? new PieceGroup();
+        g.Name = _name!.Trim();
+        g.Colour = _colour;
+        await Store.SaveGroupAsync(g);
+        Dialog.Close(DialogResult.Ok(g));
+    }
+
+    async Task Delete()
+    {
+        var count = Store.Pieces.Count(p => p.GroupId == Group!.Id);
+        var stays = count switch
+        {
+            0 => null,
+            1 => "Its piece stays in your library, in no group.",
+            _ => $"Its {count} pieces stay in your library, in no group.",
+        };
+        if (!await ConfirmDialog.DeleteAsync(Dialogs, "group", Group!.Name, stays)) return;
+        await Store.DeleteGroupAsync(Group);
+        Snackbar.Add($"Deleted “{Group.Name}”", Severity.Info);
+        Dialog.Close(DialogResult.Ok<PieceGroup?>(null));
+    }
+
+    // Enter acts on its keyup, as in PromptDialog (closing on the keydown lets the keypress click the opening button)
+    bool _enterDown;
+    void KeyDown(KeyboardEventArgs e) { if (e.Key == "Enter") _enterDown = true; }
+    async Task KeyUp(KeyboardEventArgs e) { if (e.Key == "Enter" && _enterDown) await Save(); }
+
+    /// <summary>Adds a group (<paramref name="group"/> null) or edits one. Returns the saved group; null when cancelled or deleted.</summary>
+    public static async Task<PieceGroup?> ShowAsync(IDialogService dialogs, PieceGroup? group = null)
+    {
+        var p = new DialogParameters<GroupDialog> { { x => x.Group, group } };
+        var r = await dialogs.ShowAsync<GroupDialog>(group is null ? "New group" : "Edit group", p,
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = true });
+        var res = await r.Result;
+        return res is { Canceled: false } ? res.Data as PieceGroup : null;
+    }
+}

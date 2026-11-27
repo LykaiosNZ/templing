@@ -16,6 +16,8 @@ public class DataStore(IJSRuntime js)
     public List<PracticeLog> Logs { get; private set; } = new();
     public List<MetronomePreset> Presets { get; private set; } = new();
     public List<PracticePlan> Plans { get; private set; } = new();
+    /// <summary>Library groups, in name order.</summary>
+    public List<PieceGroup> Groups { get; private set; } = new();
     public AppSettings Settings { get; private set; } = new();
     public bool Loaded { get; private set; }
     /// <summary>
@@ -58,6 +60,8 @@ public class DataStore(IJSRuntime js)
         Logs = await GetAll<PracticeLog>("logs");
         Presets = await GetAll<MetronomePreset>("presets");
         Plans = await GetAll<PracticePlan>("plans");
+        Groups = await GetAll<PieceGroup>("groups");
+        SortGroups();
         var settings = await GetAll<AppSettings>("settings");
         Settings = settings.FirstOrDefault() ?? new AppSettings();
         Settings.Colours?.Clean();
@@ -74,6 +78,7 @@ public class DataStore(IJSRuntime js)
         await PutMany("logs", d.Logs);
         await PutMany("presets", d.Presets);
         await PutMany("plans", d.Plans);
+        await PutMany("groups", d.Groups);
         await Put("settings", d.Settings);
     }
 #endif
@@ -127,6 +132,36 @@ public class DataStore(IJSRuntime js)
         Invalidate();
         if (deleteLogs) foreach (var l in logs) await Remove("logs", l.Id);
         if (!deleteLogs && logs.Count > 0) await PutMany("logs", logs);
+        Notify();
+    }
+
+    // ---------- Groups ----------
+    public PieceGroup? GetGroup(string? id) => id is null ? null : Groups.FirstOrDefault(g => g.Id == id);
+
+    /// <summary>The group with this name (ignoring case and spaces at the ends), if there is one.</summary>
+    public PieceGroup? FindGroupByName(string name) =>
+        Groups.FirstOrDefault(g => string.Equals(g.Name.Trim(), name.Trim(), StringComparison.OrdinalIgnoreCase));
+
+    private void SortGroups() => Groups.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase));
+
+    public async Task SaveGroupAsync(PieceGroup group)
+    {
+        var idx = Groups.FindIndex(g => g.Id == group.Id);
+        if (idx >= 0) Groups[idx] = group; else Groups.Add(group);
+        SortGroups();
+        await Put("groups", group);
+        Notify();
+    }
+
+    /// <summary>Deletes a group. Its pieces stay in the library, in no group.</summary>
+    public async Task DeleteGroupAsync(PieceGroup group)
+    {
+        Groups.RemoveAll(g => g.Id == group.Id);
+        var pieces = Pieces.Where(p => p.GroupId == group.Id).ToList();
+        foreach (var p in pieces) p.GroupId = null;
+        Invalidate();
+        await Remove("groups", group.Id);
+        if (pieces.Count > 0) await PutMany("pieces", pieces);
         Notify();
     }
 
@@ -269,16 +304,20 @@ public class DataStore(IJSRuntime js)
     // ---------- Bulk ----------
     /// <summary>Bulk upsert used by backup restore. New persisted entity? Add it here and in Backup.cs (see CLAUDE.md).</summary>
     public async Task ImportAsync(IEnumerable<Piece> pieces, IEnumerable<PracticeLog> logs,
-        IEnumerable<MetronomePreset>? presets = null, IEnumerable<PracticePlan>? plans = null)
+        IEnumerable<MetronomePreset>? presets = null, IEnumerable<PracticePlan>? plans = null, IEnumerable<PieceGroup>? groups = null)
     {
         var il = pieces.ToList(); var ll = logs.ToList(); var pl = presets?.ToList() ?? new(); var pp = plans?.ToList() ?? new();
+        var gl = groups?.ToList() ?? new();
         Replace(Pieces, il, x => x.Id); Replace(Logs, ll, x => x.Id); Replace(Presets, pl, x => x.Id); Replace(Plans, pp, x => x.Id);
+        Replace(Groups, gl, x => x.Id);
         Invalidate();
         Pieces.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+        SortGroups();
         if (il.Count > 0) await PutMany("pieces", il);
         if (ll.Count > 0) await PutMany("logs", ll);
         if (pl.Count > 0) await PutMany("presets", pl);
         if (pp.Count > 0) await PutMany("plans", pp);
+        if (gl.Count > 0) await PutMany("groups", gl);
         Notify();
     }
 
@@ -294,8 +333,8 @@ public class DataStore(IJSRuntime js)
     public async Task ClearAllAsync()
     {
         // "devices" (js/link.js: this device's identity and its pairings) goes too; Devices.ResetAsync starts the link afresh
-        foreach (var s in new[] { "pieces", "logs", "presets", "files", "plans", "session", "devices" }) await _db!.InvokeVoidAsync("clear", s);
-        Pieces.Clear(); Logs.Clear(); Presets.Clear(); Plans.Clear();
+        foreach (var s in new[] { "pieces", "logs", "presets", "files", "plans", "session", "devices", "groups" }) await _db!.InvokeVoidAsync("clear", s);
+        Pieces.Clear(); Logs.Clear(); Presets.Clear(); Plans.Clear(); Groups.Clear();
         Invalidate();
         Notify();
     }
