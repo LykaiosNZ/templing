@@ -37,8 +37,9 @@ public static class Backup
     ///     plan step kind Item → Piece). Formats 1–2 can't be restored (pre-release, no migration kept).
     /// 4 = the format number is "Format" (it was "Version", which read like the app's version), and the file
     ///     records the app version that wrote it ("AppVersion") and when ("Exported").
+    /// 5 = + groups (library groups; pieces carry "GroupId").
     /// </summary>
-    public const int Format = 4;
+    public const int Format = 5;
 
     /// <summary>The oldest format that still restores. Never raise it: that breaks people's backups.</summary>
     public const int OldestSupported = 3;
@@ -50,6 +51,7 @@ public static class Backup
     public static readonly IReadOnlyDictionary<int, Action<JsonObject>> Migrations = new Dictionary<int, Action<JsonObject>>
     {
         [3] = b => b.Remove("Version"),
+        [4] = _ => { },   // groups are new: an older backup has none, and its pieces none either
     };
 
     /// <summary>The backup file. New fields must be nullable with a default so older files still deserialize.</summary>
@@ -61,14 +63,15 @@ public static class Backup
         List<PracticeLog>? Logs,
         List<MetronomePreset>? Presets,
         AppSettings? Settings,
-        List<PracticePlan>? Plans = null);
+        List<PracticePlan>? Plans = null,
+        List<PieceGroup>? Groups = null);
 
     private static readonly JsonSerializerOptions Indented = new(DataStore.Json) { WriteIndented = true };
 
     /// <summary>The backup file as UTF-8 JSON, ready to save (<see cref="DataStore.DownloadAsync(string, byte[], string)"/>).</summary>
     public static byte[] ExportUtf8(DataStore store, DateTimeOffset? now = null) =>
         JsonSerializer.SerializeToUtf8Bytes(new BackupFile(Format, AppInfo.InformationalVersion, now ?? DateTimeOffset.Now,
-            store.Pieces, store.Logs, store.Presets, store.Settings, store.Plans), Indented);
+            store.Pieces, store.Logs, store.Presets, store.Settings, store.Plans, store.Groups), Indented);
 
     public static string Export(DataStore store, DateTimeOffset? now = null) => Encoding.UTF8.GetString(ExportUtf8(store, now));
 
@@ -201,7 +204,9 @@ public static class Backup
     /// <summary>Short description of what's in a backup, e.g. "28 pieces, 384 log entries and settings".</summary>
     public static string Describe(BackupFile b, bool withSettings)
     {
-        var parts = new List<string> { Count(b.Pieces?.Count ?? 0, "piece"), Count(b.Logs?.Count ?? 0, "log entry", "log entries") };
+        var parts = new List<string> { Count(b.Pieces?.Count ?? 0, "piece") };
+        if (b.Groups is { Count: > 0 } gr) parts.Add(Count(gr.Count, "group"));
+        parts.Add(Count(b.Logs?.Count ?? 0, "log entry", "log entries"));
         if (b.Plans is { Count: > 0 } pl) parts.Add(Count(pl.Count, "plan"));
         if (b.Presets is { Count: > 0 } pr) parts.Add(Count(pr.Count, "custom metronome"));
         if (withSettings) parts.Add("settings");
@@ -233,7 +238,7 @@ public static class Backup
     /// </remarks>
     public static async Task<string> RestoreAsync(DataStore store, BackupFile b, bool includeSettings)
     {
-        await store.ImportAsync(b.Pieces ?? [], b.Logs ?? [], b.Presets ?? [], b.Plans ?? []);
+        await store.ImportAsync(b.Pieces ?? [], b.Logs ?? [], b.Presets ?? [], b.Plans ?? [], b.Groups ?? []);
         var restoredSettings = includeSettings && b.Settings != null;
         if (restoredSettings) await store.ReplaceSettingsAsync(b.Settings!);
         return $"Restored {Describe(b, restoredSettings)}";

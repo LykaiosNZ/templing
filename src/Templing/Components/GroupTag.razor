@@ -1,0 +1,9 @@
+@* A group's colour dot and name: Library rows, the group filter, the piece editor's select and the piece page. *@
+<span class="group-tag @Class" style="--group:@GroupColours.Hex(Group.Colour)">
+    <span class="group-dot" aria-hidden="true"></span><span class="group-name">@Group.Name</span>
+</span>
+
+@code {
+    [Parameter, EditorRequired] public PieceGroup Group { get; set; } = default!;
+    [Parameter] public string? Class { get; set; }
+}

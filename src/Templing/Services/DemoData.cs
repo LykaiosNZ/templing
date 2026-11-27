@@ -11,7 +11,7 @@ namespace Templing.Services;
 /// </summary>
 public static class DemoData
 {
-    public record Set(List<Piece> Pieces, List<PracticeLog> Logs, List<MetronomePreset> Presets, List<PracticePlan> Plans, AppSettings Settings);
+    public record Set(List<Piece> Pieces, List<PracticeLog> Logs, List<MetronomePreset> Presets, List<PracticePlan> Plans, AppSettings Settings, List<PieceGroup> Groups);
 
     const int Days = 150;
 
@@ -214,8 +214,14 @@ public static class DemoData
             },
         };
 
+        // two groups, and a few pieces left out of both, so the Library shows "No group" too
+        var repertoire = new PieceGroup { Id = "demo-group-repertoire", Name = "Repertoire", Colour = "purple" };
+        var warmups = new PieceGroup { Id = "demo-group-warmups", Name = "Warm-ups", Colour = "green" };
+        foreach (var p in new[] { spain, dover, wing }) p.GroupId = repertoire.Id;
+        foreach (var p in new[] { chromatic, alternate, trills }) p.GroupId = warmups.Id;
+
         var settings = new AppSettings { WeeklyGoalMin = 240 };
-        return new Set([.. plans.Select(p => p.Piece)], logs, presets, practicePlans, settings);
+        return new Set([.. plans.Select(p => p.Piece)], logs, presets, practicePlans, settings, [repertoire, warmups]);
     }
 
     static string Slug(string name) => new([.. name.ToLowerInvariant().Where(char.IsLetterOrDigit)]);

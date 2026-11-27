@@ -381,7 +381,7 @@
     async Task ClearAll()
     {
         var ok = await ConfirmDialog.ShowAsync(Dialogs, "Delete all data?",
-            "Every piece, log entry, plan, custom metronome and paired device in this browser will be deleted. Export a backup first if you might want it back. This can't be undone.",
+            "Every piece, group, log entry, plan, custom metronome and paired device in this browser will be deleted. Export a backup first if you might want it back. This can't be undone.",
             "Delete everything", destructive: true);
         if (ok != true) return;
         await Store.ClearAllAsync();

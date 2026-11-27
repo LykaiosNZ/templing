@@ -1,0 +1,215 @@
+{
+  "Format": 5,
+  "AppVersion": "0.1.0\u002B0ae3c7b0dca308c5c42c912d9391d2e58572c2f6",
+  "Exported": "2026-11-28T12:00:00+13:00",
+  "Pieces": [
+    {
+      "Id": "0b95f9900d854fffb70f161266acee50",
+      "Name": "Spain",
+      "Type": "Exercise",
+      "Unit": "Bpm",
+      "Goal": 140,
+      "StartTempo": null,
+      "Sections": [
+        {
+          "Id": "6b829de3",
+          "Name": "Intro",
+          "Bpm": 90,
+          "BeatsPerBar": 4,
+          "BeatUnit": 4,
+          "Subdivision": 1,
+          "Bars": 0,
+          "ScoreBars": [
+            [
+              0,
+              4,
+              4
+            ],
+            [
+              1,
+              3,
+              4
+            ]
+          ],
+          "FromScore": true,
+          "Length": 2,
+          "MixedMeter": true,
+          "Meter": "4/4 (mixed)",
+          "Division": "1/4"
+        }
+      ],
+      "PlayThrough": false,
+      "Loop": false,
+      "Notes": null,
+      "Link": null,
+      "ScoreFileId": null,
+      "ScoreFileName": null,
+      "ScoreTrack": 0,
+      "ScoreStave": "tab",
+      "Archived": false,
+      "Favourite": false,
+      "Sound": null,
+      "GroupId": "27df98f380f1433789c8484087923220",
+      "Created": "2026-11-28T00:11:29.3298351+13:00"
+    }
+  ],
+  "Logs": [
+    {
+      "Id": "acf6a906e9ca49c9a98ddba601107699",
+      "Date": "2026-11-28T00:00:00+13:00",
+      "PieceId": "0b95f9900d854fffb70f161266acee50",
+      "PieceName": "Spain",
+      "SectionId": null,
+      "Unit": "Bpm",
+      "ValueMin": 90,
+      "Value": 100,
+      "DurationSec": null,
+      "Notes": null,
+      "Effort": 2,
+      "Logged": null,
+      "Source": "manual",
+      "ValueText": "90\u2013100"
+    }
+  ],
+  "Presets": [
+    {
+      "Id": "79b7331510f84df98f6291d9d0e5b9ed",
+      "Name": "Odd",
+      "Sections": [
+        {
+          "Id": "5f157730",
+          "Name": "Main",
+          "Bpm": 120,
+          "BeatsPerBar": 4,
+          "BeatUnit": 4,
+          "Subdivision": 1,
+          "Bars": 0,
+          "ScoreBars": null,
+          "FromScore": false,
+          "Length": 0,
+          "MixedMeter": false,
+          "Meter": "4/4",
+          "Division": "1/4"
+        }
+      ],
+      "PlayThrough": false,
+      "Loop": true,
+      "Sound": null,
+      "Created": "2026-11-28T00:11:29.3927339+13:00"
+    }
+  ],
+  "Settings": {
+    "Id": "app",
+    "DarkMode": false,
+    "Metronome": {
+      "CountIn": true,
+      "CountInBars": 1,
+      "Volume": 1,
+      "Sound": "",
+      "AccentFirst": true,
+      "Flash": true,
+      "TempoSlider": false,
+      "BeatDisplay": "Strip",
+      "BeatFill": "OnClick",
+      "NewBar": "Clear",
+      "BarPulse": true,
+      "BarPulseIntensity": "Medium",
+      "MarkFirstBeat": true,
+      "ShowSubdivisions": true,
+      "ThinSubdivisions": false,
+      "Training": {
+        "Enabled": false,
+        "Start": 80,
+        "End": 120,
+        "Mode": "OverTime",
+        "DurationMin": 5,
+        "EveryBars": 4,
+        "Increment": 2,
+        "Steps": null,
+        "StopAtEnd": false
+      },
+      "Interval": {
+        "Enabled": false,
+        "WorkMin": 5,
+        "RestMin": 1,
+        "Rounds": 2,
+        "VoiceCues": true
+      },
+      "Timer": {
+        "Enabled": true,
+        "WorkMin": 10,
+        "RestMin": 0,
+        "Rounds": 1,
+        "VoiceCues": true
+      }
+    },
+    "FreeSections": [
+      {
+        "Id": "f9e4880d",
+        "Name": "Click",
+        "Bpm": 100,
+        "BeatsPerBar": 4,
+        "BeatUnit": 4,
+        "Subdivision": 1,
+        "Bars": 0,
+        "ScoreBars": null,
+        "FromScore": false,
+        "Length": 0,
+        "MixedMeter": false,
+        "Meter": "4/4",
+        "Division": "1/4"
+      }
+    ],
+    "FreePlayThrough": false,
+    "FreeSound": null,
+    "WeeklyGoalMin": 99,
+    "LibraryList": false,
+    "MetronomeIntervalPresets": null,
+    "TimerIntervalPresets": null,
+    "AutoLogPlanSteps": false,
+    "AutoStartPlanSteps": false,
+    "AutoStartPlanStepsOnSkip": false,
+    "CompressBackups": false,
+    "Colours": null,
+    "Analytics": true
+  },
+  "Plans": [
+    {
+      "Id": "a6fbfd860d4c4f9c8679b8c7f4a763f2",
+      "Name": "My routine",
+      "Steps": [
+        {
+          "Id": "4158609f",
+          "Kind": "Piece",
+          "PieceId": "0b95f9900d854fffb70f161266acee50",
+          "SectionId": null,
+          "Mode": "Metronome",
+          "Minutes": 10,
+          "Rounds": 1,
+          "RestMin": 0,
+          "StartTempo": null,
+          "Trainer": true,
+          "TrainerStart": 80,
+          "TrainerEnd": 120,
+          "TrainerMode": "OverTime",
+          "TrainerSteps": null,
+          "TrainerEveryBars": 4,
+          "WorkMinutes": 10,
+          "TotalMinutes": 10,
+          "IntervalText": "10 min"
+        }
+      ],
+      "Created": "2026-11-28T00:11:29.3939361+13:00",
+      "LastRun": null,
+      "Favourite": false,
+      "TotalMinutes": 10
+    }
+  ],
+  "Groups": [
+    {
+      "Id": "27df98f380f1433789c8484087923220",
+      "Name": "Chick Corea",
+      "Colour": "teal"
+    }
+  ]
+}

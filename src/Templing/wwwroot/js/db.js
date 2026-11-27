@@ -1,13 +1,13 @@
 // Minimal IndexedDB wrapper. Values are passed as JSON strings so .NET controls serialization.
 const DB_NAME = 'templing';   // also opened by the boot script in index.html: keep the two in step
-const DB_VERSION = 6; // 5: "items" store renamed "pieces"; 6: "devices"
+const DB_VERSION = 7; // 5: "items" store renamed "pieces"; 6: "devices"; 7: "groups"
 // Adding a store? Bump DB_VERSION and follow the "Persisted data" checklist in CLAUDE.md
 // (DataStore load/import/clear, Backup.cs export/restore).
 // 'files' holds raw score files (Guitar Pro etc.) as {Id, Name, Data: Uint8Array}
 // 'session' holds transient UI state (e.g. the running plan) that survives a refresh; never backed up
 // 'devices' holds this device's identity and its paired devices, with their keys as non-extractable CryptoKeys
 //   (link.js, which reads and writes it with getRows/putRow); never backed up, since a key belongs to one device
-const STORES = ['pieces', 'logs', 'presets', 'settings', 'files', 'plans', 'session', 'devices'];
+const STORES = ['pieces', 'logs', 'presets', 'settings', 'files', 'plans', 'session', 'devices', 'groups'];
 let dbPromise = null;
 
 // The demo build (-p:Demo=true): DataStore calls useMemory() before anything else, and the stores then live in memory

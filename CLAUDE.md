@@ -43,7 +43,7 @@ dotnet run --project src/Templing/Templing.csproj --launch-profile http   # http
 
 | Path | What |
 | --- | --- |
-| `Models/Models.cs` | All persisted types: `Piece`/`Section`, `PracticeLog`, `MetronomePreset`, `PracticePlan`/`PlanStep`, `AppSettings` |
+| `Models/Models.cs` | All persisted types: `Piece`/`Section`, `PieceGroup` (+ `GroupColours`), `PracticeLog`, `MetronomePreset`, `PracticePlan`/`PlanStep`, `AppSettings` |
 | `Services/DataStore.cs` | In-memory cache over IndexedDB: load once, write-through, `Changed` event |
 | `Services/Backup.cs` | JSON backup export/restore (**single source of truth for what's backed up**) |
 | `Services/MetronomeService.cs` | App-wide metronome/timer state, session tracking, interval/trainer overrides |

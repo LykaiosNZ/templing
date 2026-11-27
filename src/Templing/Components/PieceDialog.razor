@@ -21,6 +21,18 @@
                     }
                 </MudToggleGroup>
             </div>
+            <div class="d-flex gap-1 align-end">
+                <MudSelect T="string" @bind-Value="_m.GroupId" Label="Group" Style="max-width:320px">
+                    <MudSelectItem T="string" Value="@null">No group</MudSelectItem>
+                    @foreach (var g in Store.Groups)
+                    {
+                        <MudSelectItem T="string" Value="@g.Id"><GroupTag Group="g" /></MudSelectItem>
+                    }
+                </MudSelect>
+                <MudTooltip Text="New group">
+                    <MudIconButton Icon="@Icons.Material.Rounded.CreateNewFolder" aria-label="New group" OnClick="NewGroup" />
+                </MudTooltip>
+            </div>
             <div class="d-flex gap-4 align-end flex-wrap">
                 <div>
                     <MudText Typo="Typo.subtitle2" Class="mb-1">Measure progress in</MudText>
@@ -78,6 +90,11 @@
     {
         // edit a copy so Cancel discards changes
         _m = System.Text.Json.JsonSerializer.Deserialize<Piece>(System.Text.Json.JsonSerializer.Serialize(Piece, DataStore.Json), DataStore.Json)!;
+    }
+
+    async Task NewGroup()
+    {
+        if (await GroupDialog.ShowAsync(Dialogs) is { } g) _m.GroupId = g.Id;
     }
 
     void TypeChanged(PieceType t)
