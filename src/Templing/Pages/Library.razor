@@ -143,6 +143,10 @@ else
                     </a>
                     <span class="pr-actions">
                         @PracticeActions(piece)
+                        @if (withGroups)
+                        {
+                            @GroupMenu(piece)
+                        }
                         @ManageActions(piece)
                     </span>
                 </div>
@@ -171,8 +175,11 @@ else
         {
             @* grouped: each row is a slice of its group's tinted box (the first slice has the heading, the last one the bottom edge),
                since a virtualised list can't wrap a group's rows in one element *@
-            <div class="group-band @(cardRow.First ? "first" : "") @(cardRow.Last ? "last" : "") @(band.Group is null ? "ungrouped" : "")"
-                 style="@(band.Group is { } bg ? $"--group:{GroupColours.Hex(bg.Colour)}" : null)" @key="cardRow.Key">
+            @* a card dragged onto a group's box moves into that group (DragEnter / Drop; no dragover handler, see DESIGN.md) *@
+            var bandKey = band.Group?.Id ?? "";
+            <div class="group-band @(cardRow.First ? "first" : "") @(cardRow.Last ? "last" : "") @(band.Group is null ? "ungrouped" : "") @(cardRow.Cards.Length == 0 ? "empty" : "") @(_dragging != null && _dropKey == bandKey && bandKey != (Store.GetGroup(_dragging.GroupId)?.Id ?? "") ? "drop-target" : "")"
+                 style="@(band.Group is { } bg ? $"--group:{GroupColours.Hex(bg.Colour)}" : null)" @key="cardRow.Key"
+                 @ondragover:preventDefault="true" @ondragenter="() => DragEnter(bandKey)" @ondrop="() => Drop(band.Group)" @ondrop:preventDefault="true">
                 <div class="group-band-fill">
                     @if (cardRow.First)
                     {
@@ -204,8 +211,9 @@ else
         @foreach (var row in cards)
         {
             var piece = row.Piece; var st = row.Stats;
-            <article class="piece-card @(piece.Archived ? "archived" : "")" role="listitem" @key="piece.Id">
-                <a class="piece-card-link" href="library/@piece.Id" aria-label="@($"{piece.Name} details")">
+            <article class="piece-card @(piece.Archived ? "archived" : "") @(_dragging == piece ? "dragging" : "")" role="listitem" @key="piece.Id"
+                     draggable="@(_grouped ? "true" : "false")" data-drag-card @ondragstart="() => DragStart(piece)" @ondragend="DragEnd">
+                <a class="piece-card-link" href="library/@piece.Id" aria-label="@($"{piece.Name} details")" draggable="false">
                     <div class="piece-card-top">
                         <span class="type-pill type-@piece.Type"><MudIcon Icon="@piece.Type.Icon()" Size="Size.Small" />@piece.Type.Label()</span>
                         <span class="card-top-right">
@@ -293,6 +301,36 @@ else
             </MudTooltip>
         </text>;
 
+    // list rows: move a piece to another group in two clicks (cards are dragged instead)
+    RenderFragment GroupMenu(Piece piece) =>
+        @<MudTooltip Text="Group">
+            <MudMenu Icon="@Icons.Material.Rounded.DriveFileMove" Size="Size.Small" Dense="true" AriaLabel="@($"Group for {piece.Name}")"
+                     AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                @foreach (var g in Store.Groups)
+                {
+                    var group = g;
+                    <MudMenuItem OnClick="() => SetGroup(piece, group.Id)" Icon="@(piece.GroupId == group.Id ? Icons.Material.Rounded.Check : null)">
+                        <GroupTag Group="group" />
+                    </MudMenuItem>
+                }
+                <MudMenuItem OnClick="() => SetGroup(piece, null)" Icon="@(Store.GetGroup(piece.GroupId) is null ? Icons.Material.Rounded.Check : null)">No group</MudMenuItem>
+                <MudDivider />
+                <MudMenuItem Icon="@Icons.Material.Rounded.CreateNewFolder" OnClick="() => AfterMenu(() => NewGroupFor(piece))">New group…</MudMenuItem>
+            </MudMenu>
+        </MudTooltip>;
+
+    async Task SetGroup(Piece piece, string? groupId)
+    {
+        if (piece.GroupId == groupId) return;
+        piece.GroupId = groupId;
+        await Store.SavePieceAsync(piece);
+    }
+
+    async Task NewGroupFor(Piece piece)
+    {
+        if (await GroupDialog.ShowAsync(Dialogs) is { } g) await SetGroup(piece, g.Id);
+    }
+
     async Task ToggleFavourite(Piece p) { p.Favourite = !p.Favourite; await Store.SavePieceAsync(p); }
 
     // MudMenu only closes once a menu item's handler finishes; start dialogs after it closes instead of awaiting them inside the click
@@ -314,8 +352,31 @@ else
         1 => picked[0] == NoGroup ? "No group" : Store.GetGroup(picked[0])?.Name ?? "All groups",
         var n => $"{n} groups",
     };
-    // cards are drawn in their groups (a tinted box each) once any piece shown is in one
+    // cards are drawn in their groups (a tinted box each) once there are groups
     bool _grouped;
+
+    // ---- dragging a card into another group's box ----
+    Piece? _dragging;
+    string? _dropKey;   // the box under the pointer: a group id, "" for No group
+    bool _skipRender;
+    protected override bool ShouldRender() { if (!_skipRender) return true; _skipRender = false; return false; }
+
+    void DragStart(Piece piece) { _dragging = piece; _dropKey = null; ChunkRows(); }
+
+    // dragenter fires for every element crossed inside a box: only redraw when the pointer moves to another box
+    void DragEnter(string key) { if (_dragging is null || key == _dropKey) _skipRender = true; else _dropKey = key; }
+
+    async Task Drop(PieceGroup? group)
+    {
+        var piece = _dragging;
+        _dragging = null; _dropKey = null;
+        ChunkRows();
+        if (piece is null || piece.GroupId == group?.Id || (group is null && Store.GetGroup(piece.GroupId) is null)) return;
+        piece.GroupId = group?.Id;
+        await Store.SavePieceAsync(piece);
+    }
+
+    void DragEnd() { if (_dragging is null) return; _dragging = null; _dropKey = null; ChunkRows(); }
     bool _showArchived;
     // the stats sort and filter needs; a card's feel rating and section bars come from Store as it's drawn
     record Row(Piece Piece, PieceStats Stats);
@@ -344,14 +405,19 @@ else
         }
         var groups = Store.Groups.ToDictionary(g => g.Id);
         // Store.Groups is in name order; the rows keep the chosen sort inside each group
-        var bands = _rows.GroupBy(r => r.Piece.GroupId is { } id && groups.ContainsKey(id) ? id : "")
-            .OrderBy(g => g.Key == "" ? int.MaxValue : Store.Groups.FindIndex(x => x.Id == g.Key));
-        foreach (var rows in bands)
+        var byGroup = _rows.GroupBy(r => r.Piece.GroupId is { } id && groups.ContainsKey(id) ? id : "").ToDictionary(g => g.Key, g => g.ToArray());
+        // with nothing filtered, a group with no pieces still shows (just its heading), so a card can be dragged into it
+        var unfiltered = string.IsNullOrWhiteSpace(_search) && (_type is null or "all") && _groups.Count == 0;
+        var keys = Store.Groups.Select(g => g.Id).Where(id => unfiltered || byGroup.ContainsKey(id)).ToList();
+        // while a card is dragged, "No group" shows too, to drag it out of its group
+        if (byGroup.ContainsKey("") || _dragging != null) keys.Add("");
+        foreach (var key in keys)
         {
-            var band = new Band(rows.Key == "" ? null : groups[rows.Key], rows.Count());
-            var chunks = rows.Chunk(_columns).ToList();
+            var rows = byGroup.GetValueOrDefault(key, []);
+            var band = new Band(key == "" ? null : groups[key], rows.Length);
+            var chunks = rows.Length == 0 ? [Array.Empty<Row>()] : rows.Chunk(_columns).ToList();
             for (var i = 0; i < chunks.Count; i++)
-                _cardRows.Add(new CardRow($"{rows.Key}/{chunks[i][0].Piece.Id}", chunks[i], band, i == 0, i == chunks.Count - 1));
+                _cardRows.Add(new CardRow($"{key}/{(chunks[i].Length > 0 ? chunks[i][0].Piece.Id : "")}", chunks[i], band, i == 0, i == chunks.Count - 1));
         }
     }
 
@@ -413,7 +479,7 @@ else
             "time" => rows.OrderByDescending(r => r.Stats.TotalSec),
             _ => rows.OrderByDescending(r => r.Stats.LastDate ?? DateTime.MinValue).ThenBy(r => r.Piece.Name)
         }).ToList();
-        _grouped = Store.Groups.Count > 0 && _rows.Any(r => Store.GetGroup(r.Piece.GroupId) is not null);
+        _grouped = Store.Groups.Count > 0;
         ChunkRows();
     }
 
