@@ -7,6 +7,7 @@
 }
 else
 {
+    <Pager Total="_ordered.Count" PageSize="PageSize" @bind-Page="_pageNo" @bind-Page:after="ShowPage" Label="Log pages">
     <div class="data-table-wrap hide-phone">
         <table class="data-table log-table">
             <thead>
@@ -23,7 +24,7 @@ else
             </thead>
             <tbody>
                 @{ DateTime? prev = null; }
-                @foreach (var l in _ordered.Take(_shown))
+                @foreach (var l in _page)
                 {
                     var newDay = prev != l.Date.Date;
                     prev = l.Date.Date;
@@ -67,7 +68,7 @@ else
     </div>
     @* phones: compact rows instead of a wide table *@
     <div class="log-cards show-phone-block">
-        @foreach (var day in _ordered.Take(_shown).GroupBy(l => l.Date.Date))
+        @foreach (var day in _page.GroupBy(l => l.Date.Date))
         {
             var dt = _dayTotals.GetValueOrDefault(day.Key);
             <div class="log-day">
@@ -97,26 +98,23 @@ else
             </div>
         }
     </div>
-    @if (Logs.Count > _shown)
-    {
-        <MudButton Variant="Variant.Text" OnClick="() => _shown += PageSize" Class="mt-2">Show more (@(Logs.Count - _shown) left)</MudButton>
-    }
+    </Pager>
 }
 
 @code {
     [Parameter] public List<PracticeLog> Logs { get; set; } = new();
     [Parameter] public bool ShowPiece { get; set; } = true;
-    [Parameter] public int PageSize { get; set; } = 40;
+    [Parameter] public int PageSize { get; set; } = 25;
     /// <summary>Shown instead of the default "No entries yet" when the list is empty (e.g. filtered to nothing).</summary>
     [Parameter] public RenderFragment? Empty { get; set; }
     Dictionary<DateTime, int> _dayTotals = new();
     // days newest first; within a day, in the order they were logged
     List<PracticeLog> _ordered = new();
-    int _shown;
+    // the page shown (from 1) and its entries
+    int _pageNo = 1;
+    List<PracticeLog> _page = new();
 
     bool _hasParts;
-
-    protected override void OnInitialized() => _shown = PageSize;
 
     // single-piece view: show a Part column when the piece is split into sections
     protected override void OnParametersSet()
@@ -124,7 +122,12 @@ else
         _hasParts = !ShowPiece && Logs.Select(l => l.PieceId).Distinct().Any(id => Store.GetPiece(id)?.Sections.Count > 1);
         _ordered = Logs.OrderByDescending(l => l.Date.Date).ThenBy(l => l.Logged ?? DateTime.MinValue).ThenBy(l => l.PieceName).ToList();
         _dayTotals = Logs.GroupBy(l => l.Date.Date).ToDictionary(g => g.Key, g => g.Sum(l => l.DurationSec ?? 0));
+        // the same page after an edit, unless the list got shorter than it (the parent's @key starts a new list on page 1)
+        _pageNo = Pager.Clamp(_pageNo, _ordered.Count, PageSize);
+        ShowPage();
     }
+
+    void ShowPage() => _page = Pager.Slice(_ordered, _pageNo, PageSize).ToList();
 
     async Task Edit(PracticeLog l)
     {

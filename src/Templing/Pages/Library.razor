@@ -20,9 +20,9 @@
 </div>
 
 <div class="toolbar">
-    <MudTextField @bind-Value="_search" @bind-Value:after="Refresh" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.Search"
+    <MudTextField @bind-Value="_search" @bind-Value:after="Filter" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.Search"
                   Immediate="true" DebounceInterval="150" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="search-box" InputId="library-search" aria-label="Search library" />
-    <MudChipSet T="string" @bind-SelectedValue="_type" @bind-SelectedValue:after="Refresh" SelectionMode="SelectionMode.SingleSelection" CheckMark="false" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" aria-label="Filter by type">
+    <MudChipSet T="string" @bind-SelectedValue="_type" @bind-SelectedValue:after="Filter" SelectionMode="SelectionMode.SingleSelection" CheckMark="false" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" aria-label="Filter by type">
         <MudChip T="string" Value="@("all")" Default="true">All</MudChip>
         @foreach (var t in PieceTypeExt.Ordered)
         {
@@ -59,13 +59,13 @@
         <MudToggleItem Value="false"><MudTooltip Text="Cards"><MudIcon Icon="@Icons.Material.Rounded.GridView" Size="Size.Small" aria-label="Cards" /></MudTooltip></MudToggleItem>
         <MudToggleItem Value="true"><MudTooltip Text="List"><MudIcon Icon="@Icons.Material.Rounded.ViewList" Size="Size.Small" aria-label="List" /></MudTooltip></MudToggleItem>
     </MudToggleGroup>
-    <MudSelect T="string" @bind-Value="_sort" @bind-Value:after="Refresh" Label="Sort" Variant="Variant.Outlined" Margin="Margin.Dense" Class="toolbar-select" Dense="true">
+    <MudSelect T="string" @bind-Value="_sort" @bind-Value:after="Filter" Label="Sort" Variant="Variant.Outlined" Margin="Margin.Dense" Class="toolbar-select" Dense="true">
         <MudSelectItem T="string" Value="@("recent")">Recently practised</MudSelectItem>
         <MudSelectItem T="string" Value="@("name")">Name</MudSelectItem>
         <MudSelectItem T="string" Value="@("progress")">Progress</MudSelectItem>
         <MudSelectItem T="string" Value="@("time")">Total time</MudSelectItem>
     </MudSelect>
-    <MudSwitch T="bool" @bind-Value="_showArchived" @bind-Value:after="Refresh" Label="Show archived" Color="Color.Primary" />
+    <MudSwitch T="bool" @bind-Value="_showArchived" @bind-Value:after="Filter" Label="Show archived" Color="Color.Primary" />
     </div>
 </div>
 
@@ -90,17 +90,18 @@ else
     @if (Store.Settings.LibraryList)
     {
         var withGroups = Store.Groups.Count > 0;
+        <Pager Total="_rows.Count" PageSize="PageSize" Page="_page" PageChanged="GoToPage" Label="Library pages">
         <div class="piece-list @(withGroups ? "with-groups" : "")" role="list">
             <div class="piece-list-head" aria-hidden="true">
                 <span class="pr-cols"><span></span><span>Piece</span>@if (withGroups)
                 {<span class="pr-wide">Group</span>}<span>Tempo</span><span class="pr-wide">Progress</span><span class="pr-wide">Last practised</span><span class="pr-wide pr-time">Practice time</span></span>
                 <span></span>
             </div>
-            @if (_rows.Count > 0)
+            @if (_pageRows.Count > 0)
             {
                 @* plain outlines until the first rows are drawn, a moment later (CSS hides them then); they cost nothing to draw *@
                 <div class="row-placeholders" aria-hidden="true">
-                    @for (var i = 0; i < Math.Min(_rows.Count, 15); i++)
+                    @for (var i = 0; i < Math.Min(_pageRows.Count, 15); i++)
                     {
                         <div class="row-placeholder"><span class="ph-line ph-icon"></span><span class="ph-line ph-name"></span><span class="ph-line ph-tempo"></span></div>
                     }
@@ -108,7 +109,7 @@ else
             }
             @* only the rows near the screen are drawn: a big library has hundreds, each with a dozen components *@
             @* @key: Virtualize reuses elements as you scroll, so without it a bar animated from the last piece's progress *@
-            <Virtualize Items="_rows" Context="row" ItemSize="41" OverscanCount="5">
+            <Virtualize Items="_pageRows" Context="row" ItemSize="41" OverscanCount="5">
                 @{ var piece = row.Piece; var st = row.Stats; }
                 <div class="piece-row @(piece.Archived ? "archived" : "")" role="listitem" @key="piece.Id">
                     <div class="pr-main">
@@ -155,16 +156,18 @@ else
                 </div>
             </Virtualize>
         </div>
+        </Pager>
     }
     else
     {
     @* drawn a row of cards at a time, and only the rows near the screen (each card is about 20 components) *@
+    <Pager Total="_rows.Count" PageSize="PageSize" Page="_page" PageChanged="GoToPage" Label="Library pages">
     <div class="piece-grid" role="list" @ref="_grid" style="--cols:@_columns">
-        @if (_rows.Count > 0)
+        @if (_pageRows.Count > 0)
         {
             @* plain card outlines until the first cards are drawn, a moment later (CSS hides them then); they cost nothing to draw *@
             <div class="piece-grid-row card-placeholders" aria-hidden="true">
-                @for (var i = 0; i < Math.Min(_rows.Count, 12); i++)
+                @for (var i = 0; i < Math.Min(_pageRows.Count, 12); i++)
                 {
                     <div class="piece-card card-placeholder"><span class="ph-line ph-pill"></span><span class="ph-line ph-title"></span><span class="ph-line ph-big"></span><span class="ph-line ph-bar"></span></div>
                 }
@@ -178,6 +181,7 @@ else
         </Virtualize>
         }
     </div>
+    </Pager>
     }
 }
 
@@ -298,9 +302,9 @@ else
     // the groups picked in the filter (NoGroup for the pieces in none); empty = every piece
     IReadOnlyCollection<string> _groups = [];
 
-    void GroupsChanged(IEnumerable<string> picked) { _groups = picked.ToList(); Refresh(); }
+    void GroupsChanged(IEnumerable<string> picked) { _groups = picked.ToList(); Filter(); }
     // the field's × goes back to All groups
-    void ClearGroups() { _groups = []; Refresh(); }
+    void ClearGroups() { _groups = []; Filter(); }
 
     string GroupsText(IReadOnlyList<string> picked) => picked.Count switch
     {
@@ -313,7 +317,23 @@ else
     record Row(Piece Piece, PieceStats Stats);
     List<Row> _rows = new();
 
-    // card view: _rows in rows of as many cards as fit (js/columns.js reports the count)
+    // a page at a time, the same size in both views so switching keeps the page (48 fills rows of 2, 3, 4 or 6 cards)
+    const int PageSize = 48;
+    int _page = 1;
+    List<Row> _pageRows = new();
+
+    void GoToPage(int page) { _page = page; ShowPage(); }
+
+    void ShowPage()
+    {
+        _pageRows = Pager.Slice(_rows, _page, PageSize).ToList();
+        ChunkRows();
+    }
+
+    // the filters or sort changed: back to page 1
+    void Filter() { _page = 1; Refresh(); }
+
+    // card view: the page's rows in rows of as many cards as fit (js/columns.js reports the count)
     List<Row[]> _cardRows = new();
     int _columns;
     ElementReference _grid;
@@ -321,9 +341,9 @@ else
     IJSObjectReference? _columnsJs;
     DotNetObjectReference<Library>? _self;
 
-    void ChunkRows() => _cardRows = _columns > 0 ? _rows.Chunk(_columns).ToList() : new();
+    void ChunkRows() => _cardRows = _columns > 0 ? _pageRows.Chunk(_columns).ToList() : new();
 
-    void ClearFilters() { _search = null; _type = "all"; _groups = []; Refresh(); }
+    void ClearFilters() { _search = null; _type = "all"; _groups = []; Filter(); }
 
     async Task EditGroup(PieceGroup g) => await GroupDialog.ShowAsync(Dialogs, g);
 
@@ -379,7 +399,9 @@ else
             "time" => rows.OrderByDescending(r => r.Stats.TotalSec),
             _ => rows.OrderByDescending(r => r.Stats.LastDate ?? DateTime.MinValue).ThenBy(r => r.Piece.Name)
         }).ToList();
-        ChunkRows();
+        // a change to a piece keeps the page, unless the list got shorter than it
+        _page = Pager.Clamp(_page, _rows.Count, PageSize);
+        ShowPage();
     }
 
     async Task Add()

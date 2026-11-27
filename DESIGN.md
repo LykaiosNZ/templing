@@ -170,7 +170,8 @@ Reuse these instead of rebuilding them. When two screens show the same thing, th
 | `MeterInput` | Any time signature: one outlined field "7 / 8", each number typed or stepped with ↑/↓, ←/→ to move between them (the bottom doubles/halves and snaps to a note value: 1, 2, 4, 8, 16, 32). Pair it with a "Division" select from `Section.Divisions(unit)` (note values, 1/4 … 1/32, triplets to 1/16t) |
 | `PlanStepSummary` | One-line plan step (Plans list, plan editor rows) |
 | `SectionsEditor`, `SectionSummary` | Tempo-map editor (piece editor, custom metronome sections): header with count, quick-add chips, collapsible rows |
-| `LogTable` | Practice log lists (History, Piece detail), as a `data-table` (Tables, above) with compact rows on phones |
+| `LogTable` | Practice log lists (History, Piece detail), as a `data-table` (Tables, above) with compact rows on phones, a page at a time (`Pager`) |
+| `Pager` | A long list a page at a time instead of "Show more": it wraps the page's rows and puts "51–100 of 312" and the page buttons (`MudPagination`) under them, nothing while the list fits on one page. A new page brings the list's top back into view. Filters and sort go back to page 1; an edit, delete or new entry keeps the page (pulled back if the list got shorter). Library (both views, 48 a page so switching keeps the page and rows of cards fill), History (50) and a piece's log (25) |
 | `GoalBar` | Goal progress bar (`MudProgressLinear`: accent, green when reached) |
 | `GoalChip` | "Goal reached" / "+15 over" (green), wherever a piece's goal shows: Library and Dashboard cards, the piece page's Progress tile (with **Raise goal…**). Progress percentages aren't capped, so past the goal reads 111% |
 | `StatTile` | Headline numbers (pass `Seconds` for durations so the unit words render small) |

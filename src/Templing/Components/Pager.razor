@@ -1,0 +1,45 @@
+@inject IJSRuntime JS
+
+@* a long list (the child content, one page of it) with its pages under it: "51–100 of 312" and the page buttons; nothing while it fits on one page *@
+<div class="paged" @ref="_top">@ChildContent</div>
+@if (Total > PageSize)
+{
+    <nav class="pager" aria-label="@Label">
+        <span class="pager-range muted small">@First–@Last of @Total</span>
+        <MudPagination Count="Pages" Selected="Page" SelectedChanged="Go" Color="Color.Primary" Size="Size.Small" BoundaryCount="1" MiddleCount="3" />
+    </nav>
+}
+
+@code {
+    /// <summary>How many there are in all.</summary>
+    [Parameter] public int Total { get; set; }
+    [Parameter] public int PageSize { get; set; } = 50;
+    /// <summary>The page shown, from 1.</summary>
+    [Parameter] public int Page { get; set; } = 1;
+    [Parameter] public EventCallback<int> PageChanged { get; set; }
+    /// <summary>The page's rows. Its top is brought back into view when the page changes.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string Label { get; set; } = "Pages";
+
+    int Pages => PageCount(Total, PageSize);
+    int First => (Page - 1) * PageSize + 1;
+    int Last => Math.Min(Page * PageSize, Total);
+
+    public static int PageCount(int total, int pageSize) => Math.Max(1, (total + pageSize - 1) / pageSize);
+
+    /// <summary>The page kept in range after the list shrank (an entry deleted, the last one on its page).</summary>
+    public static int Clamp(int page, int total, int pageSize) => Math.Clamp(page, 1, PageCount(total, pageSize));
+
+    public static IEnumerable<T> Slice<T>(IEnumerable<T> all, int page, int pageSize) => all.Skip((page - 1) * pageSize).Take(pageSize);
+
+    IJSObjectReference? _js;
+    ElementReference _top;
+
+    async Task Go(int page)
+    {
+        if (page == Page) return;
+        await PageChanged.InvokeAsync(page);
+        _js ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/pager.js");
+        await _js.InvokeVoidAsync("showTop", _top);
+    }
+}
