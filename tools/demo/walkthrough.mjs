@@ -83,15 +83,12 @@ const realTime = ms => new Promise(r => setTimeout(r, ms));
 let mouse = { x: width / 2, y: height / 2 };
 
 /**
- * Waits until the page has drawn: no placeholder cards or rows showing (the Library draws its cards a moment after
- * the page, slower still on the dev server) and every chart drawn. Pauses only start after this, so each screen is
- * shown finished for as long as the scene says. A page that never settles is shown as it is, after a warning.
+ * Waits until the page has drawn every chart. Pauses only start after this, so each screen is shown finished for
+ * as long as the scene says. A page that never settles is shown as it is, after a warning.
  */
 async function ready(timeout = 20000) {
     try {
         await page.waitForFunction(() => {
-            const shown = el => el.offsetParent !== null || getComputedStyle(el).position === 'fixed';
-            if ([...document.querySelectorAll('.card-placeholder, .row-placeholder')].some(shown)) return false;
             // a chart box (.viz) without "No data yet" is drawn once ECharts has put its SVG in it
             return [...document.querySelectorAll('.viz')].every(v => v.querySelector('.viz-empty, svg'));
         }, { timeout, polling: 100 });
