@@ -111,13 +111,14 @@ else
             <Virtualize Items="_rows" Context="row" ItemSize="41" OverscanCount="5">
                 @{ var piece = row.Piece; var st = row.Stats; }
                 <div class="piece-row @(piece.Archived ? "archived" : "")" role="listitem" @key="piece.Id">
+                    <div class="pr-main">
                     <a class="piece-row-link pr-cols" href="library/@piece.Id" aria-label="@($"{piece.Name} details")">
                         <MudIcon Icon="@piece.Type.Icon()" Size="Size.Small" Class="fav-kind" title="@piece.Type.Label()" />
                         <span class="pr-name">@piece.Name</span>
                         @if (withGroups)
                         {
-                            <span class="pr-group pr-wide">@if (Store.GetGroup(piece.GroupId) is { } pg)
-                            {<GroupTag Group="pg" />}</span>
+                            @* drawn by the overlay below: a menu can't sit inside the row's link *@
+                            <span class="pr-group pr-wide"></span>
                         }
                         <span class="pr-tempo">
                             @* "150 / 180 bpm": the unit once, so it fits *@
@@ -141,12 +142,14 @@ else
                         <span class="muted small pr-wide">@(st.Sessions > 0 ? Stats.Ago(st.LastDate, DateTime.Today) : "Not started yet")</span>
                         <span class="muted small pr-wide pr-time" title="@(st.Sessions == 1 ? "1 session" : $"{st.Sessions} sessions")">@(st.Sessions > 0 ? Stats.Duration(st.TotalSec) : "")</span>
                     </a>
+                    @if (withGroups)
+                    {
+                        @* the Group column's menu, laid over the link on the same columns (only that cell takes clicks) *@
+                        <div class="pr-cols pr-overlay"><span></span><span></span><span class="pr-group pr-wide">@GroupMenu(piece)</span></div>
+                    }
+                    </div>
                     <span class="pr-actions">
                         @PracticeActions(piece)
-                        @if (withGroups)
-                        {
-                            @GroupMenu(piece)
-                        }
                         @ManageActions(piece)
                     </span>
                 </div>
@@ -301,11 +304,27 @@ else
             </MudTooltip>
         </text>;
 
-    // list rows: move a piece to another group in two clicks (cards are dragged instead)
+    // list rows: the Group column opens a menu to move the piece in two clicks (cards are dragged instead)
     RenderFragment GroupMenu(Piece piece) =>
-        @<MudTooltip Text="Group">
-            <MudMenu Icon="@Icons.Material.Rounded.DriveFileMove" Size="Size.Small" Dense="true" AriaLabel="@($"Group for {piece.Name}")"
-                     AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+        @<MudMenu Dense="true" AriaLabel="@($"Group for {piece.Name}")" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Class="group-pick-menu">
+            @* a custom activator opens the menu itself (MudBlazor 9: context.ToggleAsync) *@
+            <ActivatorContent>
+                @if (Store.GetGroup(piece.GroupId) is { } current)
+                {
+                    <button type="button" @onclick="e => context.ToggleAsync(e)" class="group-pick" aria-label="@($"Group for {piece.Name}: {current.Name}")">
+                        <GroupTag Group="current" /><MudIcon Icon="@Icons.Material.Rounded.ArrowDropDown" Size="Size.Small" Class="group-pick-hint" />
+                    </button>
+                }
+                else
+                {
+                    <MudTooltip Text="Add to a group" Placement="Placement.Top">
+                        <button type="button" @onclick="e => context.ToggleAsync(e)" class="group-pick none" aria-label="@($"Add {piece.Name} to a group")">
+                            <MudIcon Icon="@Icons.Material.Rounded.CreateNewFolder" Size="Size.Small" Class="group-pick-hint" />
+                        </button>
+                    </MudTooltip>
+                }
+            </ActivatorContent>
+            <ChildContent>
                 @foreach (var g in Store.Groups)
                 {
                     var group = g;
@@ -316,8 +335,8 @@ else
                 <MudMenuItem OnClick="() => SetGroup(piece, null)" Icon="@(Store.GetGroup(piece.GroupId) is null ? Icons.Material.Rounded.Check : null)">No group</MudMenuItem>
                 <MudDivider />
                 <MudMenuItem Icon="@Icons.Material.Rounded.CreateNewFolder" OnClick="() => AfterMenu(() => NewGroupFor(piece))">New group…</MudMenuItem>
-            </MudMenu>
-        </MudTooltip>;
+            </ChildContent>
+        </MudMenu>;
 
     async Task SetGroup(Piece piece, string? groupId)
     {
