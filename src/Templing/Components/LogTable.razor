@@ -7,8 +7,8 @@
 }
 else
 {
-    <div class="log-table-wrap hide-phone">
-        <table class="log-table">
+    <div class="data-table-wrap hide-phone">
+        <table class="data-table log-table">
             <thead>
                 <tr>
                     <th scope="col">Date</th>
@@ -35,20 +35,20 @@ else
                         <td class="date">
                             @if (newDay)
                             {
-                                <div>@Stats.Day(l.Date)</div>
-                                @if (dayTotal > 0) { <div class="day-total">@Stats.Duration(dayTotal)</div> }
+                                @* the day's total on the same line, so a day's first row is as tall as the rest *@
+                                @Stats.Day(l.Date)@if (dayTotal > 0) { <span class="day-total"> · @Stats.Duration(dayTotal)</span> }
                             }
                         </td>
                         @if (ShowPiece)
                         {
                             <td>
-                                @if (piece != null) { <a href="library/@piece.Id" @onclick:stopPropagation="true">@l.PieceName</a> } else { <span>@l.PieceName</span> }
+                                @if (piece != null) { <a class="row-name" href="library/@piece.Id" @onclick:stopPropagation="true">@l.PieceName</a> } else { <span class="row-name">@l.PieceName</span> }
                                 @if (section != null) { <span class="muted small"> · @section</span> }
                             </td>
                         }
                         else if (_hasParts)
                         {
-                            <td class="@(section == null ? "muted small" : "")">@(section ?? "Full run-through")</td>
+                            <td class="@(section == null ? "muted" : "row-name")">@(section ?? "Full run-through")</td>
                         }
                         <td class="num mono">@l.ValueText</td>
                         <td class="num mono">@(l.DurationSec is { } d ? Stats.Duration(d) : "—")</td>
