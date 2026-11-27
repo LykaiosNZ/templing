@@ -5,6 +5,7 @@
 //   npm install
 //   node walkthrough.mjs                              # watch it in a Chrome window
 //   node walkthrough.mjs --record templing.webm       # and record it (npm install brings ffmpeg: ffmpeg-static)
+//   node walkthrough.mjs --scenes groups --mp4 groups.mp4   # just some of the scenes (here, library groups)
 //
 // Options:
 //   --url <address>     where the demo is (default http://localhost:5075/; or https://lykaiosnz.github.io/templing/demo/)
@@ -17,6 +18,7 @@
 //                       into a README, issue or PR). Goes with --gif too: one run, both files
 //   --mp4-crf <n>       the MP4's quality, 18 (sharper, bigger) to 28 (default 23)
 //   --shots <dir>       also save a screenshot at the end of each scene, as <dir>/<n>-<scene>.png
+//   --scenes <names>    only these scenes, in this order, comma-separated (default: all of them; names as in `scenes`)
 //   --headless          no window (handy with --record, --gif and --mp4)
 //   --speed <n>         pauses × 1/n: 2 runs twice as fast (default 1)
 //   --size <w>x<h>      the page size (default 1280x800)
@@ -46,6 +48,7 @@ const { values: opt } = parseArgs({
         mp4: { type: 'string' },
         'mp4-crf': { type: 'string', default: '23' },
         shots: { type: 'string' },
+        scenes: { type: 'string' },
         headless: { type: 'boolean', default: false },
         speed: { type: 'string', default: '1' },
         size: { type: 'string', default: '1280x800' },
@@ -122,6 +125,15 @@ async function type(text) {
 /** Goes to a page from the navigation drawer (href as in MainLayout: "", "library", "stats"…). */
 const nav = href => click(`.app-drawer a[href="${href}"]`, { pause: 1200 });
 
+/** Picks an item in the open menu or select list by its text. */
+const pick = (text, pause = 900) => click(`.mud-popover-open :is(.mud-list-item, .mud-menu-item)::-p-text(${text})`, { pause });
+
+/** Closes an open menu or select list. */
+async function escape(pause = 600) {
+    await page.keyboard.press('Escape');
+    await wait(pause);
+}
+
 /** Scrolls the page smoothly by `y` pixels and lets it settle. */
 async function scroll(y, pause = 1200) {
     await page.evaluate(y => window.scrollBy({ top: y, behavior: 'smooth' }), y);
@@ -171,6 +183,38 @@ const scenes = {
         await click('.mud-dialog button::-p-text(Save)', { pause: 1500 });
     },
 
+    // library groups: tinted cards, the Group filter, moving pieces from a card, a list row and the piece page, a new group
+    async groups() {
+        await nav('library');
+        if (await page.$('.piece-row')) await click('.view-toggle button:first-of-type', { pause: 800 });   // cards
+        await wait(2000);
+        // filter to two groups, then back to all of them
+        await click('.toolbar-end input[aria-label="Group"]', { pause: 800 });
+        await pick('Repertoire');
+        await pick('Warm-ups');
+        await escape(2200);
+        await click('.toolbar-end .mud-input-clear-button', { pause: 1500 });
+        // a card's "Add group" (shown on hover) moves it into a group
+        await click('button[aria-label="Add Three-string sweep lick to a group"]', { pause: 800 });
+        await pick('Warm-ups', 1800);
+        // or into a new one
+        await click('button[aria-label="Add Legato: three notes per string to a group"]', { pause: 800 });
+        await pick('New group…', 1000);
+        await type('Technique');
+        await click('.mud-dialog button[aria-label="Teal"]', { pause: 700 });
+        await click('.mud-dialog button::-p-text(Add)', { pause: 2200 });
+        // the list view: a Group column, and its cell is the same menu
+        await click('.view-toggle button:last-of-type', { pause: 1800 });
+        await click('button[aria-label="Add Schism (verse riff) to a group"]', { pause: 800 });
+        await pick('Technique', 1800);
+        // the piece page's header has it too
+        await click('a[href="library/demo-spain"]', { pause: 1500 });
+        await click('button[aria-label="Group for Spain: Repertoire"]', { pause: 1500 });
+        await escape(800);
+        await nav('library');
+        await click('.view-toggle button:first-of-type', { pause: 2500 });
+    },
+
     async stats() {
         await nav('stats');
         await wait(2500);
@@ -203,8 +247,11 @@ try {
         recorder = await page.screencast({ path: video, ffmpegPath });
     }
     if (opt.shots) mkdirSync(opt.shots, { recursive: true });
+    const names = opt.scenes ? opt.scenes.split(',').map(s => s.trim()).filter(Boolean) : Object.keys(scenes);
+    const unknown = names.filter(n => !scenes[n]);
+    if (unknown.length) throw new Error(`No scene called ${unknown.join(', ')} (there are: ${Object.keys(scenes).join(', ')})`);
     let n = 0;
-    for (const [name, scene] of Object.entries(scenes)) {
+    for (const [name, scene] of names.map(n => [n, scenes[n]])) {
         console.log(`· ${name}`);
         await scene();
         if (opt.shots) await page.screenshot({ path: join(opt.shots, `${String(++n).padStart(2, '0')}-${name}.png`) });
