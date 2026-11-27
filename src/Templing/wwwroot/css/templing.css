@@ -105,7 +105,7 @@ kbd {
 .group-pick:hover .group-pick-hint, .group-pick:focus-visible .group-pick-hint { opacity: 1; }
 .group-pick-add { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .group-pick.none { opacity: 0; transition: opacity .12s ease; }
-.piece-row:hover .group-pick.none, .piece-card:hover .group-pick.none, .group-pick.none:focus-visible, .mud-menu-activator[aria-expanded="true"] .group-pick.none { opacity: 1; }
+.group-pick-menu.always .group-pick.none, .piece-row:hover .group-pick.none, .piece-card:hover .group-pick.none, .group-pick.none:focus-visible, .mud-menu-activator[aria-expanded="true"] .group-pick.none { opacity: 1; }
 .pr-cols { display: grid; grid-template-columns: 22px minmax(140px, 2fr) minmax(130px, 1fr) 170px 100px 110px; align-items: center; gap: 12px; min-width: 0; }
 .piece-list-head { padding: 0 8px 6px; font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--grid); }
 .piece-row { padding: 2px 8px; border-bottom: 1px solid var(--grid); border-radius: 8px; }
@@ -140,6 +140,9 @@ kbd {
 .card-group { flex: 1; min-width: 0; display: flex; padding: 0 4px; font-size: .8rem; }
 .card-group .group-pick-menu, .card-group .group-pick-menu .mud-menu-activator { display: flex; width: 100%; min-width: 0; }
 .card-group .group-pick { height: 28px; margin-left: 0; }
+/* the piece page: beside the type pill */
+.group-pick-menu.always .group-pick { height: 26px; width: auto; margin-left: 0; }
+.group-pick-menu.always .group-pick-add { overflow: visible; }
 /* a group's colour dot and name (GroupTag) */
 .group-option { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-width: 0; }
 .group-option-edit { margin: -6px -8px -6px 0; flex: none; }

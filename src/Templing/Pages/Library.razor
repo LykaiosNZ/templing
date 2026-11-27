@@ -145,7 +145,7 @@ else
                     @if (withGroups)
                     {
                         @* the Group column's menu, laid over the link on the same columns (only that cell takes clicks) *@
-                        <div class="pr-cols pr-overlay"><span></span><span></span><span class="pr-group pr-wide">@GroupMenu(piece)</span></div>
+                        <div class="pr-cols pr-overlay"><span></span><span></span><span class="pr-group pr-wide"><GroupPicker Piece="piece" /></span></div>
                     }
                     </div>
                     <span class="pr-actions">
@@ -251,7 +251,7 @@ else
                     @PracticeActions(piece)
                     @if (Store.Groups.Count > 0)
                     {
-                        <span class="card-group">@GroupMenu(piece)</span>
+                        <span class="card-group"><GroupPicker Piece="piece" /></span>
                     }
                     else
                     {
@@ -286,51 +286,6 @@ else
                 <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit {piece.Name}")" OnClick="() => Edit(piece)" />
             </MudTooltip>
         </text>;
-
-    // a list row's Group cell and a card's group label: a menu to move the piece in two clicks
-    RenderFragment GroupMenu(Piece piece) =>
-        @<MudMenu Dense="true" AriaLabel="@($"Group for {piece.Name}")" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Class="group-pick-menu">
-            @* a custom activator opens the menu itself (MudBlazor 9: context.ToggleAsync) *@
-            <ActivatorContent>
-                @if (Store.GetGroup(piece.GroupId) is { } current)
-                {
-                    <button type="button" @onclick="e => context.ToggleAsync(e)" class="group-pick" aria-label="@($"Group for {piece.Name}: {current.Name}")">
-                        <GroupTag Group="current" /><MudIcon Icon="@Icons.Material.Rounded.ArrowDropDown" Size="Size.Small" Class="group-pick-hint" />
-                    </button>
-                }
-                else
-                {
-                    @* shown while the row or card is hovered *@
-                    <button type="button" @onclick="e => context.ToggleAsync(e)" class="group-pick none" aria-label="@($"Add {piece.Name} to a group")">
-                        <span class="group-pick-add">Add group</span><MudIcon Icon="@Icons.Material.Rounded.ArrowDropDown" Size="Size.Small" Class="group-pick-hint" />
-                    </button>
-                }
-            </ActivatorContent>
-            <ChildContent>
-                @foreach (var g in Store.Groups)
-                {
-                    var group = g;
-                    <MudMenuItem OnClick="() => SetGroup(piece, group.Id)" Icon="@(piece.GroupId == group.Id ? Icons.Material.Rounded.Check : null)">
-                        <GroupTag Group="group" />
-                    </MudMenuItem>
-                }
-                <MudMenuItem OnClick="() => SetGroup(piece, null)" Icon="@(Store.GetGroup(piece.GroupId) is null ? Icons.Material.Rounded.Check : null)">No group</MudMenuItem>
-                <MudDivider />
-                <MudMenuItem Icon="@Icons.Material.Rounded.CreateNewFolder" OnClick="() => AfterMenu(() => NewGroupFor(piece))">New group…</MudMenuItem>
-            </ChildContent>
-        </MudMenu>;
-
-    async Task SetGroup(Piece piece, string? groupId)
-    {
-        if (piece.GroupId == groupId) return;
-        piece.GroupId = groupId;
-        await Store.SavePieceAsync(piece);
-    }
-
-    async Task NewGroupFor(Piece piece)
-    {
-        if (await GroupDialog.ShowAsync(Dialogs) is { } g) await SetGroup(piece, g.Id);
-    }
 
     async Task ToggleFavourite(Piece p) { p.Favourite = !p.Favourite; await Store.SavePieceAsync(p); }
 
