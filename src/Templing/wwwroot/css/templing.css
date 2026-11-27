@@ -74,6 +74,11 @@ kbd {
 .card.danger { border-color: rgba(208,59,59,.35); }
 .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 18px; }
 .toolbar .search-box { max-width: 320px; }
+/* Pager: a long list a page at a time; a new page scrolls the list's top back into view, clear of the app bar */
+.paged { scroll-margin-top: 80px; }
+.pager { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; margin-top: 16px; }
+.pager-range { font-variant-numeric: tabular-nums; }
+@media (max-width: 600px) { .pager { justify-content: center; } }
 .empty-state { text-align: center; padding: 64px 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--ink-2); }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .form-grid.three { grid-template-columns: 1fr 1fr 1fr; }

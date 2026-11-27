@@ -50,8 +50,8 @@
 }
 else
 {
-    @* on the page, not in a card, like the Library list; key forces paging reset when filters change *@
-    <LogTable @key="_version" Logs="_logs" ShowPiece="true" PageSize="60" />
+    @* on the page, not in a card, like the Library list; the key starts again on page 1 when the filters change *@
+    <LogTable @key="_version" Logs="_logs" ShowPiece="true" PageSize="50" />
 }
 
 @code {
@@ -64,16 +64,19 @@ else
     List<PracticeLog> _logs = new();
 
     protected override void OnInitialized() { Store.Changed += OnChanged; Refresh(); }
-    void OnChanged() { Refresh(); InvokeAsync(StateHasChanged); }
+    void OnChanged() { Load(); InvokeAsync(StateHasChanged); }
 
-    void Refresh()
+    // the filters changed: back to page 1
+    void Refresh() { Load(); _version++; }
+
+    // after an entry was added, edited or deleted the log stays on its page
+    void Load()
     {
         IEnumerable<PracticeLog> q = Store.Logs;
         if (_piece != "") q = q.Where(l => l.PieceId == _piece);
         if (_range > 0) q = q.Where(l => l.Date > DateTime.Today.AddDays(-_range));
         if (!string.IsNullOrWhiteSpace(_search)) q = q.Where(l => (l.Notes ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase) || l.PieceName.Contains(_search, StringComparison.OrdinalIgnoreCase));
         _logs = q.OrderByDescending(l => l.Date).ThenBy(l => l.PieceName).ToList();
-        _version++;
     }
 
     async Task Add()
