@@ -111,8 +111,8 @@ else
                 <div id="sections-body" hidden="@(!SectionsOpen)">
                 @if (_piece.HasParts())
                 {
-                    <div class="log-table-wrap">
-                        <table class="log-table parts-table">
+                    <div class="data-table-wrap">
+                        <table class="data-table parts-table">
                             <thead>
                                 <tr>
                                     <th scope="col">Section</th>
@@ -132,7 +132,7 @@ else
                                     var weakest = ps == _weakest;
                                     var pctSuffix = _piece.Unit == TempoUnit.Percent ? "%" : "";
                                     <tr class="@(weakest ? "weakest" : "")">
-                                        <th scope="row" class="part-name">
+                                        <th scope="row" class="row-name">
                                             @s.Name
                                             @if (weakest) { <span class="weak-tag">needs work</span> }
                                         </th>
@@ -152,7 +152,7 @@ else
                                             }
                                         </td>
                                         <td class="small muted">@(ps.LastDate is null ? "not yet" : Stats.Ago(ps.LastDate, DateTime.Today))@(ps.TotalSec > 0 ? $" · {Stats.Duration(ps.TotalSec)}" : "")</td>
-                                        <td class="act" style="white-space:nowrap">
+                                        <td class="act">
                                             <MudTooltip Text="Log practice">
                                                 <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.AddTask" aria-label="@($"Log {s.Name}")" OnClick="() => AddLogFor(s.Id)" />
                                             </MudTooltip>

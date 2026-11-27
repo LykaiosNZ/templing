@@ -50,10 +50,8 @@
 }
 else
 {
-    <section class="card">
-        @* key forces paging reset when filters change *@
-        <LogTable @key="_version" Logs="_logs" ShowPiece="true" PageSize="60" />
-    </section>
+    @* on the page, not in a card, like the Library list; key forces paging reset when filters change *@
+    <LogTable @key="_version" Logs="_logs" ShowPiece="true" PageSize="60" />
 }
 
 @code {

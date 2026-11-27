@@ -74,6 +74,7 @@ Never hand-roll a duration format in a page. If `Stats.Duration` doesn't fit, ch
   - Put `<OptionsRail>` last in the page markup. MudBlazor gives every `div` after a right-hand drawer a right margin the width of the drawer, so anything placed after it (e.g. the tab view) gets squeezed.
   - Tooltips on controls at the rail's right edge (Save, ⋮, strip buttons, Hide options) use `Placement.Left`. Below or above, they hit the window edge, wrap and jitter.
 - Must work at phone width (≥ 360 px): wide tables switch to compact rows (`hide-phone` / `show-phone-block`).
+- **Tables** look like the Library list view, everywhere: an uppercase muted header (.72rem, 600) over a hairline, a hairline under every row, rows the same height (about 41 px: one line of text, so don't stack a second line in a cell), a rounded hover tint, and the row's name (piece, section) in 600 ink, not link blue. Numbers are right-aligned mono; secondary text is muted. Use `<table class="data-table">` in a `data-table-wrap` (the Library list is a grid of links, so it shares the same rules by name; the "tables" block in `templing.css` is the one place to change them). A page's main list sits on the page, not in a card (Library, History); inside a card (the piece page's Sections and Log) it's the same table. Key–value facts (a piece's single tempo, meter, division) aren't a list and stay a `MudSimpleTable`.
 
 ## Settings
 
@@ -169,7 +170,7 @@ Reuse these instead of rebuilding them. When two screens show the same thing, th
 | `MeterInput` | Any time signature: one outlined field "7 / 8", each number typed or stepped with ↑/↓, ←/→ to move between them (the bottom doubles/halves and snaps to a note value: 1, 2, 4, 8, 16, 32). Pair it with a "Division" select from `Section.Divisions(unit)` (note values, 1/4 … 1/32, triplets to 1/16t) |
 | `PlanStepSummary` | One-line plan step (Plans list, plan editor rows) |
 | `SectionsEditor`, `SectionSummary` | Tempo-map editor (piece editor, custom metronome sections): header with count, quick-add chips, collapsible rows |
-| `LogTable` | Practice log lists (History, Piece detail) |
+| `LogTable` | Practice log lists (History, Piece detail), as a `data-table` (Tables, above) with compact rows on phones |
 | `GoalBar` | Goal progress bar (`MudProgressLinear`: accent, green when reached) |
 | `GoalChip` | "Goal reached" / "+15 over" (green), wherever a piece's goal shows: Library and Dashboard cards, the piece page's Progress tile (with **Raise goal…**). Progress percentages aren't capped, so past the goal reads 111% |
 | `StatTile` | Headline numbers (pass `Seconds` for durations so the unit words render small) |

@@ -107,12 +107,11 @@ kbd {
 .group-pick.none { opacity: 0; transition: opacity .12s ease; }
 .group-pick-menu.always .group-pick.none, .piece-row:hover .group-pick.none, .piece-card:hover .group-pick.none, .group-pick.none:focus-visible, .mud-menu-activator[aria-expanded="true"] .group-pick.none { opacity: 1; }
 .pr-cols { display: grid; grid-template-columns: 22px minmax(140px, 2fr) minmax(130px, 1fr) 170px 100px 110px; align-items: center; gap: 12px; min-width: 0; }
-.piece-list-head { padding: 0 8px 6px; font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--grid); }
-.piece-row { padding: 2px 8px; border-bottom: 1px solid var(--grid); border-radius: 8px; }
-.piece-row:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.piece-list-head { padding: 0 8px 6px; }
+.piece-row { padding: 2px 8px; border-radius: 8px; }
 .piece-row.archived { opacity: .6; }
 .mud-layout a.piece-row-link { color: var(--ink); text-decoration: none; padding: 8px 0; }
-.pr-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .piece-list.with-groups .pr-cols { grid-template-columns: 22px minmax(140px, 2fr) minmax(90px, 1fr) minmax(130px, 1fr) 170px 100px 110px; }
 .pr-group { min-width: 0; display: flex; font-size: .85rem; color: var(--ink-2); }
 .pr-tempo { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -250,24 +249,38 @@ kbd {
 .fav-running { color: var(--accent); font-weight: 600; }
 .fav-toggle.on.mud-icon-button { color: var(--accent); }
 
-/* log table */
-.log-table-wrap { overflow-x: auto; }
-.log-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
-.log-table th { text-align: left; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; padding: 6px 10px; border-bottom: 1px solid var(--grid); }
-.log-table td { padding: 4px 10px; vertical-align: middle; }
-.log-table tr.day-start td { border-top: 1px solid var(--grid); }
-.log-table tbody tr:first-child td { border-top: none; }
-.log-table tbody tr:hover { background: var(--card-2); }
-.log-table .num { text-align: right; white-space: nowrap; }
+/* tables: every list of rows shares one look, the Library list view's (DESIGN.md, Tables). The Library list is a grid of
+   links (.piece-list) rather than a <table>, so each shared rule names both: change the look here, never per table. */
+.piece-list-head, .data-table thead th { font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--grid); }
+.piece-row, .data-table tbody td, .data-table tbody th { border-bottom: 1px solid var(--grid); }
+.piece-row:hover, .data-table tbody tr:hover > * { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.pr-name, .data-table .row-name { font-weight: 600; color: var(--ink); }
+
+/* <table class="data-table">: cells line up with the Library list's (8 px in from the row's edge, 12 px between columns,
+   rounded hover); separate borders, because cells in a collapsed table can't be rounded */
+.data-table-wrap { overflow-x: auto; }
+.data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.data-table th, .data-table td { padding: 10px 6px; text-align: left; vertical-align: middle; }
+.data-table thead th { padding-top: 0; padding-bottom: 6px; }
+.data-table tr > :first-child { padding-left: 8px; }
+.data-table tr > :last-child { padding-right: 8px; }
+.data-table tbody tr > :first-child { border-radius: 8px 0 0 8px; }
+.data-table tbody tr > :last-child { border-radius: 0 8px 8px 0; }
+.mud-layout .data-table a.row-name { text-decoration: none; }
+.mud-layout .data-table a.row-name:hover { text-decoration: underline; }
+.data-table .num { text-align: right; white-space: nowrap; }
+.data-table .act { width: 40px; text-align: right; white-space: nowrap; padding-top: 4px; padding-bottom: 4px; }
+.data-table tr.clickable, .log-row.clickable { cursor: pointer; }
+/* an edit button shows on hover, since the whole row opens it too */
+.data-table .row-edit { opacity: 0; transition: opacity .12s; }
+.data-table tr:hover .row-edit, .data-table tr:focus-within .row-edit, .data-table .row-edit:focus-visible { opacity: 1; }
+@media (hover: none) { .data-table .row-edit { opacity: 1; } }
+
+/* practice logs (LogTable): the date shows on a day's first row, and a stronger line ends each day */
 .log-table .date { white-space: nowrap; color: var(--ink-2); font-weight: 600; }
+.log-table tbody tr:has(+ tr.day-start) > * { border-bottom-color: var(--axis); }
 .log-table .notes { color: var(--ink-2); max-width: 340px; }
-.log-table .act { width: 40px; text-align: right; }
-.log-table td.date { vertical-align: top; padding-top: 7px; }
 .day-total { font-weight: 400; font-size: .78rem; color: var(--muted); }
-.log-table tr.clickable, .log-row.clickable { cursor: pointer; }
-.log-table .row-edit { opacity: 0; transition: opacity .12s; }
-.log-table tr:hover .row-edit, .log-table tr:focus-within .row-edit, .log-table .row-edit:focus-visible { opacity: 1; }
-@media (hover: none) { .log-table .row-edit { opacity: 1; } }
 
 /* metronome stage */
 .stage {
@@ -603,9 +616,7 @@ html.boot-light .boot { --boot-accent: var(--boot-accent-light, #0361c3); --boot
 .part-bars .section-bar { flex: 1; }
 
 /* piece page: song parts table */
-.parts-table th.part-name { text-align: left; font-weight: 600; font-size: .9rem; text-transform: none; letter-spacing: 0; color: var(--ink); padding: 8px 10px; border-bottom: none; }
-.parts-table tbody tr td, .parts-table tbody tr th { border-top: 1px solid var(--grid); }
-.parts-table tr.weakest { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.parts-table tr.weakest > * { background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .weak-tag { margin-left: 8px; font-size: .68rem; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 1px 7px; border-radius: 999px; text-transform: uppercase; letter-spacing: .04em; }
 
 /* score import preview */
@@ -844,9 +855,9 @@ html.boot-light .boot { --boot-accent: var(--boot-accent-light, #0361c3); --boot
 .log-cards { display: none; }
 @media (max-width: 700px) { .log-cards { display: flex; flex-direction: column; gap: 10px; } }
 .log-day-head { font-size: .78rem; font-weight: 700; color: var(--ink-2); text-transform: uppercase; letter-spacing: .04em; padding: 4px 0; border-bottom: 1px solid var(--grid); }
-.log-row { padding: 6px 0; border-bottom: 1px solid color-mix(in srgb, var(--grid) 60%, transparent); }
+.log-row { padding: 6px 0; border-bottom: 1px solid var(--grid); }
 .log-row-main { display: flex; align-items: center; gap: 10px; font-size: .9rem; }
-.log-row-main .log-what { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-row-main .log-what { flex: 1; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .log-row-main .log-edit { margin-left: auto; }
 .log-row-sub { display: flex; gap: 8px; align-items: baseline; font-size: .8rem; margin-top: 2px; flex-wrap: wrap; }
 
