@@ -32,14 +32,21 @@
 
     public static IEnumerable<T> Slice<T>(IEnumerable<T> all, int page, int pageSize) => all.Skip((page - 1) * pageSize).Take(pageSize);
 
-    IJSObjectReference? _js;
+    IJSInProcessObjectReference? _js;
     ElementReference _top;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_js == null && Total > PageSize)
+            _js = await JS.InvokeAsync<IJSInProcessObjectReference>("import", "./js/pager.js");
+    }
 
     async Task Go(int page)
     {
         if (page == Page) return;
+        // scroll up first, in step, so the new page is drawn once, already at the top: a virtualised list
+        // drawn first where the old page was scrolled to drew its rows again after the scroll
+        _js?.InvokeVoid("showTop", _top);
         await PageChanged.InvokeAsync(page);
-        _js ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/pager.js");
-        await _js.InvokeVoidAsync("showTop", _top);
     }
 }
