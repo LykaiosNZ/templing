@@ -1,0 +1,54 @@
+@* A piece's group as a menu: its group (dot and name), or "Add group" for a piece in none, opening the groups with a tick on
+   the current one, No group and New group…, so the piece moves in two clicks. Library list rows (the Group cell), Library
+   cards and the piece page. The hover hints (the arrow, and "Add group" on rows and cards) are in templing.css. *@
+@inject DataStore Store
+@inject IDialogService Dialogs
+
+<MudMenu Dense="true" AriaLabel="@($"Group for {Piece.Name}")" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Class="@($"group-pick-menu {Class}")">
+    @* a custom activator opens the menu itself (MudBlazor 9: context.ToggleAsync) *@
+    <ActivatorContent>
+        @if (Store.GetGroup(Piece.GroupId) is { } current)
+        {
+            <button type="button" @onclick="e => context.ToggleAsync(e)" class="group-pick" aria-label="@($"Group for {Piece.Name}: {current.Name}")">
+                <GroupTag Group="current" /><MudIcon Icon="@Icons.Material.Rounded.ArrowDropDown" Size="Size.Small" Class="group-pick-hint" />
+            </button>
+        }
+        else
+        {
+            <button type="button" @onclick="e => context.ToggleAsync(e)" class="group-pick none" aria-label="@($"Add {Piece.Name} to a group")">
+                <span class="group-pick-add">Add group</span><MudIcon Icon="@Icons.Material.Rounded.ArrowDropDown" Size="Size.Small" Class="group-pick-hint" />
+            </button>
+        }
+    </ActivatorContent>
+    <ChildContent>
+        @foreach (var g in Store.Groups)
+        {
+            var group = g;
+            <MudMenuItem OnClick="() => SetGroup(group.Id)" Icon="@(Piece.GroupId == group.Id ? Icons.Material.Rounded.Check : null)">
+                <GroupTag Group="group" />
+            </MudMenuItem>
+        }
+        <MudMenuItem OnClick="() => SetGroup(null)" Icon="@(Store.GetGroup(Piece.GroupId) is null ? Icons.Material.Rounded.Check : null)">No group</MudMenuItem>
+        <MudDivider />
+        @* MudMenu only closes once a menu item's handler finishes: start the dialog after it closes *@
+        <MudMenuItem Icon="@Icons.Material.Rounded.CreateNewFolder" OnClick="() => { _ = InvokeAsync(NewGroup); }">New group…</MudMenuItem>
+    </ChildContent>
+</MudMenu>
+
+@code {
+    [Parameter, EditorRequired] public Piece Piece { get; set; } = default!;
+    /// <summary>Extra classes: <c>always</c> shows "Add group" without waiting for a hover (the piece page).</summary>
+    [Parameter] public string? Class { get; set; }
+
+    async Task SetGroup(string? groupId)
+    {
+        if (Piece.GroupId == groupId) return;
+        Piece.GroupId = groupId;
+        await Store.SavePieceAsync(Piece);
+    }
+
+    async Task NewGroup()
+    {
+        if (await GroupDialog.ShowAsync(Dialogs) is { } g) await SetGroup(g.Id);
+    }
+}
