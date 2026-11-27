@@ -44,8 +44,7 @@
     async Task Go(int page)
     {
         if (page == Page) return;
-        // scroll up first, in step, so the new page is drawn once, already at the top: a virtualised list
-        // drawn first where the old page was scrolled to drew its rows again after the scroll
+        // scroll up first, in step (in-process call), so the new page is drawn already at the top
         _js?.InvokeVoid("showTop", _top);
         await PageChanged.InvokeAsync(page);
     }
