@@ -193,7 +193,8 @@ else
                      style="@(cardGroup is null ? null : $"--group:{GroupColours.Hex(cardGroup.Colour)}")">
                 <a class="piece-card-link" href="library/@piece.Id" aria-label="@($"{piece.Name} details")">
                     <div class="piece-card-top">
-                        <span class="type-pill type-@piece.Type"><MudIcon Icon="@piece.Type.Icon()" Size="Size.Small" />@piece.Type.Label()</span>
+                        @* the type as just its icon, named by the tooltip, to keep the card light *@
+                        <MudTooltip Text="@piece.Type.Label()"><span class="type-icon type-@piece.Type" role="img" aria-label="@piece.Type.Label()"><MudIcon Icon="@piece.Type.Icon()" Size="Size.Small" /></span></MudTooltip>
                         <span class="card-top-right">
                             @if (Store.LastRatedFor(piece) is { } rated && Effort.Get(rated.Effort) is { } feel)
                             {
@@ -241,7 +242,7 @@ else
                     @if (st.Sessions > 0)
                     {
                         <div class="piece-meta">
-                            <span>@(st.Progress is { } p ? $"{p:P0}" : "No goal")@(piece.HasParts() && Store.PartsFor(piece) is { Count: > 1 } pc ? $" · {pc.Count} sections" : "")</span>
+                            <span>@(st.Progress is { } p ? $"{p:P0}" : "No goal")</span>
                             <span>@(st.Sessions == 1 ? "1 session" : $"{st.Sessions} sessions") · @Stats.Duration(st.TotalSec)</span>
                         </div>
                     }
