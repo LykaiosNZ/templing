@@ -159,7 +159,7 @@ else
     else
     {
     @* drawn a row of cards at a time, and only the rows near the screen (each card is about 20 components) *@
-    <div class="piece-grid @(_grouped ? "grouped" : "")" role="list" @ref="_grid" style="--cols:@_columns">
+    <div class="piece-grid" role="list" @ref="_grid" style="--cols:@_columns">
         @if (_rows.Count > 0)
         {
             @* plain card outlines until the first cards are drawn, a moment later (CSS hides them then); they cost nothing to draw *@
@@ -174,28 +174,7 @@ else
         {
         <Virtualize Items="_cardRows" Context="cardRow" ItemSize="232" OverscanCount="2">
         @* @key: Virtualize reuses elements as you scroll, so without it a bar animated from the last piece's progress *@
-        @if (cardRow.Band is { } band)
-        {
-            @* grouped: each row is a slice of its group's tinted box (the first slice has the heading, the last one the bottom edge),
-               since a virtualised list can't wrap a group's rows in one element *@
-            @* a card dragged onto a group's box moves into that group (DragEnter / Drop; no dragover handler, see DESIGN.md) *@
-            var bandKey = band.Group?.Id ?? "";
-            <div class="group-band @(cardRow.First ? "first" : "") @(cardRow.Last ? "last" : "") @(band.Group is null ? "ungrouped" : "") @(cardRow.Cards.Length == 0 ? "empty" : "") @(_dragging != null && _dropKey == bandKey && bandKey != (Store.GetGroup(_dragging.GroupId)?.Id ?? "") ? "drop-target" : "")"
-                 style="@(band.Group is { } bg ? $"--group:{GroupColours.Hex(bg.Colour)}" : null)" @key="cardRow.Key"
-                 @ondragover:preventDefault="true" @ondragenter="() => DragEnter(bandKey)" @ondrop="() => Drop(band.Group)" @ondrop:preventDefault="true">
-                <div class="group-band-fill">
-                    @if (cardRow.First)
-                    {
-                        @GroupHead(band)
-                    }
-                    @CardRowContent(cardRow.Cards)
-                </div>
-            </div>
-        }
-        else
-        {
-            <div @key="cardRow.Key">@CardRowContent(cardRow.Cards)</div>
-        }
+        <div @key="cardRow[0].Piece.Id">@CardRowContent(cardRow)</div>
         </Virtualize>
         }
     </div>
@@ -203,20 +182,16 @@ else
 }
 
 @code {
-    RenderFragment GroupHead(Band band) =>
-        @<div class="group-head">
-            <h2 class="group-title @(band.Group is null ? "muted" : "")">@(band.Group?.Name ?? "No group")</h2>
-            <span class="muted small">@(band.Count == 1 ? "1 piece" : $"{band.Count} pieces")</span>
-        </div>;
-
     RenderFragment CardRowContent(Row[] cards) =>
         @<div class="piece-grid-row">
         @foreach (var row in cards)
         {
             var piece = row.Piece; var st = row.Stats;
-            <article class="piece-card @(piece.Archived ? "archived" : "") @(_dragging == piece ? "dragging" : "")" role="listitem" @key="piece.Id"
-                     draggable="@(_grouped ? "true" : "false")" data-drag-card @ondragstart="() => DragStart(piece)" @ondragend="DragEnd">
-                <a class="piece-card-link" href="library/@piece.Id" aria-label="@($"{piece.Name} details")" draggable="false">
+            var cardGroup = Store.GetGroup(piece.GroupId);
+            @* a piece in a group is tinted with its colour *@
+            <article class="piece-card @(piece.Archived ? "archived" : "") @(cardGroup is null ? "" : "in-group")" role="listitem" @key="piece.Id"
+                     style="@(cardGroup is null ? null : $"--group:{GroupColours.Hex(cardGroup.Colour)}")">
+                <a class="piece-card-link" href="library/@piece.Id" aria-label="@($"{piece.Name} details")">
                     <div class="piece-card-top">
                         <span class="type-pill type-@piece.Type"><MudIcon Icon="@piece.Type.Icon()" Size="Size.Small" />@piece.Type.Label()</span>
                         <span class="card-top-right">
@@ -273,7 +248,14 @@ else
                 </a>
                 <div class="piece-card-actions">
                     @PracticeActions(piece)
-                    <MudSpacer />
+                    @if (Store.Groups.Count > 0)
+                    {
+                        <span class="card-group">@GroupMenu(piece)</span>
+                    }
+                    else
+                    {
+                        <MudSpacer />
+                    }
                     @ManageActions(piece)
                 </div>
             </article>
@@ -304,7 +286,7 @@ else
             </MudTooltip>
         </text>;
 
-    // list rows: the Group column opens a menu to move the piece in two clicks (cards are dragged instead)
+    // a list row's Group cell and a card's group label: a menu to move the piece in two clicks
     RenderFragment GroupMenu(Piece piece) =>
         @<MudMenu Dense="true" AriaLabel="@($"Group for {piece.Name}")" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Class="group-pick-menu">
             @* a custom activator opens the menu itself (MudBlazor 9: context.ToggleAsync) *@
@@ -317,11 +299,10 @@ else
                 }
                 else
                 {
-                    <MudTooltip Text="Add to a group" Placement="Placement.Top">
-                        <button type="button" @onclick="e => context.ToggleAsync(e)" class="group-pick none" aria-label="@($"Add {piece.Name} to a group")">
-                            <MudIcon Icon="@Icons.Material.Rounded.CreateNewFolder" Size="Size.Small" Class="group-pick-hint" />
-                        </button>
-                    </MudTooltip>
+                    @* shown while the row or card is hovered *@
+                    <button type="button" @onclick="e => context.ToggleAsync(e)" class="group-pick none" aria-label="@($"Add {piece.Name} to a group")">
+                        <span class="group-pick-add">Add group</span><MudIcon Icon="@Icons.Material.Rounded.ArrowDropDown" Size="Size.Small" Class="group-pick-hint" />
+                    </button>
                 }
             </ActivatorContent>
             <ChildContent>
@@ -371,74 +352,20 @@ else
         1 => picked[0] == NoGroup ? "No group" : Store.GetGroup(picked[0])?.Name ?? "All groups",
         var n => $"{n} groups",
     };
-    // cards are drawn in their groups (a tinted box each) once there are groups
-    bool _grouped;
-
-    // ---- dragging a card into another group's box ----
-    Piece? _dragging;
-    string? _dropKey;   // the box under the pointer: a group id, "" for No group
-    bool _skipRender;
-    protected override bool ShouldRender() { if (!_skipRender) return true; _skipRender = false; return false; }
-
-    void DragStart(Piece piece) { _dragging = piece; _dropKey = null; ChunkRows(); }
-
-    // dragenter fires for every element crossed inside a box: only redraw when the pointer moves to another box
-    void DragEnter(string key) { if (_dragging is null || key == _dropKey) _skipRender = true; else _dropKey = key; }
-
-    async Task Drop(PieceGroup? group)
-    {
-        var piece = _dragging;
-        _dragging = null; _dropKey = null;
-        ChunkRows();
-        if (piece is null || piece.GroupId == group?.Id || (group is null && Store.GetGroup(piece.GroupId) is null)) return;
-        piece.GroupId = group?.Id;
-        await Store.SavePieceAsync(piece);
-    }
-
-    void DragEnd() { if (_dragging is null) return; _dragging = null; _dropKey = null; ChunkRows(); }
     bool _showArchived;
     // the stats sort and filter needs; a card's feel rating and section bars come from Store as it's drawn
     record Row(Piece Piece, PieceStats Stats);
     List<Row> _rows = new();
 
-    // card view: _rows in rows of as many cards as fit (js/columns.js reports the count); grouped, each group's rows,
-    // groups by name and then the pieces in none
-    record Band(PieceGroup? Group, int Count);
-    record CardRow(string Key, Row[] Cards, Band? Band = null, bool First = false, bool Last = false);
-    List<CardRow> _cardRows = new();
+    // card view: _rows in rows of as many cards as fit (js/columns.js reports the count)
+    List<Row[]> _cardRows = new();
     int _columns;
     ElementReference _grid;
     ElementReference? _watched;
-    bool _watchedGrouped;
     IJSObjectReference? _columnsJs;
     DotNetObjectReference<Library>? _self;
 
-    void ChunkRows()
-    {
-        _cardRows = new();
-        if (_columns <= 0) return;
-        if (!_grouped)
-        {
-            _cardRows.AddRange(_rows.Chunk(_columns).Select(c => new CardRow(c[0].Piece.Id, c)));
-            return;
-        }
-        var groups = Store.Groups.ToDictionary(g => g.Id);
-        // Store.Groups is in name order; the rows keep the chosen sort inside each group
-        var byGroup = _rows.GroupBy(r => r.Piece.GroupId is { } id && groups.ContainsKey(id) ? id : "").ToDictionary(g => g.Key, g => g.ToArray());
-        // with nothing filtered, a group with no pieces still shows (just its heading), so a card can be dragged into it
-        var unfiltered = string.IsNullOrWhiteSpace(_search) && (_type is null or "all") && _groups.Count == 0;
-        var keys = Store.Groups.Select(g => g.Id).Where(id => unfiltered || byGroup.ContainsKey(id)).ToList();
-        // while a card is dragged, "No group" shows too, to drag it out of its group
-        if (byGroup.ContainsKey("") || _dragging != null) keys.Add("");
-        foreach (var key in keys)
-        {
-            var rows = byGroup.GetValueOrDefault(key, []);
-            var band = new Band(key == "" ? null : groups[key], rows.Length);
-            var chunks = rows.Length == 0 ? [Array.Empty<Row>()] : rows.Chunk(_columns).ToList();
-            for (var i = 0; i < chunks.Count; i++)
-                _cardRows.Add(new CardRow($"{key}/{(chunks[i].Length > 0 ? chunks[i][0].Piece.Id : "")}", chunks[i], band, i == 0, i == chunks.Count - 1));
-        }
-    }
+    void ChunkRows() => _cardRows = _columns > 0 ? _rows.Chunk(_columns).ToList() : new();
 
     void ClearFilters() { _search = null; _type = "all"; _groups = []; Refresh(); }
 
@@ -455,11 +382,9 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // watch the grid's width while it's shown; the list view has no grid. Grouping changes the room for cards
-        // (the boxes' padding), so measure again when that changes
+        // watch the grid's width while it's shown; the list view has no grid
         var grid = Store.Settings.LibraryList || Store.Pieces.Count == 0 || _rows.Count == 0 ? (ElementReference?)null : _grid;
-        if (grid?.Id == _watched?.Id && _grouped == _watchedGrouped) return;
-        _watchedGrouped = _grouped;
+        if (grid?.Id == _watched?.Id) return;
         _columnsJs ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/columns.js");
         if (_watched is { } old) await _columnsJs.InvokeVoidAsync("unwatch", old);
         _watched = grid;
@@ -498,7 +423,6 @@ else
             "time" => rows.OrderByDescending(r => r.Stats.TotalSec),
             _ => rows.OrderByDescending(r => r.Stats.LastDate ?? DateTime.MinValue).ThenBy(r => r.Piece.Name)
         }).ToList();
-        _grouped = Store.Groups.Count > 0;
         ChunkRows();
     }
 
