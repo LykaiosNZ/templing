@@ -33,6 +33,36 @@ const queue = []; // visual events {time, kind, ...}
 // runtime state
 let st = null;
 
+// The scheduler's tick. Browsers slow a hidden tab's timers (to once a second, or once a minute after a while)
+// unless it's making sound, so during a silent rest the 3-2-1 cues were handed to the audio clock late, often
+// several at once. A worker's timers aren't slowed like that, so the tick comes from one, posting back to this
+// page; the scheduler itself stays here. Where there's no Worker (tests, or one can't be made) it's a setInterval.
+let ticker; // undefined: not tried yet; null: no worker, use setInterval
+function startTicker() {
+    stopTicker();
+    if (ticker === undefined) {
+        ticker = null;
+        try {
+            if (typeof Worker !== 'undefined' && typeof Blob !== 'undefined') {
+                const src = 'let t=null;onmessage=e=>{clearInterval(t);t=e.data>0?setInterval(()=>postMessage(0),e.data):null;};';
+                const url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+                ticker = new Worker(url);
+                URL.revokeObjectURL(url);
+                ticker.onmessage = () => { if (timer) scheduler(); };
+                ticker.onerror = () => { ticker.terminate(); ticker = null; if (timer) startTicker(); };
+            }
+        } catch { ticker = null; }
+    }
+    if (ticker) { ticker.postMessage(LOOKAHEAD_MS); timer = true; }
+    else timer = setInterval(scheduler, LOOKAHEAD_MS);
+}
+function stopTicker() {
+    if (!timer) return;
+    if (ticker) ticker.postMessage(0);
+    else clearInterval(timer);
+    timer = null;
+}
+
 function ensureCtx() {
     if (!ctx) {
         ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
@@ -204,7 +234,7 @@ export function start() {
         st.restEnd = now + cfg.restFirstSec;
         st.cuesDone = {};
     } else beginWork(now, true);
-    timer = setInterval(scheduler, LOOKAHEAD_MS);
+    startTicker();
     raf = requestAnimationFrame(drawLoop);
     emit('started');
 }
@@ -228,8 +258,7 @@ function startWorkClock(t) {
 }
 
 function stopInternal(notify) {
-    if (timer) clearInterval(timer);
-    timer = null;
+    stopTicker();
     if (raf) cancelAnimationFrame(raf);
     raf = null;
     queue.length = 0;
@@ -284,8 +313,7 @@ export function pause() {
     }
     st.paused = true;
     st.pausedAt = p;
-    if (timer) clearInterval(timer);
-    timer = null;
+    stopTicker();
     if (raf) cancelAnimationFrame(raf);
     raf = null;
     while (queue.length) consume(queue.shift(), false); // what's queued is as good as heard
@@ -307,7 +335,7 @@ export function resume() {
     st.lastPulse = null; // nothing to retime from until the next click
     st.paused = false;
     st.pausedAt = null;
-    timer = setInterval(scheduler, LOOKAHEAD_MS);
+    startTicker();
     raf = requestAnimationFrame(drawLoop);
     scheduler();
     emit('state');
@@ -550,8 +578,7 @@ function finish(t, reason) {
     accumulateActive(Math.max(t, ctx.currentTime));
     st.finished = reason;
     st.running = false;
-    if (timer) clearInterval(timer);
-    timer = null;
+    stopTicker();
     setTimeout(() => { stopInternal(false); emit('finished', reason); }, Math.max(0, (t - ctx.currentTime) * 1000) + 50);
 }
 
