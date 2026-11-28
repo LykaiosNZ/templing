@@ -243,9 +243,9 @@ kbd {
 
 /* tables: every list of rows shares one look, the Library list view's (DESIGN.md, Tables). The Library list is a grid of
    links (.piece-list) rather than a <table>, so each shared rule names both: change the look here, never per table. */
-.piece-list-head, .data-table thead th { font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--grid); }
-.piece-row, .data-table tbody td, .data-table tbody th { border-bottom: 1px solid var(--grid); }
-.piece-row:hover, .data-table tbody tr:hover > * { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.piece-list-head, .plan-table-head, .data-table thead th { font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--grid); }
+.piece-row, .plan-trow, .data-table tbody td, .data-table tbody th { border-bottom: 1px solid var(--grid); }
+.piece-row:hover, .plan-trow:hover, .data-table tbody tr:hover > * { background: color-mix(in srgb, var(--ink) 4%, transparent); }
 .pr-name, .data-table .row-name { font-weight: 600; color: var(--ink); }
 
 /* <table class="data-table">: cells line up with the Library list's (8 px in from the row's edge, 12 px between columns,
@@ -704,28 +704,56 @@ html.boot-light .boot { --boot-accent: var(--boot-accent-light, #0361c3); --boot
     .plan-bar-actions { gap: 2px; }
     .plan-dots { margin-top: 8px; }
 }
-/* Plans page: one row per plan (name, totals, actions) that expands to its steps */
-.plan-rows { display: flex; flex-direction: column; gap: 8px; }
-.plan-row { background: var(--card); border: 1px solid var(--ring); border-radius: var(--radius); }
-.plan-row.running { border-color: var(--accent); }
-.plr-head { display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; }
-.plr-toggle { flex: 1; min-width: 0; display: flex; justify-content: flex-start; align-items: baseline; gap: 10px; padding: 10px 8px; background: none; border: none; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: 10px; }
-.plr-toggle:hover { background: var(--card-2); }
-.plr-toggle:focus-visible { outline: 2px solid var(--mud-palette-primary); }
-.plr-toggle .er-chevron { align-self: center; flex: none; }
-.plan-row.open .er-chevron { transform: none; }
-.plr-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.plr-meta { color: var(--ink-2); font-size: .82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.plr-actions { display: flex; align-items: center; gap: 2px; flex: none; }
-.plr-actions .plr-run { margin-left: 6px; min-width: 112px; }
-.plan-row .plan-list { padding: 2px 16px 14px 42px; }
+/* Plans page: cards (or list rows) that open the plan's editor; a card's Steps opens its steps */
+.page-head-actions { display: flex; align-items: center; gap: 12px; }
+/* a plan's steps as a strip (PlanStrip), each block as wide as the step is long */
+.plan-strip { display: flex; width: 100%; gap: 2px; height: 14px; min-width: 0; border-radius: 4px; overflow: hidden; }
+.plan-strip.slim { height: 8px; border-radius: 3px; }
+.ps-step { flex: 1 1 0; min-width: 3px; background: var(--accent); }
+.ps-step.timer { background: color-mix(in srgb, var(--accent) 55%, var(--card)); }
+.ps-step.rest { background: color-mix(in srgb, var(--rest) 60%, var(--card)); }
+.ps-step.missing { background: var(--mud-palette-warning); }
+.ps-step.done { opacity: .35; }
+.ps-step.on { box-shadow: inset 0 0 0 2px var(--ink); }
+.plan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; align-items: start; }
+.plan-card { position: relative; background: var(--card); border: 1px solid var(--ring); border-radius: var(--radius); display: flex; flex-direction: column;
+    transition: border-color .12s ease, box-shadow .12s ease; }
+.plan-card:hover { border-color: var(--accent); box-shadow: 0 6px 24px rgba(0,0,0,.12); }
+.plan-card.running { border: 2px solid var(--accent); margin: -1px; }
+.plan-card-open { display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 16px 18px 12px; background: none; border: 0; color: var(--ink); font: inherit; text-align: left;
+    cursor: pointer; border-radius: var(--radius) var(--radius) 0 0; }
+.plan-card-open:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.plan-card-open .plan-strip { margin-top: 10px; }
+.plan-card-name { padding-right: 36px; font-size: 1.08rem; font-weight: 700; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plan-card-meta { font-size: .82rem; color: var(--ink-2); }
+.plan-card-star { position: absolute; top: 10px; right: 10px; }
+.plan-card .plan-list { padding: 4px 18px 10px; }
+.plan-card-actions { display: flex; align-items: center; gap: 2px; padding: 4px 10px 8px; border-top: 1px dashed var(--ring); }
+.plan-card-toggle { display: inline-flex; align-items: center; gap: 4px; margin-right: auto; padding: 4px 8px 4px 4px; background: none; border: 0; border-radius: 8px;
+    color: var(--ink-2); font: inherit; font-size: .85rem; cursor: pointer; }
+.plan-card-toggle:hover { background: var(--card-2); }
+.plan-card-toggle:focus-visible { outline: 2px solid var(--accent); }
+.plan-card-toggle.open .er-chevron { transform: none; }
+.plan-card-actions .plr-run { margin-left: 4px; min-width: 112px; }
+/* list view: the same look as the Library list (tables block below) */
+.plan-table { display: flex; flex-direction: column; }
+.plan-table-head, .plan-trow { display: grid; grid-template-columns: minmax(0, 1fr) 112px; align-items: center; gap: 8px; }
+.plt-cols { display: grid; grid-template-columns: minmax(140px, 2fr) minmax(120px, 2fr) 60px 100px 120px; align-items: center; gap: 16px; min-width: 0; }
+.plan-table-head { padding: 0 8px 6px; }
+.plan-trow { padding: 2px 8px; border-radius: 8px; }
+.plan-trow.running { background: var(--accent-soft); }
+.plt-open { padding: 8px 0; background: none; border: 0; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.plt-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.plt-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plt-num { text-align: right; }
+.plt-on { color: var(--accent); font-weight: 600; }
+.plt-actions { display: flex; align-items: center; justify-content: flex-end; }
 @media (max-width: 700px) {
-    .plr-head { flex-wrap: wrap; padding: 4px 6px 8px 4px; }
-    .plr-toggle { flex-basis: 100%; flex-wrap: wrap; row-gap: 2px; }
-    .plr-meta { flex-basis: 100%; padding-left: 30px; }
-    .plr-actions { width: 100%; padding-left: 30px; }
-    .plr-actions .plr-run { margin-left: auto; }
-    .plan-row .plan-list { padding-left: 34px; }
+    .plan-grid { grid-template-columns: minmax(0, 1fr); }
+    .plan-table-head { display: none; }
+    .plt-cols { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; column-gap: 12px; }
+    .plt-cols > .plan-strip { grid-column: 1 / -1; grid-row: 2; }
+    .plt-wide { display: none; }
 }
 .plan-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; flex: 1; }
 .plan-list li { font-size: .88rem; display: flex; align-items: baseline; gap: 8px; }
