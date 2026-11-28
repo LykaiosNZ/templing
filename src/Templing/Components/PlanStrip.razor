@@ -1,0 +1,31 @@
+@* A plan's steps as one strip of blocks, each as wide as the step is long (rounds and their rests are one block):
+   accent for metronome steps, a lighter accent for timer steps, the rest colour for rests, warning for a step whose piece is gone.
+   While the plan runs, finished steps fade and the current one is outlined. Drawn from its parameters only. *@
+@inject DataStore Store
+@inject PlanRunner Runner
+
+<span class="plan-strip @Class" role="img" aria-label="@Label">
+    @for (int i = 0; i < Plan.Steps.Count; i++)
+    {
+        var s = Plan.Steps[i];
+        var state = Current is { } c ? (i < c ? "done" : i == c ? "on" : "") : "";
+        <span class="ps-step @Kind(s) @state" style="flex-grow:@Weight(s)" title="@Tip(s)"></span>
+    }
+</span>
+
+@code {
+    [Parameter, EditorRequired] public PracticePlan Plan { get; set; } = default!;
+    /// <summary>The step that's running, or null when the plan isn't.</summary>
+    [Parameter] public int? Current { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    // invariant: a style value, never "2,5"
+    static string Weight(PlanStep s) => Math.Max(s.TotalMinutes, 0.25).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    string Kind(PlanStep s) => PlanStepSummary.IsMissing(s, Store) ? "missing"
+        : s.Kind == PlanStepKind.Rest ? "rest" : s.Mode == StepMode.Timer ? "timer" : "metro";
+
+    string Tip(PlanStep s) => $"{(s.Kind == PlanStepKind.Piece && s.PieceId == null ? "No piece" : Runner.Describe(s))} · {Stats.DurationMin(s.TotalMinutes)}";
+
+    string Label => $"Steps: {string.Join(", ", Plan.Steps.Select(Tip))}";
+}

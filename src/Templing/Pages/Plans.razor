@@ -9,7 +9,17 @@
 
 <div class="page-head">
     <h1 class="page-title" tabindex="-1">Plans</h1>
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.Add" OnClick="New">New plan</MudButton>
+    <div class="page-head-actions">
+        @if (Store.Plans.Count > 0)
+        {
+            <MudToggleGroup T="bool" Value="Store.Settings.PlansList" ValueChanged="SetListView" Color="Color.Primary" Size="Size.Small" Outlined="true" CheckMark="false"
+                            Class="view-toggle" aria-label="View">
+                <MudToggleItem Value="false"><MudTooltip Text="Cards"><MudIcon Icon="@Icons.Material.Rounded.GridView" Size="Size.Small" aria-label="Cards" /></MudTooltip></MudToggleItem>
+                <MudToggleItem Value="true"><MudTooltip Text="List"><MudIcon Icon="@Icons.Material.Rounded.ViewList" Size="Size.Small" aria-label="List" /></MudTooltip></MudToggleItem>
+            </MudToggleGroup>
+        }
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.Add" OnClick="New">New plan</MudButton>
+    </div>
 </div>
 
 @if (Store.Plans.Count == 0)
@@ -20,46 +30,67 @@
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="New" Class="mt-2">Create a plan</MudButton>
     </div>
 }
+else if (Store.Settings.PlansList)
+{
+    @* One row per plan, like the Library list: the row opens the plan's editor, actions at the end *@
+    <div class="plan-table" role="list">
+        <div class="plan-table-head" aria-hidden="true">
+            <span class="plt-cols"><span>Plan</span><span class="plt-strip-head"></span><span class="plt-wide plt-num">Steps</span><span class="plt-num">Length</span><span class="plt-wide">Last run</span></span>
+            <span></span>
+        </div>
+        @foreach (var plan in Ordered)
+        {
+            var running = IsRunning(plan);
+            var shown = running ? Runner.Plan! : plan;
+            var p = plan;
+            <div class="plan-trow @(running ? "running" : "")" role="listitem">
+                <button type="button" class="plt-open plt-cols" aria-label="@($"Edit {shown.Name}")" @onclick="() => Edit(p, running)">
+                    <span class="plt-name">@shown.Name</span>
+                    <PlanStrip Plan="shown" Current="@(running ? Runner.Index : null)" Class="slim" />
+                    <span class="plt-wide plt-num mono">@shown.Steps.Count</span>
+                    <span class="plt-num mono">@Stats.DurationMin(shown.TotalMinutes)</span>
+                    <span class="plt-wide small @(running ? "plt-on" : "muted")">@LastRun(shown, running)</span>
+                </button>
+                <span class="plt-actions">
+                    <FavouriteToggle On="plan.Favourite" Name="@plan.Name" OnToggle="() => ToggleFavourite(p)" />
+                    @More(p)
+                    @if (running)
+                    {
+                        <MudTooltip Text="End plan">
+                            <MudIconButton Size="Size.Small" Color="Color.Primary" Icon="@Icons.Material.Rounded.Stop" aria-label="@($"End {plan.Name}")" OnClick="() => Runner.EndAsync()" />
+                        </MudTooltip>
+                    }
+                    else
+                    {
+                        <MudTooltip Text="Run plan">
+                            <MudIconButton Size="Size.Small" Color="Color.Primary" Icon="@Icons.Material.Rounded.PlayArrow" aria-label="@($"Run {plan.Name}")" OnClick="() => Run(p)" />
+                        </MudTooltip>
+                    }
+                </span>
+            </div>
+        }
+    </div>
+}
 else
 {
-    @* One row per plan: name and totals; the row expands to its steps. The running plan is open and outlined. *@
-    <div class="plan-rows" role="list">
-        @foreach (var plan in Store.Plans.OrderByDescending(p => p.LastRun ?? p.Created))
+    @* A card per plan: name, totals and the steps as a strip; the card opens the plan's editor, Steps opens the list of steps.
+       The running plan is outlined and its steps are open. *@
+    <div class="plan-grid" role="list">
+        @foreach (var plan in Ordered)
         {
-            var running = Runner.Active && Runner.Plan?.Id == plan.Id;
+            var running = IsRunning(plan);
             var open = IsOpen(plan, running);
             var bodyId = $"plan-steps-{plan.Id}";
             var p = plan;
             // the run's own steps, which may have been changed for this session only
             var shown = running ? Runner.Plan! : plan;
-            <div class="plan-row @(open ? "open" : "") @(running ? "running" : "")" role="listitem">
-                <div class="plr-head">
-                    <button type="button" class="plr-toggle" aria-expanded="@(open ? "true" : "false")" aria-controls="@bodyId" @onclick="() => Toggle(p, running)">
-                        <MudIcon Icon="@Icons.Material.Rounded.ExpandMore" Size="Size.Small" Class="er-chevron" />
-                        <span class="plr-name">@shown.Name</span>
-                        <span class="plr-meta">@Meta(shown, running)</span>
-                    </button>
-                    <div class="plr-actions">
-                        <FavouriteToggle On="plan.Favourite" Name="@plan.Name" OnToggle="() => ToggleFavourite(p)" />
-                        <MudTooltip Text="Edit">
-                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Rounded.Edit" aria-label="@($"Edit {plan.Name}")" OnClick="() => Edit(p, running)" />
-                        </MudTooltip>
-                        <MudTooltip Text="More">
-                            <MudMenu Icon="@Icons.Material.Rounded.MoreVert" Size="Size.Small" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" AriaLabel="@($"More for {plan.Name}")">
-                                <MudMenuItem Icon="@Icons.Material.Rounded.ContentCopy" OnClick="() => Duplicate(p)">Duplicate</MudMenuItem>
-                                <MudMenuItem Icon="@Icons.Material.Rounded.Delete" OnClick="() => AfterMenu(() => Delete(p))">Delete…</MudMenuItem>
-                            </MudMenu>
-                        </MudTooltip>
-                        @if (running)
-                        {
-                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Rounded.Stop" OnClick="() => Runner.EndAsync()" Class="plr-run" aria-label="@($"End {plan.Name}")">End plan</MudButton>
-                        }
-                        else
-                        {
-                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Rounded.PlayArrow" OnClick="() => Run(p)" Class="plr-run" aria-label="@($"Run {plan.Name}")">Run plan</MudButton>
-                        }
-                    </div>
-                </div>
+            <article class="plan-card @(running ? "running" : "")" role="listitem">
+                <button type="button" class="plan-card-open" aria-label="@($"Edit {shown.Name}")" @onclick="() => Edit(p, running)">
+                    <span class="plan-card-name">@shown.Name</span>
+                    <span class="plan-card-meta">@Meta(shown, running)</span>
+                    <PlanStrip Plan="shown" Current="@(running ? Runner.Index : null)" />
+                </button>
+                <span class="plan-card-star"><FavouriteToggle On="plan.Favourite" Name="@plan.Name" OnToggle="() => ToggleFavourite(p)" /></span>
                 @if (open)
                 {
                     <ol class="plan-list" id="@bodyId">
@@ -80,13 +111,41 @@ else
                         }
                     </ol>
                 }
-            </div>
+                <div class="plan-card-actions">
+                    <button type="button" class="plan-card-toggle @(open ? "open" : "")" aria-expanded="@(open ? "true" : "false")" aria-controls="@bodyId" @onclick="() => Toggle(p, running)">
+                        <MudIcon Icon="@Icons.Material.Rounded.ExpandMore" Size="Size.Small" Class="er-chevron" />
+                        Steps
+                    </button>
+                    @More(p)
+                    @if (running)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Rounded.Stop" OnClick="() => Runner.EndAsync()" Class="plr-run" aria-label="@($"End {plan.Name}")">End plan</MudButton>
+                    }
+                    else
+                    {
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Rounded.PlayArrow" OnClick="() => Run(p)" Class="plr-run" aria-label="@($"Run {plan.Name}")">Run plan</MudButton>
+                    }
+                </div>
+            </article>
         }
     </div>
 }
 
 @code {
-    // Rows the user opened or closed this visit; anything not listed follows the default (only the running plan is open)
+    IEnumerable<PracticePlan> Ordered => Store.Plans.OrderByDescending(p => p.LastRun ?? p.Created);
+    bool IsRunning(PracticePlan p) => Runner.Active && Runner.Plan?.Id == p.Id;
+
+    RenderFragment More(PracticePlan p) =>
+        @<MudTooltip Text="More">
+            <MudMenu Icon="@Icons.Material.Rounded.MoreVert" Size="Size.Small" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" AriaLabel="@($"More for {p.Name}")">
+                <MudMenuItem Icon="@Icons.Material.Rounded.ContentCopy" OnClick="() => Duplicate(p)">Duplicate</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Rounded.Delete" OnClick="() => AfterMenu(() => Delete(p))">Delete…</MudMenuItem>
+            </MudMenu>
+        </MudTooltip>;
+
+    async Task SetListView(bool list) { Store.Settings.PlansList = list; await Store.SaveSettingsAsync(); }
+
+    // Cards the user opened or closed this visit; anything not listed follows the default (only the running plan is open)
     readonly Dictionary<string, bool> _open = new();
     bool IsOpen(PracticePlan p, bool running) => _open.TryGetValue(p.Id, out var o) ? o : running;
     void Toggle(PracticePlan p, bool running) => _open[p.Id] = !IsOpen(p, running);
@@ -101,13 +160,15 @@ else
     string Meta(PracticePlan p, bool running)
     {
         var n = p.Steps.Count;
-        var parts = new List<string> { $"{n} step{(n == 1 ? "" : "s")}", StepDur(p.TotalMinutes) };
+        var parts = new List<string> { $"{n} step{(n == 1 ? "" : "s")}", Stats.DurationMin(p.TotalMinutes) };
         if (running) parts.Add($"Step {Runner.Index + 1} of {n}{(Runner.EditedForSession ? " · changed for this session" : "")}");
         else parts.Add(p.LastRun is null ? "Not run yet" : $"Last run {Stats.Ago(p.LastRun, DateTime.Today)}");
         return string.Join(" · ", parts);
     }
 
-    static string StepDur(double min) => Stats.DurationMin(min);
+    // the list's Last run column: the running plan shows where it is instead
+    string LastRun(PracticePlan p, bool running) => running ? $"Step {Runner.Index + 1} of {p.Steps.Count}"
+        : p.LastRun is null ? "Not run yet" : Stats.Ago(p.LastRun, DateTime.Today);
 
     async Task Duplicate(PracticePlan p)
     {
