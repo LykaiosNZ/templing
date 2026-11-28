@@ -416,7 +416,42 @@ button.tempo-value:focus-visible { outline: 2px solid var(--ring); outline-offse
 .rail-title { font-size: .85rem; font-weight: 700; margin: 0; flex: 1; }
 .rail-scroll { overflow-y: auto; flex: 1; min-height: 0; }
 .rail-src { display: flex; gap: 8px; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--mud-palette-divider); }
-.rail-src .mud-select { flex: 1; min-width: 0; }
+.rail-src .mud-select, .rail-src .mud-autocomplete { flex: 1; min-width: 0; }
+/* SourcePicker's list: headings like a select's group headings, a piece's group dot before its name, Browse all… in accent */
+.source-popover .mud-list-item:has(.source-heading) { opacity: 1 !important; min-height: 0; padding-top: 10px; pointer-events: none; }
+.source-heading { font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.source-option { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.source-option .group-dot.none { background: transparent; }
+.source-option .source-icon { color: var(--muted); margin: 0 -3px; }
+.source-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.source-browse { color: var(--accent); font-weight: 600; }
+/* SourcePickerDialog: the Library list's rows, a button for the row, star and sections at the end */
+.source-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin: 4px 0 12px; }
+.source-list .piece-list-head, .source-list .piece-row { grid-template-columns: minmax(0, 1fr) auto; }
+.source-cols { display: grid; grid-template-columns: 22px minmax(140px, 2fr) minmax(90px, 1fr) minmax(110px, 1fr) 150px 112px; align-items: center; gap: 12px; min-width: 0; }
+.source-main { width: 100%; padding: 8px 0; border: 0; background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; border-radius: 6px; }
+.source-main:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.source-list .piece-row.current { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.source-list .piece-row.current .pr-name { color: var(--accent); }
+.source-no-sections { display: inline-block; width: 30px; }
+.source-sections { grid-column: 1 / -1; display: flex; flex-direction: column; padding: 0 0 8px 34px; }
+.source-section { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 6px 8px; border: 0; border-radius: 6px;
+    background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.source-section:hover, .source-section:focus-visible { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.source-section:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+@media (max-width: 700px) {
+    /* just the name: the tempo would squeeze it */
+    .source-cols { grid-template-columns: 22px minmax(0, 1fr); }
+    .source-cols > .pr-tempo, .source-list .piece-list-head { display: none; }
+    .source-list .piece-row { grid-template-columns: minmax(0, 1fr) auto; gap: 4px; }
+}
+/* on phones: the whole screen, and each row of chips scrolls sideways rather than wrapping */
+@media (max-width: 600px) {
+    .mud-dialog.source-picker { margin: 0; width: 100%; max-width: none; height: 100%; max-height: none; border-radius: 0; }
+    .source-filters { flex-direction: column; align-items: stretch; flex-wrap: nowrap; }
+    .source-filters .mud-chipset { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+    .source-filters .mud-chip { flex: none; max-width: none; }
+}
 .rail-sec { border-bottom: 1px solid var(--mud-palette-divider); }
 .rail-sec-head { display: flex; align-items: center; gap: 10px; padding: 10px 16px; min-height: 52px; }
 .rail-sec-icon { color: var(--ink-2); }

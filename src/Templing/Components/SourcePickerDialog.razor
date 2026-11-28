@@ -1,0 +1,275 @@
+@* The whole library (and custom metronomes) to load from: search, Favourites / Pieces / Custom metronomes, group
+   filters and the Library's sorts, a page at a time. A row loads its piece; on the Metronome, a piece with sections
+   opens to them so it can load at one. Opened from SourcePicker's "Browse all…". *@
+@inject DataStore Store
+
+<MudDialog Class="source-picker" ContentClass="source-dialog">
+    <DialogContent>
+        <div class="toolbar">
+            <MudTextField @ref="_field" T="string" @bind-Value="_search" @bind-Value:after="Filter" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.Search"
+                          Immediate="true" DebounceInterval="150" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="search-box"
+                          aria-label="@(Presets ? "Search pieces and custom metronomes" : "Search pieces")" OnKeyDown="SearchKey" />
+            <MudSpacer />
+            <div class="toolbar-end">
+                <MudSelect T="string" @bind-Value="_sort" @bind-Value:after="Filter" Label="Sort" Variant="Variant.Outlined" Margin="Margin.Dense" Class="toolbar-select" Dense="true">
+                    <MudSelectItem T="string" Value="@("recent")">Recently practised</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("name")">Name</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("progress")">Progress</MudSelectItem>
+                </MudSelect>
+                <MudSwitch T="bool" @bind-Value="_showArchived" @bind-Value:after="Filter" Label="Show archived" Color="Color.Primary" />
+            </div>
+        </div>
+        <div class="source-filters">
+            <MudChipSet T="string" @bind-SelectedValue="_kind" @bind-SelectedValue:after="Filter" SelectionMode="SelectionMode.SingleSelection" CheckMark="false"
+                        Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" aria-label="Show">
+                <MudChip T="string" Value="@("all")" Default="true">All</MudChip>
+                <MudChip T="string" Value="@("fav")" Icon="@Icons.Material.Rounded.StarBorder">Favourites</MudChip>
+                @if (Presets)
+                {
+                    <MudChip T="string" Value="@("piece")" Icon="@Icons.Material.Rounded.LibraryMusic">Pieces</MudChip>
+                    <MudChip T="string" Value="@("preset")" Icon="@Mdi.Metronome">Custom metronomes</MudChip>
+                }
+            </MudChipSet>
+            @if (Store.Groups.Count > 0 && _kind != "preset")
+            {
+                @* several groups at once; none picked = every group *@
+                <MudChipSet T="string" SelectedValues="_groups" SelectedValuesChanged="GroupsChanged" SelectionMode="SelectionMode.MultiSelection" CheckMark="false"
+                            Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" aria-label="Filter by group">
+                    @foreach (var g in Store.Groups)
+                    {
+                        var group = g;
+                        <MudChip T="string" Value="@g.Id"><GroupTag Group="group" /></MudChip>
+                    }
+                    <MudChip T="string" Value="@NoGroup">No group</MudChip>
+                </MudChipSet>
+            }
+        </div>
+
+        @if (_rows.Count == 0)
+        {
+            <div class="empty-state">
+                @if (Store.Pieces.Count == 0 && (!Presets || Store.Presets.Count == 0))
+                {
+                    <MudText Typo="Typo.h6">Your library is empty</MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.h6">No matching pieces</MudText>
+                    <MudButton Variant="Variant.Outlined" OnClick="ClearFilters">Clear filters</MudButton>
+                }
+            </div>
+        }
+        else
+        {
+            <Pager Total="_rows.Count" PageSize="PageSize" Page="_page" PageChanged="GoToPage" Label="Pages">
+                <div class="piece-list source-list" role="list">
+                    <div class="piece-list-head" aria-hidden="true">
+                        <span class="source-cols"><span></span><span>Name</span><span class="pr-wide">Group</span><span>Tempo</span><span class="pr-wide">Progress</span><span class="pr-wide">Last practised</span></span>
+                        <span></span>
+                    </div>
+                    @foreach (var row in _pageRows)
+                    {
+                        var r = row;
+                        var open = _open == r.Key;
+                        <div class="piece-row @(r.Piece?.Archived == true ? "archived" : "") @(r.Key == Current ? "current" : "")" role="listitem" @key="r.Key">
+                            <button type="button" class="source-main source-cols" @onclick="() => Pick(r.Key)" aria-current="@(r.Key == Current ? "true" : null)"
+                                    aria-label="@($"Load {r.Name}")">
+                                @if (r.Piece is { } piece)
+                                {
+                                    var st = r.Stats!;
+                                    <MudIcon Icon="@piece.Type.Icon()" Size="Size.Small" Class="fav-kind" title="@piece.Type.Label()" />
+                                    <span class="pr-name">@piece.Name</span>
+                                    <span class="pr-group pr-wide">
+                                        @if (Store.GetGroup(piece.GroupId) is { } group) { <GroupTag Group="group" /> }
+                                    </span>
+                                    <span class="pr-tempo">
+                                        <span class="mono">@(st.Sessions == 0 ? "—" : st.Last?.ToString("0") ?? "—")</span>@if (piece.Goal is { } g)
+                                        {<span class="muted"> / @g.ToString("0")</span>}<span class="muted">@piece.Unit.Suffix()</span>
+                                    </span>
+                                    <span class="pr-progress pr-wide">
+                                        @if (st.Sessions > 0 && st.Progress is { } pr)
+                                        {
+                                            <GoalBar Progress="pr" AriaLabel="@($"{piece.Name} progress: {pr:P0}")" />
+                                            @if (GoalChip.Reached(piece, st.Last)) { <GoalChip Piece="piece" Last="st.Last" /> }
+                                            else { <span class="mono small">@pr.ToString("P0")</span> }
+                                        }
+                                    </span>
+                                    <span class="muted small pr-wide">@(st.Sessions > 0 ? Stats.Ago(st.LastDate, DateTime.Today) : "Not started yet")</span>
+                                }
+                                else if (r.Preset is { } preset)
+                                {
+                                    <MudIcon Icon="@Mdi.Metronome" Size="Size.Small" Class="fav-kind" title="Custom metronome" />
+                                    <span class="pr-name">@preset.Name</span>
+                                    <span class="pr-group pr-wide muted">Custom metronome</span>
+                                    <span class="pr-tempo"><span class="mono">@PresetTempo(preset)</span><span class="muted"> bpm</span></span>
+                                    <span class="pr-wide"></span>
+                                    <span class="pr-wide"></span>
+                                }
+                            </button>
+                            <span class="pr-actions">
+                                <FavouriteToggle On="r.Favourite" Name="@r.Name" OnToggle="() => ToggleFavourite(r)" />
+                                @if (Sections && r.Piece is { } sp && sp.HasParts())
+                                {
+                                    <MudTooltip Text="@(open ? "Hide sections" : "Sections")">
+                                        <MudIconButton Size="Size.Small" Icon="@(open ? Icons.Material.Rounded.ExpandLess : Icons.Material.Rounded.ExpandMore)"
+                                                       aria-expanded="@(open ? "true" : "false")" aria-label="@($"Sections of {sp.Name}")"
+                                                       OnClick="() => _open = open ? null : r.Key" />
+                                    </MudTooltip>
+                                }
+                                else if (Sections)
+                                {
+                                    <span class="source-no-sections"></span>
+                                }
+                            </span>
+                            @if (open && r.Piece is { } op)
+                            {
+                                <div class="source-sections" role="group" aria-label="@($"Sections of {op.Name}")">
+                                    @foreach (var s in op.Sections)
+                                    {
+                                        var sec = s;
+                                        var secKey = $"{r.Key}/{sec.Id}";
+                                        <button type="button" class="source-section" @onclick="() => Pick(secKey)">
+                                            <span class="pr-name">@sec.Name</span>
+                                            <span class="muted small">@sec.Bpm.ToString("0") bpm · @sec.Meter</span>
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </Pager>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
+    /// <summary>What's loaded now ("free", "piece:<id>", "preset:<id>"): its row is marked.</summary>
+    [Parameter] public string Current { get; set; } = "free";
+    /// <summary>List custom metronomes too (the Metronome).</summary>
+    [Parameter] public bool Presets { get; set; }
+    /// <summary>A piece with sections can be loaded at one (the Metronome).</summary>
+    [Parameter] public bool Sections { get; set; }
+    /// <summary>The search to start with (what was typed in the picker's field).</summary>
+    [Parameter] public string? Search { get; set; }
+
+    /// <summary>Opens the dialog; the pick's key ("piece:<id>", "piece:<id>/<sectionId>", "preset:<id>"), or null if cancelled.</summary>
+    public static async Task<string?> ShowAsync(IDialogService dialogs, string into, string current, bool presets, bool sections, string? search = null)
+    {
+        var p = new DialogParameters<SourcePickerDialog>
+        {
+            { x => x.Current, current },
+            { x => x.Presets, presets },
+            { x => x.Sections, sections },
+            { x => x.Search, search },
+        };
+        var r = await dialogs.ShowAsync<SourcePickerDialog>($"Load into {into.ToLowerInvariant()}", p,
+            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true, Position = DialogPosition.TopCenter });
+        var result = await r.Result;
+        return result is { Canceled: false, Data: string key } ? key : null;
+    }
+
+    const string NoGroup = "none";
+    const int PageSize = 25;
+
+    MudTextField<string>? _field;
+    string? _search;
+    string? _kind = "all";
+    string _sort = "recent";
+    bool _showArchived;
+    IReadOnlyCollection<string> _groups = [];
+    string? _open;   // the row whose sections are showing
+
+    sealed record Row(string Key, string Name, Piece? Piece, MetronomePreset? Preset, PieceStats? Stats)
+    {
+        public bool Favourite => Piece?.Favourite ?? Preset?.Favourite ?? false;
+    }
+
+    List<Row> _rows = new();
+    List<Row> _pageRows = new();
+    int _page = 1;
+
+    protected override void OnInitialized()
+    {
+        _search = string.IsNullOrWhiteSpace(Search) ? null : Search.Trim();
+        Refresh();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _field is null) return;
+        await Task.Yield(); // after the dialog has taken focus for itself
+        await _field.FocusAsync();
+    }
+
+    void GroupsChanged(IReadOnlyCollection<string>? picked) { _groups = picked ?? []; Filter(); }
+    void ClearFilters() { _search = null; _kind = "all"; _groups = []; Filter(); }
+    void GoToPage(int page) { _page = page; _pageRows = Pager.Slice(_rows, _page, PageSize).ToList(); }
+    void Filter() { _page = 1; Refresh(); }
+
+    void Refresh()
+    {
+        var q = _search?.Trim();
+        var kind = _kind ?? "all";
+        IEnumerable<Row> pieces = [], presets = [];
+        if (kind != "preset")
+        {
+            var ps = Store.Pieces.Where(p => _showArchived || !p.Archived);
+            if (!string.IsNullOrEmpty(q)) ps = ps.Where(p => SourceOption.Matches(Store, p, q));
+            if (kind == "fav") ps = ps.Where(p => p.Favourite);
+            if (_groups.Count > 0)
+            {
+                var picked = _groups.ToHashSet();
+                ps = ps.Where(p => Store.GetGroup(p.GroupId) is { } g ? picked.Contains(g.Id) : picked.Contains(NoGroup));
+            }
+            pieces = ps.Select(p => new Row($"piece:{p.Id}", p.Name, p, null, Store.StatsFor(p)));
+        }
+        // custom metronomes have no group, so a group filter leaves them out (but not while they're all that's shown,
+        // when the group chips are hidden)
+        if (Presets && kind != "piece" && (_groups.Count == 0 || kind == "preset"))
+        {
+            var ps = Store.Presets.AsEnumerable();
+            if (!string.IsNullOrEmpty(q)) ps = ps.Where(p => p.Name.Contains(q, StringComparison.OrdinalIgnoreCase));
+            if (kind == "fav") ps = ps.Where(p => p.Favourite);
+            presets = ps.Select(p => new Row($"preset:{p.Id}", p.Name, null, p, null));
+        }
+        // custom metronomes have no practice of their own: after the pieces, by name, except when sorting by name
+        var sortedPieces = _sort switch
+        {
+            "name" => pieces.OrderBy(r => r.Name),
+            "progress" => pieces.OrderByDescending(r => r.Stats!.Progress ?? -1).ThenBy(r => r.Name),
+            _ => pieces.OrderByDescending(r => r.Stats!.LastDate ?? DateTime.MinValue).ThenBy(r => r.Name),
+        };
+        _rows = _sort == "name"
+            ? sortedPieces.Concat(presets).OrderBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase).ToList()
+            : sortedPieces.Concat(presets.OrderBy(r => r.Name)).ToList();
+        _page = Pager.Clamp(_page, _rows.Count, PageSize);
+        _pageRows = Pager.Slice(_rows, _page, PageSize).ToList();
+    }
+
+    static string PresetTempo(MetronomePreset p)
+    {
+        if (p.Sections.Count == 0) return "—";
+        var lo = p.Sections.Min(s => s.Bpm); var hi = p.Sections.Max(s => s.Bpm);
+        return lo == hi ? lo.ToString("0") : $"{lo:0}–{hi:0}";
+    }
+
+    async Task ToggleFavourite(Row r)
+    {
+        if (r.Piece is { } p) { p.Favourite = !p.Favourite; await Store.SavePieceAsync(p); }
+        else if (r.Preset is { } pr) { pr.Favourite = !pr.Favourite; await Store.SavePresetAsync(pr); }
+        Refresh();
+    }
+
+    void Pick(string key) => Dialog.Close(DialogResult.Ok(key));
+
+    // Enter in the search loads the first row
+    void SearchKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && _rows.Count > 0) Pick(_rows[0].Key);
+    }
+}

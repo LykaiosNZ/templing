@@ -234,22 +234,7 @@
     </Strip>
     <ChildContent>
         <div class="rail-src">
-            <MudSelect T="string" Value="@SourceKey" ValueChanged="LoadSource" Label="Metronome" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
-                <MudSelectItem T="string" Value="@("free")">Free metronome</MudSelectItem>
-                @if (Store.Presets.Count > 0)
-                {
-                    <MudSelectItem T="string" Value="@("group:custom")" Disabled="true" Class="select-group">Custom metronomes</MudSelectItem>
-                    @foreach (var p in Store.Presets.OrderBy(p => p.Name))
-                    {
-                        <MudSelectItem T="string" Value="@($"preset:{p.Id}")">@p.Name</MudSelectItem>
-                    }
-                }
-                <MudSelectItem T="string" Value="@("group:library")" Disabled="true" Class="select-group">Library</MudSelectItem>
-                @foreach (var i in Store.PiecesByRecent())
-                {
-                    <MudSelectItem T="string" Value="@($"piece:{i.Id}")">@i.Name</MudSelectItem>
-                }
-            </MudSelect>
+            <SourcePicker Label="Metronome" FreeLabel="Free metronome" Key="@SourceKey" Presets="true" Sections="true" OnPick="LoadSource" />
             @if (Metro.Source == MetronomeSource.Preset)
             {
                 <MudTooltip Text="More" Placement="Placement.Left">
@@ -486,7 +471,7 @@
         return Metro.Sections.Count == 1 ? $"{first.Bpm:0} bpm · {first.Meter}" : $"{Metro.Sections.Count} sections · {first.Bpm:0} bpm";
     }
 
-    /// <summary>The select's value for what's loaded.</summary>
+    /// <summary>The source picker's key for what's loaded.</summary>
     string SourceKey => Metro.Source switch
     {
         MetronomeSource.Preset => $"preset:{Metro.Preset?.Id}",
@@ -496,8 +481,9 @@
 
     void LoadSource(string key)
     {
-        if (key == SourceKey || key.StartsWith("group:")) return;
-        var (kind, id) = key.IndexOf(':') is var c and > 0 ? (key[..c], key[(c + 1)..]) : (key, "");
+        if (key == SourceKey) return;
+        // a piece's id may carry a section from the browse dialog ("piece:<id>/<sectionId>"), which is the route's shape too
+        var (kind, id) = SourceOption.Split(key);
         Nav.NavigateTo(kind switch { "preset" => $"metronome/preset/{id}", "piece" => $"metronome/piece/{id}", _ => "metronome/free" });
     }
 

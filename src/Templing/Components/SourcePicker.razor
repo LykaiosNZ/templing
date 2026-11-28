@@ -1,0 +1,117 @@
+@* What the Metronome or Timer has loaded, as a search field: open, it lists the free metronome/timer, favourites, the
+   library (most recently practised first) and custom metronomes; typing searches them; "Browse all…" opens
+   SourcePickerDialog for the whole library with group filters. Picks come back as keys: "free", "piece:<id>",
+   "piece:<id>/<sectionId>" (a section, from the dialog) or "preset:<id>". *@
+@inject DataStore Store
+@inject IDialogService Dialogs
+
+<MudAutocomplete @ref="_auto" T="SourceOption" Value="Current" ValueChanged="Picked" SearchFunc="Search" ToStringFunc="Text"
+                 Strict="false" MaxItems="null" ItemDisabledFunc="o => o.Kind == SourceKind.Heading" DebounceInterval="100"
+                 Label="@Label" Disabled="Disabled" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                 PopoverClass="source-popover" aria-label="@Label">
+    <ItemTemplate Context="o">@Item(o)</ItemTemplate>
+    <ItemDisabledTemplate Context="o">@Item(o)</ItemDisabledTemplate>
+</MudAutocomplete>
+
+@code {
+    /// <summary>"Metronome" or "Timer": the field's label, and what the dialog loads into.</summary>
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    /// <summary>The first option: "Free metronome" / "Free timer".</summary>
+    [Parameter, EditorRequired] public string FreeLabel { get; set; } = "";
+    /// <summary>What's loaded: "free", "piece:<id>" or "preset:<id>".</summary>
+    [Parameter, EditorRequired] public string Key { get; set; } = "free";
+    /// <summary>Offer custom metronomes (the Metronome page).</summary>
+    [Parameter] public bool Presets { get; set; }
+    /// <summary>Let the browse dialog load a piece at one of its sections (the Metronome page).</summary>
+    [Parameter] public bool Sections { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback<string> OnPick { get; set; }
+
+    MudAutocomplete<SourceOption>? _auto;
+
+    const int LibraryShown = 6, PresetsShown = 5, MatchesShown = 8;
+
+    SourceOption Free => new(SourceKind.Free, "", FreeLabel);
+    static readonly SourceOption Browse = new(SourceKind.Browse, "", "Browse all…");
+
+    SourceOption Current
+    {
+        get
+        {
+            var (kind, id) = SourceOption.Split(Key);
+            return kind switch
+            {
+                "piece" when Store.GetPiece(id) is { } p => SourceOption.For(p),
+                "preset" when Store.Presets.FirstOrDefault(x => x.Id == id) is { } pr => SourceOption.For(pr),
+                _ => Free,
+            };
+        }
+    }
+
+    static string Text(SourceOption? o) => o?.Kind is SourceKind.Free or SourceKind.Piece or SourceKind.Preset ? o.Name : "";
+
+    string? _typed;   // the last search, carried into the browse dialog
+
+    Task<IEnumerable<SourceOption>> Search(string? text, CancellationToken _)
+    {
+        _typed = text;
+        var list = new List<SourceOption>();
+        void Section(string heading, IEnumerable<SourceOption> items)
+        {
+            var some = items.ToList();
+            if (some.Count == 0) return;
+            list.Add(new(SourceKind.Heading, heading, heading));
+            list.AddRange(some);
+        }
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            list.Add(Free);
+            var pieces = Store.PiecesByRecent();
+            var presets = Presets ? Store.Presets.OrderBy(p => p.Name).ToList() : [];
+            Section("Favourites", pieces.Where(p => p.Favourite).Select(SourceOption.For)
+                .Concat(presets.Where(p => p.Favourite).Select(SourceOption.For)));
+            Section("Library", pieces.Where(p => !p.Favourite).Take(LibraryShown).Select(SourceOption.For));
+            Section("Custom metronomes", presets.Where(p => !p.Favourite).Take(PresetsShown).Select(SourceOption.For));
+        }
+        else
+        {
+            var q = text.Trim();
+            Section("Library", Store.PiecesByRecent().Where(p => SourceOption.Matches(Store, p, q)).Take(MatchesShown).Select(SourceOption.For));
+            if (Presets)
+                Section("Custom metronomes", Store.Presets.Where(p => p.Name.Contains(q, StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(p => p.Name).Take(PresetsShown).Select(SourceOption.For));
+        }
+        list.Add(Browse);
+        return Task.FromResult<IEnumerable<SourceOption>>(list);
+    }
+
+    async Task Picked(SourceOption? o)
+    {
+        if (o is null || o.Kind == SourceKind.Heading) return;
+        if (o.Kind != SourceKind.Browse) { await OnPick.InvokeAsync(o.Key); return; }
+        // put the field back to what's loaded, then browse from what was typed
+        var typed = _typed;
+        if (_auto is not null) await _auto.SelectOptionAsync(Current);
+        var key = await SourcePickerDialog.ShowAsync(Dialogs, Label, Key, Presets, Sections, typed);
+        if (key is not null) await OnPick.InvokeAsync(key);
+    }
+
+    RenderFragment Item(SourceOption o) => o.Kind switch
+    {
+        SourceKind.Heading => @<span class="source-heading">@o.Name</span>,
+        SourceKind.Browse => @<span class="source-option source-browse"><MudIcon Icon="@Icons.Material.Rounded.ManageSearch" Size="Size.Small" />@o.Name</span>,
+        SourceKind.Preset => @<span class="source-option"><MudIcon Icon="@Mdi.Metronome" Size="Size.Small" Class="source-icon" /><span class="source-name">@o.Name</span></span>,
+        SourceKind.Piece => PieceItem(o),
+        _ => @<span class="source-option"><span class="source-name">@o.Name</span></span>,
+    };
+
+    RenderFragment PieceItem(SourceOption o)
+    {
+        var group = Store.GetGroup(Store.GetPiece(o.Id)?.GroupId);
+        return @<span class="source-option">
+                    <span class="group-dot @(group is null ? "none" : "")" style="@(group is null ? null : $"--group:{GroupColours.Hex(group.Colour)}")" aria-hidden="true"></span>
+                    <span class="source-name">@o.Name</span>
+                </span>;
+    }
+}

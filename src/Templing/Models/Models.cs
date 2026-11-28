@@ -322,6 +322,8 @@ public class MetronomePreset
     /// <summary>The click for this custom metronome (a <c>ClickSounds</c> id); null = the default from Settings.</summary>
     public string? Sound { get; set; }
     public DateTime Created { get; set; } = DateTime.Now;
+    /// <summary>Starred: listed under Favourites in the Metronome's source picker.</summary>
+    public bool Favourite { get; set; }
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
