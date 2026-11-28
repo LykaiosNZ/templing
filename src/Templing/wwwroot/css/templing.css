@@ -417,6 +417,7 @@ button.tempo-value:focus-visible { outline: 2px solid var(--ring); outline-offse
 .rail-scroll { overflow-y: auto; flex: 1; min-height: 0; }
 .rail-src { display: flex; gap: 8px; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--mud-palette-divider); }
 .rail-src .mud-select, .rail-src .mud-autocomplete { flex: 1; min-width: 0; }
+.source-field { display: contents; }
 /* SourcePicker's list: headings like a select's group headings, a piece's group dot before its name, Browse all… in accent */
 .source-popover .mud-list-item:has(.source-heading) { opacity: 1 !important; min-height: 0; padding-top: 10px; pointer-events: none; }
 .source-heading { font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
