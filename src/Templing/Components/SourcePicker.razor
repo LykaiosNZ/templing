@@ -5,7 +5,11 @@
    "piece:<id>/<sectionId>" (a section, from the dialog) or "preset:<id>". *@
 @inject DataStore Store
 @inject IDialogService Dialogs
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
+@* a wrapper that takes Escape while the list is open (picker.js); display: contents, so the field lays out as before *@
+<div class="source-field" @ref="_wrap">
 <MudAutocomplete @ref="_auto" T="SourceOption" Value="Current" ValueChanged="Picked" SearchFunc="Search" ToStringFunc="Text"
                  Strict="false" MaxItems="null" OpenOnFocus="false" ItemDisabledFunc="o => o.Kind == SourceKind.Heading" DebounceInterval="100"
                  Label="@Label" Disabled="Disabled" Variant="@(Form ? Variant.Text : Variant.Outlined)" Margin="@(Form ? Margin.None : Margin.Dense)" Dense="!Form"
@@ -14,6 +18,7 @@
     <ItemTemplate Context="o">@Item(o)</ItemTemplate>
     <ItemDisabledTemplate Context="o">@Item(o)</ItemDisabledTemplate>
 </MudAutocomplete>
+</div>
 
 @code {
     /// <summary>The field's label: "Metronome", "Piece".</summary>
@@ -36,6 +41,32 @@
     [Parameter] public EventCallback<string> OnPick { get; set; }
 
     MudAutocomplete<SourceOption>? _auto;
+    ElementReference _wrap;
+    IJSObjectReference? _guard;
+    DotNetObjectReference<SourcePicker>? _self;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _self = DotNetObjectReference.Create(this);
+        var mod = await JS.InvokeAsync<IJSObjectReference>("import", "./js/picker.js");
+        _guard = await mod.InvokeAsync<IJSObjectReference>("guardEscape", _wrap, _self);
+        await mod.DisposeAsync();
+    }
+
+    /// <summary>Escape with the list open (picker.js): close just the list.</summary>
+    [JSInvokable]
+    public async Task CloseList()
+    {
+        if (_auto is not null) await _auto.CloseMenuAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { if (_guard is not null) { await _guard.InvokeVoidAsync("dispose"); await _guard.DisposeAsync(); } }
+        catch (JSDisconnectedException) { }
+        _self?.Dispose();
+    }
 
     const int LibraryShown = 6, PresetsShown = 5, MatchesShown = 8;
 
