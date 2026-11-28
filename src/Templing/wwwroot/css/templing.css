@@ -137,8 +137,8 @@ kbd {
 /* Library cards and rows aren't keyed (a new page or sort fills the same components with other pieces, several times
    faster than drawing new ones), so a bar would slide from the last piece's value to this one's: no slide */
 .piece-grid .mud-progress-linear-bar, .piece-list .mud-progress-linear-bar { transition: none; }
-/* a card for a piece in a group is tinted with its colour (--group, from GroupColours); hover still outlines it in accent */
-.piece-card.in-group { background: color-mix(in srgb, var(--group) 8%, var(--card)); border-color: color-mix(in srgb, var(--group) 40%, var(--ring)); }
+/* a card for a piece in a group (Library, Dashboard) is tinted with its colour (--group, from GroupColours); hover still outlines it in accent */
+.piece-card.in-group, .fav-card.in-group { background: color-mix(in srgb, var(--group) 8%, var(--card)); border-color: color-mix(in srgb, var(--group) 40%, var(--ring)); }
 .piece-card.in-group .piece-card-actions { border-top-color: color-mix(in srgb, var(--group) 35%, var(--ring)); }
 /* the card's group label sits between its practice and manage buttons */
 .card-group { flex: 1; min-width: 0; display: flex; padding: 0 4px; font-size: .8rem; }
