@@ -125,7 +125,7 @@ else
                             }
                         </span>
                         <span class="muted small pr-wide">@(st.Sessions > 0 ? Stats.Ago(st.LastDate, DateTime.Today) : "Not started yet")</span>
-                        <span class="muted small pr-wide pr-time" title="@(st.Sessions == 1 ? "1 session" : $"{st.Sessions} sessions")">@(st.Sessions > 0 ? Stats.Duration(st.TotalSec) : "")</span>
+                        <span class="mono pr-wide pr-time" title="@(st.Sessions == 1 ? "1 session" : $"{st.Sessions} sessions")">@(st.Sessions > 0 ? Stats.Duration(st.TotalSec) : "")</span>
                     </a>
                     @* the Group column's menu, laid over the link on the same columns (only that cell takes clicks) *@
                     <div class="pr-cols pr-overlay"><span></span><span></span><span class="pr-group pr-wide"><GroupPicker Piece="piece" /></span></div>

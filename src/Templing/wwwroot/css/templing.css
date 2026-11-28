@@ -112,6 +112,8 @@ kbd {
 .group-pick.none { opacity: 0; transition: opacity .12s ease; }
 .group-pick-menu.always .group-pick.none, .piece-row:hover .group-pick.none, .piece-card:hover .group-pick.none, .group-pick.none:focus-visible, .mud-menu-activator[aria-expanded="true"] .group-pick.none { opacity: 1; }
 .pr-cols { display: grid; grid-template-columns: 22px minmax(140px, 2fr) minmax(90px, 1fr) minmax(130px, 1fr) 170px 100px 110px; align-items: center; gap: 12px; min-width: 0; }
+/* practice time is a number column, as in the other tables: mono, right-aligned under its heading */
+.pr-time { text-align: right; }
 .piece-list-head { padding: 0 8px 6px; }
 .piece-row { padding: 2px 8px; border-radius: 8px; }
 .piece-row.archived { opacity: .6; }
