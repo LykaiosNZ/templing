@@ -9,13 +9,8 @@
     <DialogContent>
         <MudForm @ref="_form" Class="d-flex flex-column gap-3">
             <div class="d-flex gap-3">
-                <MudSelect T="string" Label="Piece" @bind-Value="PiecePick" @bind-Value:after="OnPieceChanged" AnchorOrigin="Origin.BottomCenter" Style="flex:2 1 0">
-                    <MudSelectItem T="string" Value="@("")">Free practice</MudSelectItem>
-                    @foreach (var i in Store.PiecesByRecent(keepId: _pieceId))
-                    {
-                        <MudSelectItem T="string" Value="@i.Id">@i.Name</MudSelectItem>
-                    }
-                </MudSelect>
+                <SourcePicker Label="Piece" BrowseTitle="Choose a piece" FreeLabel="Free practice" Key="@PieceKey" Sections="true" Form="true"
+                              OnPick="PickPiece" Style="flex:2 1 0" />
                 <MudDatePicker Label="Date" @bind-Date="_date" DateFormat="ddd d MMM yyyy" Editable="true" MaxDate="DateTime.Today" Style="flex:1 1 0; min-width:150px" />
             </div>
             @if (_piece == null)
@@ -63,8 +58,9 @@
     double? _seconds;
     int? _effort;
     Piece? _piece;
-    // selects show "Free practice" / "Full run-through" as an explicit "" option rather than an empty field
-    string PiecePick { get => _pieceId ?? ""; set => _pieceId = string.IsNullOrEmpty(value) ? null : value; }
+    // the piece picker's key: "free" is Free practice
+    string PieceKey => _pieceId is null ? "free" : $"piece:{_pieceId}";
+    // the Section select shows "Full run-through" as an explicit "" option rather than an empty field
     string SectionPick { get => _sectionId ?? ""; set => _sectionId = string.IsNullOrEmpty(value) ? null : value; }
 
     public static async Task<bool> ShowAsync(IDialogService dialogs, PracticeLog log, bool isNew)
@@ -93,10 +89,15 @@
         }
     }
 
-    void OnPieceChanged()
+    // "free", "piece:<id>" or, from the browse dialog, "piece:<id>/<sectionId>"
+    void PickPiece(string key)
     {
+        var (kind, id) = SourceOption.Split(key);
+        string? section = null;
+        if (kind == "piece" && id.IndexOf('/') is var slash and > 0) (id, section) = (id[..slash], id[(slash + 1)..]);
+        _pieceId = kind == "piece" ? id : null;
         _piece = Store.GetPiece(_pieceId);
-        _sectionId = null;
+        _sectionId = _piece?.Sections.Any(s => s.Id == section) == true ? section : null;
         if (_piece != null) _name = _piece.Name;
     }
 

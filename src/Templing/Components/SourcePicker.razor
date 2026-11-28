@@ -1,4 +1,5 @@
-@* What the Metronome or Timer has loaded, as a search field: open, it lists the free metronome/timer, favourites, the
+@* A piece (or custom metronome) to work with, as a search field: what the Metronome loads, the piece a log entry is for.
+   Open, it lists the free option (free metronome, free practice), favourites, the
    library (most recently practised first) and custom metronomes; typing searches them; "Browse all…" opens
    SourcePickerDialog for the whole library with group filters. Picks come back as keys: "free", "piece:<id>",
    "piece:<id>/<sectionId>" (a section, from the dialog) or "preset:<id>". *@
@@ -6,17 +7,24 @@
 @inject IDialogService Dialogs
 
 <MudAutocomplete @ref="_auto" T="SourceOption" Value="Current" ValueChanged="Picked" SearchFunc="Search" ToStringFunc="Text"
-                 Strict="false" MaxItems="null" ItemDisabledFunc="o => o.Kind == SourceKind.Heading" DebounceInterval="100"
-                 Label="@Label" Disabled="Disabled" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                 Strict="false" MaxItems="null" OpenOnFocus="false" ItemDisabledFunc="o => o.Kind == SourceKind.Heading" DebounceInterval="100"
+                 Label="@Label" Disabled="Disabled" Variant="@(Form ? Variant.Text : Variant.Outlined)" Margin="@(Form ? Margin.None : Margin.Dense)" Dense="!Form"
+                 Class="@Class" Style="@Style"
                  PopoverClass="source-popover" aria-label="@Label">
     <ItemTemplate Context="o">@Item(o)</ItemTemplate>
     <ItemDisabledTemplate Context="o">@Item(o)</ItemDisabledTemplate>
 </MudAutocomplete>
 
 @code {
-    /// <summary>"Metronome" or "Timer": the field's label, and what the dialog loads into.</summary>
+    /// <summary>The field's label: "Metronome", "Piece".</summary>
     [Parameter, EditorRequired] public string Label { get; set; } = "";
-    /// <summary>The first option: "Free metronome" / "Free timer".</summary>
+    /// <summary>The browse dialog's title: "Load into metronome", "Choose a piece".</summary>
+    [Parameter, EditorRequired] public string BrowseTitle { get; set; } = "";
+    /// <summary>In a form (a dialog): the default variant, like the fields beside it, rather than the rail's outlined one.</summary>
+    [Parameter] public bool Form { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Style { get; set; }
+    /// <summary>The first option: "Free metronome" / "Free practice".</summary>
     [Parameter, EditorRequired] public string FreeLabel { get; set; } = "";
     /// <summary>What's loaded: "free", "piece:<id>" or "preset:<id>".</summary>
     [Parameter, EditorRequired] public string Key { get; set; } = "free";
@@ -93,7 +101,7 @@
         // put the field back to what's loaded, then browse from what was typed
         var typed = _typed;
         if (_auto is not null) await _auto.SelectOptionAsync(Current);
-        var key = await SourcePickerDialog.ShowAsync(Dialogs, Label, Key, Presets, Sections, typed);
+        var key = await SourcePickerDialog.ShowAsync(Dialogs, BrowseTitle, Key, Presets, Sections, typed);
         if (key is not null) await OnPick.InvokeAsync(key);
     }
 

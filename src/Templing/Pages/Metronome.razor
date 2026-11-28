@@ -234,7 +234,7 @@
     </Strip>
     <ChildContent>
         <div class="rail-src">
-            <SourcePicker Label="Metronome" FreeLabel="Free metronome" Key="@SourceKey" Presets="true" Sections="true" OnPick="LoadSource" />
+            <SourcePicker Label="Metronome" BrowseTitle="Load into metronome" FreeLabel="Free metronome" Key="@SourceKey" Presets="true" Sections="true" OnPick="LoadSource" />
             @if (Metro.Source == MetronomeSource.Preset)
             {
                 <MudTooltip Text="More" Placement="Placement.Left">

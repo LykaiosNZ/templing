@@ -100,9 +100,6 @@
         <RailVolume />
     </Strip>
     <ChildContent>
-        <div class="rail-src">
-            <SourcePicker Label="Timer" FreeLabel="Free timer" Key="@SourceKey" Disabled="Metro.IsRunning" OnPick="LoadSource" />
-        </div>
         <RailSection Title="Countdown" Icon="@Icons.Material.Rounded.Timelapse">
             <IntervalsEditor Settings="Metro.Settings.Timer" Timer="true" />
         </RailSection>
@@ -113,15 +110,6 @@
 </OptionsRail>
 
 @code {
-    /// <summary>The source picker's key for what's loaded.</summary>
-    string SourceKey => Metro.Source == MetronomeSource.Piece && Metro.Piece is { } p ? $"piece:{p.Id}" : "free";
-
-    void LoadSource(string key)
-    {
-        if (key == SourceKey) return;
-        Nav.NavigateTo(key.StartsWith("piece:") ? $"timer/piece/{key[6..]}" : "timer/free");
-    }
-
     [Parameter] public string? PieceId { get; set; }
     string? _lastPhase;
     int _flashKey;
