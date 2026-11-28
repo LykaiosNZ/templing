@@ -101,15 +101,7 @@
     </Strip>
     <ChildContent>
         <div class="rail-src">
-            <MudSelect T="string" Value="@SourceKey" ValueChanged="LoadSource" Label="Timer" Disabled="Metro.IsRunning"
-                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
-                <MudSelectItem T="string" Value="@("free")">Free timer</MudSelectItem>
-                <MudSelectItem T="string" Value="@("group:library")" Disabled="true" Class="select-group">Library</MudSelectItem>
-                @foreach (var i in Store.PiecesByRecent())
-                {
-                    <MudSelectItem T="string" Value="@($"piece:{i.Id}")">@i.Name</MudSelectItem>
-                }
-            </MudSelect>
+            <SourcePicker Label="Timer" FreeLabel="Free timer" Key="@SourceKey" Disabled="Metro.IsRunning" OnPick="LoadSource" />
         </div>
         <RailSection Title="Countdown" Icon="@Icons.Material.Rounded.Timelapse">
             <IntervalsEditor Settings="Metro.Settings.Timer" Timer="true" />
@@ -121,12 +113,12 @@
 </OptionsRail>
 
 @code {
-    /// <summary>The select's value for what's loaded.</summary>
+    /// <summary>The source picker's key for what's loaded.</summary>
     string SourceKey => Metro.Source == MetronomeSource.Piece && Metro.Piece is { } p ? $"piece:{p.Id}" : "free";
 
     void LoadSource(string key)
     {
-        if (key == SourceKey || key.StartsWith("group:")) return;
+        if (key == SourceKey) return;
         Nav.NavigateTo(key.StartsWith("piece:") ? $"timer/piece/{key[6..]}" : "timer/free");
     }
 
