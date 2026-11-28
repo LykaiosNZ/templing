@@ -203,7 +203,8 @@ else
     RenderFragment Card(DashCard c) => c.Plan is { } plan ? PlanCardView(plan, c.Meta) : PieceCardView(c.Piece!, c.Stats!, c.Meta);
 
     RenderFragment PieceCardView(Piece piece, PieceStats st, string meta) =>
-        @<article class="card fav-card">
+        @<article class="card fav-card @(Store.GetGroup(piece.GroupId) is null ? "" : "in-group")"
+                  style="@(Store.GetGroup(piece.GroupId) is { } group ? $"--group:{GroupColours.Hex(group.Colour)}" : null)">
             <div class="fav-head">
                 <MudIcon Icon="@piece.Type.Icon()" Size="Size.Small" Class="fav-kind" />
                 <a href="library/@piece.Id" class="fav-name">@piece.Name</a>
